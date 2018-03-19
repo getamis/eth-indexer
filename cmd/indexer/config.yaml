@@ -1,0 +1,19 @@
+# This config is for regulatory event listener
+# general configs
+host: "127.0.0.1"
+port: 5555
+
+# ethereum configs
+eth:
+  protocol: "ws"
+  host: "127.0.0.1"
+  port: 8546
+
+# database configs
+db:
+  driver: "mysql"
+  host: "127.0.0.1"
+  port: 3306
+  name: "indexer-db"
+  user: "root"
+  password: "my-secret-pw"
