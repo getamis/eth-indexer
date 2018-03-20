@@ -3,7 +3,7 @@ development:
   host: 127.0.0.1
   port: 3306
   encoding: utf8
-  database: indexer-db
+  database: eth-db
   username: root
   password: my-secret-pw
 customized:

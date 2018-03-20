@@ -1,0 +1,31 @@
+version: "3"
+services:
+  eth-indexer-database:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=my-secret-pw
+      - MYSQL_CHARSET=utf8
+      - MYSQL_DATABASE=eth-db
+  eth-indexer-migration:
+    build:
+      context: ./migration
+    command: ["rake", "db:migrate"]
+    depends_on:
+      - eth-indexer-database
+    environment:
+      - RAILS_ENV=customized
+      - HOST=eth-indexer-database
+      - PORT=3306
+      - DATABASE=eth-db
+      - USERNAME=root
+      - PASSWORD=my-secret-pw
+  eth-indexer:
+    build:
+      context: .
+      dockerfile: ./cmd/indexer/Dockerfile
+    command:
+      - indexer
+      - --db.host
+      - eth-indexer-database

@@ -19,10 +19,11 @@ import (
 	"os"
 	"os/signal"
 
+	"syscall"
+
 	"github.com/getamis/sirius/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"syscall"
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -88,7 +89,7 @@ func init() {
 	RootCmd.Flags().StringVar(&dbDriver, dbDriverFlag, "mysql", "The database driver")
 	RootCmd.Flags().StringVar(&dbHost, dbHostFlag, "", "The database host")
 	RootCmd.Flags().IntVar(&dbPort, dbPortFlag, 3306, "The database port")
-	RootCmd.Flags().StringVar(&dbName, dbNameFlag, "indexer-db", "The database name")
+	RootCmd.Flags().StringVar(&dbName, dbNameFlag, "eth-db", "The database name")
 	RootCmd.Flags().StringVar(&dbUser, dbUserFlag, "root", "The database username to login")
 	RootCmd.Flags().StringVar(&dbPassword, dbPasswordFlag, "my-secret-pw", "The database password to login")
 }
