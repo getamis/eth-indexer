@@ -3,9 +3,9 @@ MAINTAINER miya@am.is
 ENV LANG C.UTF-8
 ENV HOST localhost
 ENV PORT 3306
-ENV DATABASE events
 ENV USERNAME root
 ENV PASSWORD my-secret-pw
+ENV DATABASE eth-db
 
 RUN apt-get update && \
     apt-get install -y unixodbc-dev \
