@@ -1,0 +1,9 @@
+source 'https://rubygems.org'
+
+gem 'rake', '~> 10.4.2'
+gem 'mysql', '~> 2.9'
+gem 'standalone_migrations', '~> 5.2.3'
+gem 'mysql2', '~> 0.4.4'
+gem 'tiny_tds', '~> 1.0.4'
+gem 'activerecord-sqlserver-adapter', '~> 4.2.0'
+gem 'ruby-odbc', '~> 0.99997'

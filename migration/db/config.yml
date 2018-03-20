@@ -1,0 +1,16 @@
+development:
+  adapter: mysql2
+  host: 127.0.0.1
+  port: 3306
+  encoding: utf8
+  database: indexer-db
+  username: root
+  password: my-secret-pw
+customized:
+  adapter: mysql2
+  host: <%= ENV['HOST'] %>
+  port: <%= ENV['PORT'] %>
+  encoding: utf8
+  database: <%= ENV['DATABASE'] %>
+  username: <%= ENV['USERNAME'] %>
+  password: "<%= ENV['PASSWORD'] %>"
