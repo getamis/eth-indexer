@@ -13,6 +13,18 @@
 
 ActiveRecord::Schema.define(version: 20180313051512) do
 
+  create_table "account_balances", force: :cascade do |t|
+    t.string  "address",          limit: 255, null: false
+    t.integer "token_id",         limit: 4,   null: false
+    t.integer "balance",          limit: 8,   null: false
+    t.integer "evaluated_height", limit: 8,   null: false
+  end
+
+  create_table "accounts", force: :cascade do |t|
+    t.string "address", limit: 255,   null: false
+    t.binary "code",    limit: 65535
+  end
+
   create_table "block_headers", force: :cascade do |t|
     t.string  "parent_hash",  limit: 255,   null: false
     t.string  "uncle_hash",   limit: 255,   null: false
@@ -27,6 +39,12 @@ ActiveRecord::Schema.define(version: 20180313051512) do
     t.integer "gas_used",     limit: 8,     null: false
     t.binary  "extra_data",   limit: 65535
     t.binary  "nonce",        limit: 8,     null: false
+  end
+
+  create_table "tokens", force: :cascade do |t|
+    t.string "contract_address", limit: 255
+    t.string "type",             limit: 255, null: false
+    t.string "full_name",        limit: 255, null: false
   end
 
   create_table "transaction_logs", force: :cascade do |t|

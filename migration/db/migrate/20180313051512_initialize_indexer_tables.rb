@@ -57,5 +57,27 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.integer :block_number, :limit => 8, :null => false
     end
     # TODO: Add indexes to transaction_logs
+
+    create_table :tokens do |t|
+      t.string :contract_address
+      t.string :type, :null => false
+      t.string :full_name, :null => false
+    end
+    # TODO: Add indexes to tokens
+
+    create_table :accounts do |t|
+      t.string :address, :null => false
+      t.binary :code
+    end
+    # TODO: Add indexes to accounts
+
+    create_table :account_balances do |t|
+      t.string :address, :null => false
+      t.integer :token_id, :null => false
+      t.integer :balance, :limit => 8, :null => false
+      t.integer :evaluated_height, :limit => 8, :null => false
+    end
+    # TODO: Add indexes to account_balances
+
   end
 end
