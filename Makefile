@@ -22,29 +22,47 @@ $(GOBIN)/%: $(GOBIN) FORCE
 	@echo "Done building."
 	@echo "Run \"$(subst $(CURDIR),.,$@)\" to launch $(notdir $@)."
 
-# PROTOC_INCLUDES := \
-		# -I$(CURDIR)/vendor/github.com/gogo/protobuf/types \
-		# -I$(CURDIR)/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		# -I$(GOPATH)/src
+PROTOC_INCLUDES := \
+		-I$(CURDIR)/vendor/github.com/gogo/protobuf/types \
+		-I$(CURDIR)/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+		-I$(GOPATH)/src
 
-# GRPC_PROTOS := \
-# 	api/pb/*.proto
+GRPC_PROTOS := \
+	indexer/pb/*.proto
 
-# server-grpc: FORCE
-# 	@protoc $(PROTOC_INCLUDES) \
-# 		--gofast_out=plugins=grpc,\
-# Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,\
-# Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
-# Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types,\
-# Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
-# Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types:$(GOPATH)/src \
-# 		$(addprefix $(CURDIR)/,$(GRPC_PROTOS))
+indexer-grpc: FORCE
+	@protoc $(PROTOC_INCLUDES) \
+		--gofast_out=plugins=grpc,\
+Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
+Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types:$(GOPATH)/src \
+		$(addprefix $(CURDIR)/,$(GRPC_PROTOS))
 
-# 	@protoc $(PROTOC_INCLUDES) \
-# 		--grpc-gateway_out=logtostderr=true:$(GOPATH)/src $(addprefix $(CURDIR)/,$(GRPC_PROTOS))
+	@protoc $(PROTOC_INCLUDES) \
+		--grpc-gateway_out=logtostderr=true:$(GOPATH)/src $(addprefix $(CURDIR)/,$(GRPC_PROTOS))
 
-# migration-%:
-# 	@$(MAKE) -f migration/Makefile $@
+migration-%:
+	@$(MAKE) -f migration/Makefile $@
+
+coverage.txt:
+	@touch $@
+
+test: coverage.txt FORCE
+	@for d in `go list ./... | grep -v vendor | grep -v mock`; do		\
+		go test -v -coverprofile=profile.out -covermode=atomic $$d;	\
+		if [ $$? -eq 0 ]; then						\
+			echo "\033[32mPASS\033[0m:\t$$d";			\
+			if [ -f profile.out ]; then				\
+				cat profile.out >> coverage.txt;		\
+				rm profile.out;					\
+			fi							\
+		else								\
+			echo "\033[31mFAIL\033[0m:\t$$d";			\
+			exit -1;						\
+		fi								\
+	done;
 
 # dashboard-%:
 # 	@$(MAKE) -f dashboard/Makefile $@
