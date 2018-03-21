@@ -58,3 +58,8 @@
     name = "github.com/grpc-ecosystem/grpc-gateway"
     non-go = false
     unused-packages = false
+
+  [[prune.project]]
+    name = "github.com/gogo/protobuf"
+    non-go = false
+    unused-packages = false
