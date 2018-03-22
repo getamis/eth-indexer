@@ -16,21 +16,22 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.binary :nonce, :limit => 8, :null => false
     end
     # TODO: Add indexes to block_headers
-    
+
     create_table :transactions do |t|
-      t.integer :nonce, :limit => 8, :null => false
-      t.integer :price, :limit => 8, :null => false
-      t.integer :gas_limit, :limit => 8, :null => false
-      t.string :recipient
-      t.integer :amount, :limit => 8, :null => false
+      t.string :hash
+      t.string :from
+      t.string :to
+      t.integer :nonce, :limit => 8
+      t.integer :gas_price, :limit => 8
+      t.integer :gas_limit, :limit => 8
+      t.integer :amount, :limit => 8
       t.binary :payload
-      t.integer :v, :limit => 8, :null => false
-      t.integer :r, :limit => 8, :null => false
-      t.integer :s, :limit => 8, :null => false
-      t.string :hash, :null => false
+      t.integer :v, :limit => 8
+      t.integer :s, :limit => 8
+      t.integer :r, :limit => 8
     end
     # TODO: Add indexes to transactions
-  
+
     create_table :transaction_recepits do |t|
       t.binary :root, :null => false
       t.integer :status, :null => false
