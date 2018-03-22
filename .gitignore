@@ -25,3 +25,4 @@ profile.out
 .idea
 
 .vscode/
+cmd/indexer/debug

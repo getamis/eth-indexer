@@ -22,6 +22,8 @@ import (
 	"syscall"
 
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/indexer"
+	store "github.com/maichain/eth-indexer/store/block_header"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -44,13 +46,16 @@ var RootCmd = &cobra.Command{
 		}
 
 		// eth-client
-		ethConn := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		log.Info("eth=client", ethConn)
+		// ethConn := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+		// log.Info("eth=client", ethConn)
 
 		// database
-		//db := MustNewDatabase()
-		//defer db.Close()
-		//
+		db := MustNewDatabase()
+		defer db.Close()
+
+		store := store.NewWithDB(db)
+		indexer := indexer.NewIndexer(store)
+		indexer.Start()
 
 		go func() {
 			sigs := make(chan os.Signal, 1)
@@ -60,13 +65,10 @@ var RootCmd = &cobra.Command{
 			//listenerSrv.Stop()
 		}()
 
-		log.Info("Starting indexing")
 		//
 		//if err := listenerSrv.Start(); err != nil {
 		//	log.Crit("Server stopped unexpectedly", "err", err)
 		//}
-
-		return
 	},
 }
 
