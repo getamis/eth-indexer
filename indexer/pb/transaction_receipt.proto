@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package pb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.goproto_registration) = true;
+
+message TransactionReceipt {
+    uint64 ID = 1
+    [
+        (gogoproto.jsontag) = "id,omitempty",
+        (gogoproto.moretags) = "gorm:\"primary_key\" deepequal:\"-\""
+    ];
+
+    bytes root = 2
+    [
+        (gogoproto.jsontag) = "root,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:root\""
+    ];
+
+    uint32 status = 4
+    [
+        (gogoproto.jsontag) = "status,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:status\""
+    ];
+
+    uint64 cumulative_gas_used = 5
+    [
+        (gogoproto.jsontag) = "cumulative_gas_used,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:cumulative_gas_used\""
+    ];
+
+    bytes bloom = 6
+    [
+        (gogoproto.jsontag) = "bloom,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:bloom\""
+    ];
+
+    string tx_hash = 7
+    [
+        (gogoproto.jsontag) = "tx_hash,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:tx_hash;size:255\""
+    ];
+
+    string contract_address = 8
+    [
+        (gogoproto.jsontag) = "contract_address,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:contract_address;size:255\""
+    ];
+
+    uint64 gas_used = 9
+    [
+        (gogoproto.jsontag) = "gas_used,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:gas_used\""
+    ];
+}
