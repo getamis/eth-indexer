@@ -44,7 +44,7 @@ var RootCmd = &cobra.Command{
 
 		// eth-client
 		ethClient := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		log.Info("eth=client", ethClient)
+		// log.Info("eth=client" + ethClient)
 
 		// database
 		db := MustNewDatabase()
@@ -52,6 +52,7 @@ var RootCmd = &cobra.Command{
 
 		store := store.NewWithDB(db)
 		indexer := indexer.NewIndexer(ethClient, store)
+		indexer.Start()
 
 		return
 	},
