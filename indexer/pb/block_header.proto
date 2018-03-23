@@ -55,7 +55,7 @@ message BlockHeader {
         (gogoproto.moretags) = "gorm:\"column:receipt_hash;size:255\""
     ];
 
-    string bloom = 8
+    bytes bloom = 8
     [
         (gogoproto.jsontag) = "bloom,omitempty",
         (gogoproto.moretags) = "gorm:\"column:bloom\""
@@ -73,25 +73,37 @@ message BlockHeader {
         (gogoproto.moretags) = "gorm:\"column:number\""
     ];
 
-    int64 gas_limit = 11
+    uint64 gas_limit = 11
     [
         (gogoproto.jsontag) = "gas_limit,omitempty",
         (gogoproto.moretags) = "gorm:\"column:gas_limit\""
     ];
 
-    int64 gas_used = 12
+    uint64 gas_used = 12
     [
         (gogoproto.jsontag) = "gas_used,omitempty",
         (gogoproto.moretags) = "gorm:\"column:gas_used\""
     ];
 
-    string extra_data = 13
+    uint64 time = 13
+    [
+        (gogoproto.jsontag) = "time,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:time\""
+    ];
+
+    bytes extra_data = 14
     [
         (gogoproto.jsontag) = "extra_data,omitempty",
         (gogoproto.moretags) = "gorm:\"column:extra_data\""
     ];
 
-    string nonce = 14
+    string mix_digest = 15
+    [
+        (gogoproto.jsontag) = "mix_digest,omitempty",
+        (gogoproto.moretags) = "gorm:\"column:mix_digest\""
+    ];
+
+    uint64 nonce = 16
     [
         (gogoproto.jsontag) = "nonce,omitempty",
         (gogoproto.moretags) = "gorm:\"column:nonce\""

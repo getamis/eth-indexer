@@ -12,8 +12,10 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.integer :number, :limit => 8, :null => false
       t.integer :gas_limit, :limit => 8, :null => false
       t.integer :gas_used, :limit => 8, :null => false
+      t.integer :time, :limit => 8
       t.binary :extra_data
-      t.binary :nonce, :limit => 8, :null => false
+      t.string :mix_digest
+      t.integer :nonce, :limit => 8, :null => false
     end
     # TODO: Add indexes to block_headers
 
