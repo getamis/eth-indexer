@@ -33,8 +33,6 @@ type indexer struct {
 }
 
 func (indexer *indexer) Start(from int64, to int64) error {
-	ctx := context.TODO()
-
 	start := big.NewInt(from)
 	end := big.NewInt(to)
 	for i := new(big.Int).Set(start); i.Cmp(end) <= 0; i.Add(i, big.NewInt(1)) {
