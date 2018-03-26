@@ -6,7 +6,7 @@ import (
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer/pb"
-	store "github.com/maichain/eth-indexer/store/block_header"
+	manager "github.com/maichain/eth-indexer/store/store_manager"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -20,16 +20,16 @@ type Indexer interface {
 	Start(from int64, to int64) error
 }
 
-func NewIndexer(client *ethclient.Client, store store.Store) Indexer {
+func NewIndexer(client *ethclient.Client, manager manager.StoreManager) Indexer {
 	return &indexer{
 		client,
-		store,
+		manager,
 	}
 }
 
 type indexer struct {
-	client *ethclient.Client
-	store  store.Store
+	client  *ethclient.Client
+	manager manager.StoreManager
 }
 
 func (indexer *indexer) Start(from int64, to int64) error {
