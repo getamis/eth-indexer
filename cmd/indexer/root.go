@@ -17,9 +17,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
-
-	"syscall"
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer"
@@ -46,29 +43,18 @@ var RootCmd = &cobra.Command{
 		}
 
 		// eth-client
-		// ethConn := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		// log.Info("eth=client", ethConn)
+		ethClient := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+		// log.Info("eth=client" + ethClient)
 
 		// database
 		db := MustNewDatabase()
 		defer db.Close()
 
 		store := store.NewWithDB(db)
-		indexer := indexer.NewIndexer(store)
-		indexer.Start()
+		indexer := indexer.NewIndexer(ethClient, store)
+		indexer.Start(2000000, 2000003)
 
-		go func() {
-			sigs := make(chan os.Signal, 1)
-			signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
-			defer signal.Stop(sigs)
-			log.Debug("Shutting down", "signal", <-sigs)
-			//listenerSrv.Stop()
-		}()
-
-		//
-		//if err := listenerSrv.Start(); err != nil {
-		//	log.Crit("Server stopped unexpectedly", "err", err)
-		//}
+		return
 	},
 }
 

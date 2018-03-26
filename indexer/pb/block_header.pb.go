@@ -7,10 +7,12 @@
 	It is generated from these files:
 		github.com/maichain/eth-indexer/indexer/pb/block_header.proto
 		github.com/maichain/eth-indexer/indexer/pb/transaction.proto
+		github.com/maichain/eth-indexer/indexer/pb/transaction_receipt.proto
 
 	It has these top-level messages:
 		BlockHeader
 		Transaction
+		TransactionReceipt
 */
 package pb
 
