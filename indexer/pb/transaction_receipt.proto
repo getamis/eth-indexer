@@ -25,37 +25,37 @@ message TransactionReceipt {
         (gogoproto.moretags) = "gorm:\"column:root\""
     ];
 
-    uint32 status = 4
+    uint32 status = 3
     [
         (gogoproto.jsontag) = "status,omitempty",
         (gogoproto.moretags) = "gorm:\"column:status\""
     ];
 
-    uint64 cumulative_gas_used = 5
+    uint64 cumulative_gas_used = 4
     [
         (gogoproto.jsontag) = "cumulative_gas_used,omitempty",
         (gogoproto.moretags) = "gorm:\"column:cumulative_gas_used\""
     ];
 
-    bytes bloom = 6
+    bytes bloom = 5
     [
         (gogoproto.jsontag) = "bloom,omitempty",
         (gogoproto.moretags) = "gorm:\"column:bloom\""
     ];
 
-    string tx_hash = 7
+    string tx_hash = 6
     [
         (gogoproto.jsontag) = "tx_hash,omitempty",
         (gogoproto.moretags) = "gorm:\"column:tx_hash;size:255\""
     ];
 
-    string contract_address = 8
+    string contract_address = 7
     [
         (gogoproto.jsontag) = "contract_address,omitempty",
         (gogoproto.moretags) = "gorm:\"column:contract_address;size:255\""
     ];
 
-    uint64 gas_used = 9
+    uint64 gas_used = 8
     [
         (gogoproto.jsontag) = "gas_used,omitempty",
         (gogoproto.moretags) = "gorm:\"column:gas_used\""
