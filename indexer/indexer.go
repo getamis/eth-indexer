@@ -17,7 +17,7 @@ var logger = log.New()
 var ctx = context.TODO()
 
 type Indexer interface {
-	Start() error
+	Start(from int64, to int64) error
 }
 
 func NewIndexer(client *ethclient.Client, store store.Store) Indexer {
@@ -32,11 +32,11 @@ type indexer struct {
 	store  store.Store
 }
 
-func (indexer *indexer) Start() error {
+func (indexer *indexer) Start(from int64, to int64) error {
 	ctx := context.TODO()
 
-	start := big.NewInt(2000000)
-	end := big.NewInt(2000003)
+	start := big.NewInt(from)
+	end := big.NewInt(to)
 	for i := new(big.Int).Set(start); i.Cmp(end) <= 0; i.Add(i, big.NewInt(1)) {
 		block, err := indexer.client.BlockByNumber(ctx, i)
 		// logger.Info("Parse block " + block.String())

@@ -52,7 +52,7 @@ var RootCmd = &cobra.Command{
 
 		store := store.NewWithDB(db)
 		indexer := indexer.NewIndexer(ethClient, store)
-		indexer.Start()
+		indexer.Start(2000000, 2000003)
 
 		return
 	},
