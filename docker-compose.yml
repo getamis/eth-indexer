@@ -12,6 +12,7 @@ services:
     build:
       context: ./migration
     command: ["rake", "db:migrate"]
+    restart: on-failure
     depends_on:
       - eth-indexer-database
     environment:
