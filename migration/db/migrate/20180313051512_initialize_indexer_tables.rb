@@ -34,14 +34,14 @@ class InitializeIndexerTables < ActiveRecord::Migration
     end
     # TODO: Add indexes to transactions
 
-    create_table :transaction_recepits do |t|
-      t.binary :root, :null => false
-      t.integer :status, :null => false
-      t.integer :cumulative_gas_used, :limit => 8, :null => false
+    create_table :transaction_receipts do |t|
+      t.binary :root
+      t.integer :status
+      t.integer :cumulative_gas_used, :limit => 8
       t.binary :bloom
-      t.string :tx_hash, :null => false
+      t.string :tx_hash
       t.string :contract_address
-      t.integer :gas_used, :limit => 8, :null => false
+      t.integer :gas_used, :limit => 8
     end
     # TODO: Add indexes to transaction_receipts
 
