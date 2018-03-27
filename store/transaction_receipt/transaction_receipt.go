@@ -1,4 +1,4 @@
-package receipt
+package store
 
 import (
 	"github.com/jinzhu/gorm"

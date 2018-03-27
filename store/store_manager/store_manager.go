@@ -1,4 +1,4 @@
-package store_manager
+package store
 
 import (
 	"github.com/jinzhu/gorm"
