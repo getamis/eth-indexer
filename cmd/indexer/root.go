@@ -20,7 +20,7 @@ import (
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer"
-	store "github.com/maichain/eth-indexer/store/block_header"
+	manager "github.com/maichain/eth-indexer/store/store_manager"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -50,7 +50,7 @@ var RootCmd = &cobra.Command{
 		db := MustNewDatabase()
 		defer db.Close()
 
-		store := store.NewWithDB(db)
+		store := manager.NewStoreManager(db)
 		indexer := indexer.NewIndexer(ethClient, store)
 		indexer.Start(2000000, 2000003)
 
