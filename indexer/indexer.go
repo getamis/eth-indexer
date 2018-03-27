@@ -44,8 +44,20 @@ func (indexer *indexer) Start(from int64, to int64) error {
 		}
 
 		for _, tx := range block.Transactions() {
-			logger.Info(tx.String())
-			indexer.ParseTransaction(tx, block.Number())
+			// logger.Info(tx.String())
+			transaction, receipt, err := indexer.ParseTransaction(tx, block.Number())
+			if err != nil {
+				return err
+			}
+
+			if transaction.To == "" {
+				logger.Info("Contract Creation " + transaction.Hash)
+			}
+
+			// logger.Info("Contract address" + transaction.Hash + " " + receipt.ContractAddress)
+			if receipt.ContractAddress != "" {
+				logger.Info("Contract address " + receipt.ContractAddress)
+			}
 		}
 	}
 	return nil
@@ -87,13 +99,17 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 			return nil, nil, err
 		}
 
-		v, r, s := tx.RawSignatureValues()
-
 		// Transaction
+		v, r, s := tx.RawSignatureValues()
+		to := ""
+		if msg.To() != nil {
+			to = msg.To().String()
+		}
+
 		t := &pb.Transaction{
 			Hash:     tx.Hash().String(),
 			From:     msg.From().String(),
-			To:       msg.To().String(),
+			To:       to,
 			Nonce:    msg.Nonce(),
 			GasPrice: msg.GasPrice().Int64(),
 			GasLimit: msg.Gas(),
@@ -105,13 +121,17 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 		}
 
 		// Receipt
+		contractAddr := ""
+		if receipt.ContractAddress.Big().Int64() != 0 {
+			contractAddr = receipt.ContractAddress.String()
+		}
 		tr := &pb.TransactionReceipt{
 			Root:              receipt.PostState,
 			Status:            uint32(receipt.Status),
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 			Bloom:             receipt.Bloom.Bytes(),
 			TxHash:            receipt.TxHash.String(),
-			ContractAddress:   receipt.ContractAddress.String(),
+			ContractAddress:   contractAddr,
 			GasUsed:           receipt.GasUsed,
 		}
 		return t, tr, nil
