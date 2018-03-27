@@ -1,4 +1,4 @@
-package block_header
+package store
 
 import (
 	"os"
