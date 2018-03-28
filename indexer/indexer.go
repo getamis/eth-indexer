@@ -37,28 +37,31 @@ func (indexer *indexer) Start(from int64, to int64) error {
 	end := big.NewInt(to)
 	for i := new(big.Int).Set(start); i.Cmp(end) <= 0; i.Add(i, big.NewInt(1)) {
 		block, err := indexer.client.BlockByNumber(ctx, i)
-		// logger.Info("Parse block " + block.String())
-
 		if err != nil {
 			return err
 		}
+		// logger.Info("Parse block " + block.String())
 
+		// get block header
+		blockHeader := indexer.ParseBlockHeader(block)
+
+		// get transactions
+		var (
+			transactions = []*pb.Transaction{}
+			receipts     = []*pb.TransactionReceipt{}
+		)
 		for _, tx := range block.Transactions() {
 			// logger.Info(tx.String())
 			transaction, receipt, err := indexer.ParseTransaction(tx, block.Number())
 			if err != nil {
 				return err
 			}
-
-			if transaction.To == "" {
-				logger.Info("Contract Creation " + transaction.Hash)
-			}
-
-			// logger.Info("Contract address" + transaction.Hash + " " + receipt.ContractAddress)
-			if receipt.ContractAddress != "" {
-				logger.Info("Contract address " + receipt.ContractAddress)
-			}
+			transactions = append(transactions, transaction)
+			receipts = append(receipts, receipt)
 		}
+
+		// insert data into db
+		indexer.manager.Upsert(blockHeader, transactions, receipts)
 	}
 	return nil
 }

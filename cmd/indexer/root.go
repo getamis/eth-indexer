@@ -52,7 +52,7 @@ var RootCmd = &cobra.Command{
 
 		store := manager.NewStoreManager(db)
 		indexer := indexer.NewIndexer(ethClient, store)
-		indexer.Start(2000000, 2000003)
+		indexer.Start(start, end)
 
 		return
 	},
@@ -68,6 +68,10 @@ func Execute() {
 }
 
 func init() {
+	// indexer flags
+	RootCmd.Flags().Int64Var(&start, startFlag, 0, "The start block height")
+	RootCmd.Flags().Int64Var(&end, endFlag, 0, "The end block height")
+
 	// eth-client flags
 	RootCmd.Flags().StringVar(&ethProtocol, ethProtocolFlag, "ws", "The eth-client protocol")
 	RootCmd.Flags().StringVar(&ethHost, ethHostFlag, "127.0.0.1", "The eth-client host")

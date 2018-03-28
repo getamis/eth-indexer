@@ -30,3 +30,13 @@ services:
       - indexer
       - --db.host
       - eth-indexer-database
+      - --eth.host
+      - host.docker.internal # geth --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins "*"
+      - --start
+      - "2000000"
+      - --end
+      - "2000100"
+    restart: on-failure
+    depends_on:
+      - eth-indexer-database
+      - eth-indexer-migration

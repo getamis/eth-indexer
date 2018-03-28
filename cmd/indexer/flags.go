@@ -26,6 +26,10 @@ import (
 const (
 	configFileFlag = "config"
 
+	// flags names for indexer
+	startFlag = "start"
+	endFlag   = "end"
+
 	// flag names for ethereum service
 	ethProtocolFlag = "eth.protocol"
 	ethHostFlag     = "eth.host"
@@ -42,6 +46,10 @@ const (
 
 var (
 	configFile string
+
+	// flags for indexer
+	start int64
+	end   int64
 
 	// flags for ethereum service
 	ethProtocol string
