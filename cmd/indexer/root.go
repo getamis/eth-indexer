@@ -15,9 +15,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer"
 	manager "github.com/maichain/eth-indexer/store/store_manager"
@@ -52,7 +54,13 @@ var RootCmd = &cobra.Command{
 
 		store := manager.NewStoreManager(db)
 		indexer := indexer.NewIndexer(ethClient, store)
-		indexer.Start(start, end)
+
+		if listen {
+			ch := make(chan *types.Header)
+			indexer.Listen(context.Background(), ch)
+		} else {
+			indexer.Start(start, end)
+		}
 
 		return
 	},
@@ -71,6 +79,7 @@ func init() {
 	// indexer flags
 	RootCmd.Flags().Int64Var(&start, startFlag, 0, "The start block height")
 	RootCmd.Flags().Int64Var(&end, endFlag, 0, "The end block height")
+	RootCmd.Flags().BoolVar(&listen, "listen", false, "listen mode to recent block")
 
 	// eth-client flags
 	RootCmd.Flags().StringVar(&ethProtocol, ethProtocolFlag, "ws", "The eth-client protocol")
