@@ -63,3 +63,12 @@
     name = "github.com/gogo/protobuf"
     non-go = false
     unused-packages = false
+
+  [[prune.project]]
+    name = "github.com/stretchr/testify"
+    non-go = false
+    unused-packages = false
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
