@@ -10,12 +10,12 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.binary :bloom
       t.integer :difficulty, :limit => 8, :null => false
       t.integer :number, :limit => 8, :null => false
-      t.integer :gas_limit, :limit => 8, :null => false
-      t.integer :gas_used, :limit => 8, :null => false
-      t.integer :time, :limit => 8
+      t.column :gas_limit, 'BIGINT UNSIGNED'
+      t.column :gas_used, 'BIGINT UNSIGNED'
+      t.column :time, 'BIGINT UNSIGNED'
       t.binary :extra_data
       t.string :mix_digest
-      t.integer :nonce, :limit => 8, :null => false
+      t.column :nonce, 'BIGINT UNSIGNED'
     end
     # TODO: Add indexes to block_headers
 
@@ -23,9 +23,9 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.string :hash
       t.string :from
       t.string :to
-      t.integer :nonce, :limit => 8
+      t.column :nonce, 'BIGINT UNSIGNED'
       t.integer :gas_price, :limit => 8
-      t.integer :gas_limit, :limit => 8
+      t.column :gas_limit, 'BIGINT UNSIGNED'
       t.integer :amount, :limit => 8
       t.binary :payload
       t.integer :v, :limit => 8
@@ -36,12 +36,12 @@ class InitializeIndexerTables < ActiveRecord::Migration
 
     create_table :transaction_receipts do |t|
       t.binary :root
-      t.integer :status
-      t.integer :cumulative_gas_used, :limit => 8
+      t.column :status, 'INT UNSIGNED'
+      t.column :cumulative_gas_used, 'BIGINT UNSIGNED'
       t.binary :bloom
       t.string :tx_hash
       t.string :contract_address
-      t.integer :gas_used, :limit => 8
+      t.column :gas_used, 'BIGINT UNSIGNED'
     end
     # TODO: Add indexes to transaction_receipts
 
