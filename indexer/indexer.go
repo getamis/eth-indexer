@@ -78,6 +78,7 @@ func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 	binary.BigEndian.PutUint64(nonce, header.Nonce.Uint64())
 
 	bh := &pb.BlockHeader{
+		Hash:        b.Hash().String(),
 		ParentHash:  header.ParentHash.String(),
 		UncleHash:   header.UncleHash.String(),
 		Coinbase:    header.Coinbase.String(),
