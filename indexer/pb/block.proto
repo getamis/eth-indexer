@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package pb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/maichain/eth-indexer/indexer/pb/transaction.proto";
+import "github.com/maichain/eth-indexer/indexer/pb/transaction_receipt.proto";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.goproto_registration) = true;
+
+message Block {
+  string hash = 1
+  [
+    (gogoproto.jsontag) = "hash,omitempty"
+  ];
+
+  int64 number = 2
+  [
+    (gogoproto.jsontag) = "number,omitempty"
+  ];
+
+  bytes nonce = 3
+  [
+    (gogoproto.jsontag) = "nonce,omitempty"
+  ];
+
+  repeated Transaction transactions = 4
+  [
+    (gogoproto.jsontag) = "transactions,omitempty"
+  ];
+
+  repeated TransactionReceipt receipts = 5
+  [
+    (gogoproto.jsontag) = "receipts,omitempty"
+  ];
+}
+
+message BlockQueryRequest {
+  string hash = 1
+  [
+    (gogoproto.jsontag) = "hash,omitempty"
+  ];
+}
+
+message BlockQueryResponse {
+  Block block = 1;
+}
+
+service BlockService {
+  rpc GetBlockByHash(BlockQueryRequest) returns (BlockQueryResponse);
+}

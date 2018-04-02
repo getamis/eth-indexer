@@ -85,3 +85,18 @@ message Transaction {
     (gogoproto.moretags) = "gorm:\"column:s\""
   ];
 }
+
+message TransactionQueryRequest {
+  string hash = 1
+  [
+    (gogoproto.jsontag) = "hash,omitempty"
+  ];
+}
+
+message TransactionQueryResponse {
+  Transaction transaction = 1;
+}
+
+service TransactionService {
+  rpc GetTransactionByHash(TransactionQueryRequest) returns (TransactionQueryResponse);
+}
