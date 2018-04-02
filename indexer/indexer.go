@@ -2,7 +2,9 @@ package indexer
 
 import (
 	"context"
+	"encoding/binary"
 	"math/big"
+	"strconv"
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer/pb"
@@ -37,15 +39,34 @@ func (indexer *indexer) Start(from int64, to int64) error {
 	end := big.NewInt(to)
 	for i := new(big.Int).Set(start); i.Cmp(end) <= 0; i.Add(i, big.NewInt(1)) {
 		block, err := indexer.client.BlockByNumber(ctx, i)
-		// logger.Info("Parse block " + block.String())
-
 		if err != nil {
 			return err
 		}
+		// logger.Info("Parse block " + block.String())
 
+		// get block header
+		blockHeader := indexer.ParseBlockHeader(block)
+
+		// get transactions
+		var (
+			transactions = []*pb.Transaction{}
+			receipts     = []*pb.TransactionReceipt{}
+		)
 		for _, tx := range block.Transactions() {
-			logger.Info(tx.String())
-			indexer.ParseTransaction(tx, block.Number())
+			// logger.Info(tx.String())
+			transaction, receipt, err := indexer.ParseTransaction(tx, block.Number())
+			if err != nil {
+				return err
+			}
+			transactions = append(transactions, transaction)
+			receipts = append(receipts, receipt)
+		}
+
+		// insert data into db
+		logger.Info(strconv.FormatInt(blockHeader.Number, 10))
+		err1 := indexer.manager.Upsert(blockHeader, transactions, receipts)
+		if err1 != nil {
+			logger.Error(err1.Error())
 		}
 	}
 	return nil
@@ -53,6 +74,9 @@ func (indexer *indexer) Start(from int64, to int64) error {
 
 func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 	header := b.Header()
+	nonce := make([]byte, 8)
+	binary.BigEndian.PutUint64(nonce, header.Nonce.Uint64())
+
 	bh := &pb.BlockHeader{
 		ParentHash:  header.ParentHash.String(),
 		UncleHash:   header.UncleHash.String(),
@@ -68,7 +92,7 @@ func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 		Time:        header.Time.Uint64(),
 		ExtraData:   header.Extra,
 		MixDigest:   header.MixDigest.String(),
-		Nonce:       header.Nonce.Uint64(),
+		Nonce:       nonce,
 	}
 	return bh
 }
@@ -87,14 +111,20 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 			return nil, nil, err
 		}
 
-		v, r, s := tx.RawSignatureValues()
-
 		// Transaction
+		v, r, s := tx.RawSignatureValues()
+		to := ""
+		if msg.To() != nil {
+			to = msg.To().String()
+		}
+		nonce := make([]byte, 8)
+		binary.BigEndian.PutUint64(nonce, msg.Nonce())
+
 		t := &pb.Transaction{
 			Hash:     tx.Hash().String(),
 			From:     msg.From().String(),
-			To:       msg.To().String(),
-			Nonce:    msg.Nonce(),
+			To:       to,
+			Nonce:    nonce,
 			GasPrice: msg.GasPrice().Int64(),
 			GasLimit: msg.Gas(),
 			Amount:   msg.Value().Int64(),
@@ -105,13 +135,17 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 		}
 
 		// Receipt
+		contractAddr := ""
+		if receipt.ContractAddress.Big().Int64() != 0 {
+			contractAddr = receipt.ContractAddress.String()
+		}
 		tr := &pb.TransactionReceipt{
 			Root:              receipt.PostState,
 			Status:            uint32(receipt.Status),
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 			Bloom:             receipt.Bloom.Bytes(),
 			TxHash:            receipt.TxHash.String(),
-			ContractAddress:   receipt.ContractAddress.String(),
+			ContractAddress:   contractAddr,
 			GasUsed:           receipt.GasUsed,
 		}
 		return t, tr, nil

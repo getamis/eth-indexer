@@ -103,9 +103,12 @@ message BlockHeader {
         (gogoproto.moretags) = "gorm:\"column:mix_digest\""
     ];
 
-    uint64 nonce = 16
+    bytes nonce = 16
     [
         (gogoproto.jsontag) = "nonce,omitempty",
         (gogoproto.moretags) = "gorm:\"column:nonce\""
     ];
+    // golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
+    // https://github.com/golang/go/issues/6113
+    // https://github.com/golang/go/issues/9373
 }

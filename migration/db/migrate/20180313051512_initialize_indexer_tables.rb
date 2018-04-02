@@ -15,7 +15,7 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.column :time, 'BIGINT UNSIGNED'
       t.binary :extra_data
       t.string :mix_digest
-      t.column :nonce, 'BIGINT UNSIGNED'
+      t.binary :nonce
     end
     # TODO: Add indexes to block_headers
 
@@ -23,7 +23,7 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.string :hash
       t.string :from
       t.string :to
-      t.column :nonce, 'BIGINT UNSIGNED'
+      t.binary :nonce
       t.integer :gas_price, :limit => 8
       t.column :gas_limit, 'BIGINT UNSIGNED'
       t.integer :amount, :limit => 8
