@@ -25,61 +25,61 @@ message Transaction {
     (gogoproto.moretags) = "gorm:\"column:hash;size:255\""
   ];
 
-  string from = 4
+  string from = 3
   [
     (gogoproto.jsontag) = "from,omitempty",
     (gogoproto.moretags) = "gorm:\"column:from;size:255\""
   ];
 
-  string to = 5
+  string to = 4
   [
     (gogoproto.jsontag) = "to,omitempty",
     (gogoproto.moretags) = "gorm:\"column:to;size:255\""
   ];
 
-  bytes nonce = 6
+  bytes nonce = 5
   [
     (gogoproto.jsontag) = "nonce,omitempty",
     (gogoproto.moretags) = "gorm:\"column:nonce\""
   ];
 
-  int64 gas_price = 7
+  int64 gas_price = 6
   [
     (gogoproto.jsontag) = "gas_price,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_price\""
   ];
 
-  uint64 gas_limit = 8
+  uint64 gas_limit = 7
   [
     (gogoproto.jsontag) = "gas_limit,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_limit\""
   ];
 
-  int64 amount = 9
+  int64 amount = 8
   [
     (gogoproto.jsontag) = "amount,omitempty",
     (gogoproto.moretags) = "gorm:\"column:amount\""
   ];
 
-  bytes payload = 10
+  bytes payload = 9
   [
     (gogoproto.jsontag) = "payload,omitempty",
     (gogoproto.moretags) = "gorm:\"column:payload\""
   ];
 
-  int64 v = 11
+  int64 v = 10
   [
     (gogoproto.jsontag) = "v,omitempty",
     (gogoproto.moretags) = "gorm:\"column:v\""
   ];
 
-  int64 r = 12
+  int64 r = 11
   [
     (gogoproto.jsontag) = "r,omitempty",
     (gogoproto.moretags) = "gorm:\"column:r\""
   ];
 
-  int64 s = 13
+  int64 s = 12
   [
     (gogoproto.jsontag) = "s,omitempty",
     (gogoproto.moretags) = "gorm:\"column:s\""

@@ -1,6 +1,7 @@
 class InitializeIndexerTables < ActiveRecord::Migration
   def change
     create_table :block_headers do |t|
+      t.string :hash, :null => false
       t.string :parent_hash, :null => false
       t.string :uncle_hash, :null => false
       t.string :coinbase, :null => false

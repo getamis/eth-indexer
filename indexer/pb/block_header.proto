@@ -19,91 +19,97 @@ message BlockHeader {
     (gogoproto.moretags) = "gorm:\"primary_key\" deepequal:\"-\""
   ];
 
-  string parent_hash = 2
+  string hash = 2
+  [
+    (gogoproto.jsontag) = "hash,omitempty",
+    (gogoproto.moretags) = "gorm:\"column:hash;size:255\""
+  ];
+
+  string parent_hash = 3
   [
     (gogoproto.jsontag) = "parent_hash,omitempty",
     (gogoproto.moretags) = "gorm:\"column:parent_hash;size:255\""
   ];
 
-  string uncle_hash = 3
+  string uncle_hash = 4
   [
     (gogoproto.jsontag) = "uncle_hash,omitempty",
     (gogoproto.moretags) = "gorm:\"column:uncle_hash;size:255\""
   ];
 
-  string coinbase = 4
+  string coinbase = 5
   [
     (gogoproto.jsontag) = "coinbase,omitempty",
     (gogoproto.moretags) = "gorm:\"column:coinbase;size:255\""
   ];
 
-  string root = 5
+  string root = 6
   [
     (gogoproto.jsontag) = "root,omitempty",
     (gogoproto.moretags) = "gorm:\"column:root;size:255\""
   ];
 
-  string tx_hash = 6
+  string tx_hash = 7
   [
     (gogoproto.jsontag) = "tx_hash,omitempty",
     (gogoproto.moretags) = "gorm:\"column:tx_hash;size:255\""
   ];
 
-  string receipt_hash = 7
+  string receipt_hash = 8
   [
     (gogoproto.jsontag) = "receipt_hash,omitempty",
     (gogoproto.moretags) = "gorm:\"column:receipt_hash;size:255\""
   ];
 
-  bytes bloom = 8
+  bytes bloom = 9
   [
     (gogoproto.jsontag) = "bloom,omitempty",
     (gogoproto.moretags) = "gorm:\"column:bloom\""
   ];
 
-  int64 difficulty = 9
+  int64 difficulty = 10
   [
     (gogoproto.jsontag) = "difficulty,omitempty",
     (gogoproto.moretags) = "gorm:\"column:difficulty\""
   ];
 
-  int64 number = 10
+  int64 number = 11
   [
     (gogoproto.jsontag) = "number,omitempty",
     (gogoproto.moretags) = "gorm:\"column:number\""
   ];
 
-  uint64 gas_limit = 11
+  uint64 gas_limit = 12
   [
     (gogoproto.jsontag) = "gas_limit,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_limit\""
   ];
 
-  uint64 gas_used = 12
+  uint64 gas_used = 13
   [
     (gogoproto.jsontag) = "gas_used,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_used\""
   ];
 
-  uint64 time = 13
+  uint64 time = 14
   [
     (gogoproto.jsontag) = "time,omitempty",
     (gogoproto.moretags) = "gorm:\"column:time\""
   ];
 
-  bytes extra_data = 14
+  bytes extra_data = 15
   [
     (gogoproto.jsontag) = "extra_data,omitempty",
     (gogoproto.moretags) = "gorm:\"column:extra_data\""
   ];
 
-  string mix_digest = 15
+  string mix_digest = 16
   [
     (gogoproto.jsontag) = "mix_digest,omitempty",
     (gogoproto.moretags) = "gorm:\"column:mix_digest\""
   ];
 
-  bytes nonce = 16
+  bytes nonce = 17
   [
     (gogoproto.jsontag) = "nonce,omitempty",
     (gogoproto.moretags) = "gorm:\"column:nonce\""

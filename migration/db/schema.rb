@@ -26,6 +26,7 @@ ActiveRecord::Schema.define(version: 20180313051512) do
   end
 
   create_table "block_headers", force: :cascade do |t|
+    t.string  "hash",         limit: 255,   null: false
     t.string  "parent_hash",  limit: 255,   null: false
     t.string  "uncle_hash",   limit: 255,   null: false
     t.string  "coinbase",     limit: 255,   null: false
