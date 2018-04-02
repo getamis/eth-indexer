@@ -37,7 +37,7 @@ message Transaction {
         (gogoproto.moretags) = "gorm:\"column:to;size:255\""
     ];
 
-    uint64 nonce = 6
+    bytes nonce = 6
     [
         (gogoproto.jsontag) = "nonce,omitempty",
         (gogoproto.moretags) = "gorm:\"column:nonce\""

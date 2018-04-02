@@ -2,7 +2,9 @@ package indexer
 
 import (
 	"context"
+	"encoding/binary"
 	"math/big"
+	"strconv"
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer/pb"
@@ -61,13 +63,20 @@ func (indexer *indexer) Start(from int64, to int64) error {
 		}
 
 		// insert data into db
-		indexer.manager.Upsert(blockHeader, transactions, receipts)
+		logger.Info(strconv.FormatInt(blockHeader.Number, 10))
+		err1 := indexer.manager.Upsert(blockHeader, transactions, receipts)
+		if err1 != nil {
+			logger.Error(err1.Error())
+		}
 	}
 	return nil
 }
 
 func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 	header := b.Header()
+	nonce := make([]byte, 8)
+	binary.BigEndian.PutUint64(nonce, header.Nonce.Uint64())
+
 	bh := &pb.BlockHeader{
 		ParentHash:  header.ParentHash.String(),
 		UncleHash:   header.UncleHash.String(),
@@ -83,7 +92,7 @@ func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 		Time:        header.Time.Uint64(),
 		ExtraData:   header.Extra,
 		MixDigest:   header.MixDigest.String(),
-		Nonce:       header.Nonce.Uint64(),
+		Nonce:       nonce,
 	}
 	return bh
 }
@@ -108,12 +117,14 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 		if msg.To() != nil {
 			to = msg.To().String()
 		}
+		nonce := make([]byte, 8)
+		binary.BigEndian.PutUint64(nonce, msg.Nonce())
 
 		t := &pb.Transaction{
 			Hash:     tx.Hash().String(),
 			From:     msg.From().String(),
 			To:       to,
-			Nonce:    msg.Nonce(),
+			Nonce:    nonce,
 			GasPrice: msg.GasPrice().Int64(),
 			GasLimit: msg.Gas(),
 			Amount:   msg.Value().Int64(),

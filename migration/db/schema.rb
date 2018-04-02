@@ -38,7 +38,7 @@ ActiveRecord::Schema.define(version: 20180313051512) do
     t.integer "gas_limit",    limit: 8,     null: false
     t.integer "gas_used",     limit: 8,     null: false
     t.binary  "extra_data",   limit: 65535
-    t.binary  "nonce",        limit: 8,     null: false
+    t.binary  "nonce",        limit: 65535, null: false
   end
 
   create_table "tokens", force: :cascade do |t|
@@ -72,7 +72,7 @@ ActiveRecord::Schema.define(version: 20180313051512) do
   end
 
   create_table "transactions", force: :cascade do |t|
-    t.integer "nonce",     limit: 8,     null: false
+    t.binary  "nonce",     limit: 65535, null: false
     t.integer "price",     limit: 8,     null: false
     t.integer "gas_limit", limit: 8,     null: false
     t.string  "recipient", limit: 255
