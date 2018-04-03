@@ -79,7 +79,7 @@ func (indexer *indexer) Listen(ctx context.Context, ch chan *types.Header) error
 
 			toBlock := recent.Number
 
-			logger.Info("Begin indexing", "recent", strconv.FormatInt(toBlock, 10), "current", strconv.FormatInt(fromBlock, 10))
+			logger.Info("Begin indexing", "recent", toBlock, "current", fromBlock)
 			indexer.Start(fromBlock, toBlock)
 		case <-ctx.Done():
 			return nil
@@ -89,10 +89,9 @@ func (indexer *indexer) Listen(ctx context.Context, ch chan *types.Header) error
 }
 
 func (indexer *indexer) Start(from int64, to int64) error {
-	start := big.NewInt(from)
-	end := big.NewInt(to)
-	for i := new(big.Int).Set(start); i.Cmp(end) <= 0; i.Add(i, big.NewInt(1)) {
-		block, err := indexer.client.BlockByNumber(ctx, i)
+	for i := from; i <= to; i++ {
+		num := big.NewInt(i)
+		block, err := indexer.client.BlockByNumber(ctx, num)
 		if err != nil {
 			return err
 		}
