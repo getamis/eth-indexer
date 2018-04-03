@@ -24,9 +24,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/beorn7/perks"
+  packages = ["quantile"]
+  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+
+[[projects]]
+  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "2be2f12b358dc57d70b8f501b00be450192efbc3"
+
+[[projects]]
+  name = "github.com/cskr/pubsub"
+  packages = ["."]
+  revision = "bbadc4de95998f07a2e0d607cf90c4377832fe32"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -120,9 +132,17 @@
     "database",
     "database/gorm",
     "database/mysql",
-    "log"
+    "kv",
+    "log",
+    "rpc"
   ]
   revision = "9a5816081dd63f102c618242900fca59de33b662"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/getamis/sol2proto"
+  packages = ["pb"]
+  revision = "6cfda209b32c847a9f4d2f54ee22f32ca57306e8"
 
 [[projects]]
   name = "github.com/go-sql-driver/mysql"
@@ -169,6 +189,16 @@
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    "retry",
+    "util/backoffutils",
+    "util/metautils"
+  ]
+  revision = "bc372cc64f55abd91995ba3f219b380ffbc59e9d"
 
 [[projects]]
   branch = "master"
@@ -221,14 +251,60 @@
   version = "v1.7.6"
 
 [[projects]]
+  branch = "develop"
+  name = "github.com/maichain/amis"
+  packages = ["event/pb"]
+  revision = "46ff0e7604a12b951fe2e74e23fc4f068c2fa91a"
+
+[[projects]]
+  branch = "develop"
+  name = "github.com/maichain/eth-signer"
+  packages = ["grpc"]
+  revision = "0f2770a07cde7e5e1dd61cbdb617e74071d5593a"
+
+[[projects]]
+  branch = "maichain/develop"
+  name = "github.com/maichain/go-metrics"
+  packages = ["."]
+  revision = "f04226cfc67c41ab376c661859591dea4c092929"
+
+[[projects]]
+  branch = "develop"
   name = "github.com/maichain/mapi"
   packages = [
+    "api",
+    "api/bank",
     "api/pb",
+    "api/transaction",
+    "base/guid",
+    "base/metric",
     "base/test",
-    "types"
+    "contracts/name",
+    "contracts/pb",
+    "eapi",
+    "store",
+    "store/bank",
+    "store/tx",
+    "store/webhook",
+    "types",
+    "types/model"
   ]
-  revision = "fb9d07fda45073504a1547dd173e48c6d022ec3c"
-  version = "v0.3.1"
+  revision = "3344bc4a3ba2acd21874353c9c88b496e2963983"
+
+[[projects]]
+  name = "github.com/maichain/regulator"
+  packages = [
+    "api/pb",
+    "store/transaction"
+  ]
+  revision = "f30ef51f5e57ff97f105277e414f3a57761a4a81"
+  version = "v0.1.0"
+
+[[projects]]
+  name = "github.com/matttproud/golang_protobuf_extensions"
+  packages = ["pbutil"]
+  revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -300,6 +376,39 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/prometheus/client_golang"
+  packages = ["prometheus"]
+  revision = "c5b7fccd204277076155f10851dad72b76a49317"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/client_model"
+  packages = ["go"]
+  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/common"
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
+  revision = "38c53a9f4bfcd932d1b00bfc65e256a7fba6b37a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/procfs"
+  packages = [
+    ".",
+    "internal/util",
+    "nfs",
+    "xfs"
+  ]
+  revision = "780932d4fbbe0e69b84c34c20f5c8d0981e109ea"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -391,6 +500,12 @@
     "leveldb/util"
   ]
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+
+[[projects]]
+  name = "github.com/urfave/negroni"
+  packages = ["."]
+  revision = "5dbbc83f748fc3ad38585842b0aedab546d0ea1e"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "master"
@@ -538,6 +653,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e95ef76da74e47293b52a7bb88ecf741d4f98f541dc731703c82d75917956839"
+  inputs-digest = "1ceea64cd76fdcfc13791b1be55a590ad79afe826cdcf8d8bedd8d7cc9d715d7"
   solver-name = "gps-cdcl"
   solver-version = 1

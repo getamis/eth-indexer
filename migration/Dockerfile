@@ -1,5 +1,4 @@
 FROM ruby:2.3.0
-MAINTAINER miya@am.is
 ENV LANG C.UTF-8
 ENV HOST localhost
 ENV PORT 3306

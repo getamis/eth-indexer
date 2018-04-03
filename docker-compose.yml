@@ -30,6 +30,20 @@ services:
       - DATABASE=eth-db
       - USERNAME=root
       - PASSWORD=my-secret-pw
+  eth-indexer-grpc:
+    build:
+      context: .
+      dockerfile: ./cmd/server/Dockerfile
+    command:
+      - "grpc"
+      - "--db.host"
+      - "eth-indexer-database"
+    ports:
+      - 5487:5487
+    restart: always
+    depends_on:
+      - eth-indexer-database
+      - eth-indexer-migration
   eth-indexer:
     build:
       context: .
