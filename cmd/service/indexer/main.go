@@ -24,7 +24,6 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
 	"github.com/maichain/eth-indexer/service/indexer"
-	manager "github.com/maichain/eth-indexer/store/store_manager"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -75,8 +74,7 @@ var ServerCmd = &cobra.Command{
 		db := MustNewDatabase()
 		defer db.Close()
 
-		store := manager.NewStoreManager(db)
-		indexer := indexer.NewIndexer(ethClient, store)
+		indexer := indexer.New(ethClient, db)
 		indexer.Start(start, end)
 
 		return

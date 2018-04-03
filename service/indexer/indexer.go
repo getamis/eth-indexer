@@ -8,11 +8,13 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/getamis/sirius/log"
+	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/service/pb"
 	manager "github.com/maichain/eth-indexer/store/store_manager"
 
 	common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -32,10 +34,10 @@ type EthClient interface {
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 }
 
-func NewIndexer(client EthClient, manager manager.StoreManager) Indexer {
+func New(client *ethclient.Client, db *gorm.DB) Indexer {
 	return &indexer{
-		client,
-		manager,
+		client:  client,
+		manager: manager.NewStoreManager(db),
 	}
 }
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package grpc
+package rpc
 
 import (
 	"fmt"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
+	"github.com/maichain/eth-indexer/service/rpc"
 	"github.com/maichain/mapi/api"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -54,7 +55,7 @@ var ServerCmd = &cobra.Command{
 		defer db.Close()
 
 		s := api.NewServer(
-		// indexer.New(tx.NewWithDB(db)),
+			rpc.New(db),
 		)
 
 		// go func() {

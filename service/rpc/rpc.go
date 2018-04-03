@@ -1,26 +1,33 @@
-package grpc
+package rpc
 
 import (
 	"context"
 
 	"github.com/getamis/sirius/log"
+	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/service/pb"
-	manager "github.com/maichain/eth-indexer/store/store_manager"
+	bhStore "github.com/maichain/eth-indexer/store/block_header"
+	txStore "github.com/maichain/eth-indexer/store/transaction"
+	trStore "github.com/maichain/eth-indexer/store/transaction_receipt"
 	"google.golang.org/grpc"
 )
 
 const datetimeFormat string = "2006-01-02 15:04:05.000"
 
 type grpcAPI struct {
-	manager manager.StoreManager
+	bhStore bhStore.Store
+	txStore txStore.Store
+	trStore trStore.Store
 	logger  log.Logger
 }
 
-func NewIndexer(manager manager.StoreManager) *grpcAPI {
+func New(db *gorm.DB) *grpcAPI {
 	logger := log.New("ws", "grpc")
 	return &grpcAPI{
-		manager,
-		logger,
+		bhStore: bhStore.NewWithDB(db),
+		txStore: txStore.NewWithDB(db),
+		trStore: trStore.NewWithDB(db),
+		logger:  logger,
 	}
 }
 

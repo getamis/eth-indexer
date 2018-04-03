@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/maichain/eth-indexer/cmd/service/grpc"
 	"github.com/maichain/eth-indexer/cmd/service/indexer"
+	"github.com/maichain/eth-indexer/cmd/service/rpc"
 )
 
 var cfgFile string
@@ -48,5 +48,5 @@ func Execute() {
 
 func init() {
 	RootCmd.AddCommand(indexer.ServerCmd)
-	RootCmd.AddCommand(grpc.ServerCmd)
+	RootCmd.AddCommand(rpc.ServerCmd)
 }
