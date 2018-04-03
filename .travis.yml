@@ -20,7 +20,7 @@ jobs:
       script:
         - go get -u gopkg.in/alecthomas/gometalinter.v2
         - gometalinter.v2 --install
-        - gometalinter.v2 --exclude="(vendor/.*|indexer/pb/.*)" --disable-all --deadline=10m --enable=vet --enable=gofmt --enable=misspell --enable=goconst --enable=unconvert --enable=gosimple --min-occurrences=6 ./...
+        - gometalinter.v2 --exclude="(vendor/.*|indexer/pb/.*|.*/mocks/.*)" --disable-all --deadline=10m --enable=vet --enable=gofmt --enable=misspell --enable=goconst --enable=unconvert --enable=gosimple --min-occurrences=6 ./...
     - stage: Build
       script: make clean all
       if: branch = develop AND type IN (pull_request)

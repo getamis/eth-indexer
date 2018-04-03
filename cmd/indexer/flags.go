@@ -27,8 +27,9 @@ const (
 	configFileFlag = "config"
 
 	// flags names for indexer
-	startFlag = "start"
-	endFlag   = "end"
+	startFlag  = "start"
+	endFlag    = "end"
+	listenFlag = "listen"
 
 	// flag names for ethereum service
 	ethProtocolFlag = "eth.protocol"
@@ -48,8 +49,9 @@ var (
 	configFile string
 
 	// flags for indexer
-	start int64
-	end   int64
+	start  int64
+	end    int64
+	listen bool
 
 	// flags for ethereum service
 	ethProtocol string

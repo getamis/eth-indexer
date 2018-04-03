@@ -6,23 +6,33 @@ import (
 	"math/big"
 	"strconv"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/indexer/pb"
 	manager "github.com/maichain/eth-indexer/store/store_manager"
 
+	common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 )
 
 var logger = log.New()
 var ctx = context.TODO()
 
+//go:generate mockery -name EthClient
+
 type Indexer interface {
 	Start(from int64, to int64) error
+	Listen(context.Context, chan *types.Header) error
 }
 
-func NewIndexer(client *ethclient.Client, manager manager.StoreManager) Indexer {
+type EthClient interface {
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
+	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
+	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
+}
+
+func NewIndexer(client EthClient, manager manager.StoreManager) Indexer {
 	return &indexer{
 		client,
 		manager,
@@ -30,8 +40,52 @@ func NewIndexer(client *ethclient.Client, manager manager.StoreManager) Indexer 
 }
 
 type indexer struct {
-	client  *ethclient.Client
+	client  EthClient
 	manager manager.StoreManager
+}
+
+func (indexer *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
+	childCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	_, err := indexer.client.SubscribeNewHead(childCtx, ch)
+	if err != nil {
+		logger.Info("Failed to subscribe event for new header from ethereum", "err", err)
+	}
+
+	logger.Info("Listening new header from ethereum")
+	for {
+		select {
+		case head := <-ch:
+			var fromBlock int64
+			logger.Info("Got new header", "header", head)
+			recentBlock, err := indexer.client.BlockByNumber(ctx, head.Number)
+			if err != nil {
+				logger.Error("Failed to get block by number", "err", err)
+				return err
+			}
+
+			recent := indexer.ParseBlockHeader(recentBlock)
+			header, err := indexer.manager.GetLatestHeader()
+
+			if err != nil {
+				logger.Error("Failed to query header table in database", "err", err)
+				return err
+			}
+
+			if header != nil {
+				fromBlock = header.Number
+			}
+
+			toBlock := recent.Number
+
+			logger.Info("Begin indexing", "recent", strconv.FormatInt(toBlock, 10), "current", strconv.FormatInt(fromBlock, 10))
+			indexer.Start(fromBlock, toBlock)
+		case <-ctx.Done():
+			return nil
+		}
+
+	}
 }
 
 func (indexer *indexer) Start(from int64, to int64) error {
