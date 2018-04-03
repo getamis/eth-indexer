@@ -14,7 +14,14 @@ option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.goproto_registration) = true;
 
-message Block {
+message BlockQueryRequest {
+  string hash = 1
+  [
+    (gogoproto.jsontag) = "hash,omitempty"
+  ];
+}
+
+message BlockQueryResponse {
   string hash = 1
   [
     (gogoproto.jsontag) = "hash,omitempty"
@@ -39,17 +46,6 @@ message Block {
   [
     (gogoproto.jsontag) = "receipts,omitempty"
   ];
-}
-
-message BlockQueryRequest {
-  string hash = 1
-  [
-    (gogoproto.jsontag) = "hash,omitempty"
-  ];
-}
-
-message BlockQueryResponse {
-  Block block = 1;
 }
 
 service BlockService {

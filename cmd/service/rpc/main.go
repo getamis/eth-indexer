@@ -41,9 +41,9 @@ var (
 
 // ServerCmd represents the grpc-server command
 var ServerCmd = &cobra.Command{
-	Use:   "grpc",
-	Short: "grpc runs a gRPC server for the indexer service",
-	Long:  `grpc runs a gRPC server for the indexer service.`,
+	Use:   "rpc",
+	Short: "rpc runs a gRPC server for api service",
+	Long:  `rpc runs a gRPC server for api service.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 		if err != nil {
@@ -57,16 +57,6 @@ var ServerCmd = &cobra.Command{
 		s := api.NewServer(
 			rpc.New(db),
 		)
-
-		// go func() {
-		// 	sigs := make(chan os.Signal, 1)
-		// 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
-		// 	defer signal.Stop(sigs)
-		// 	log.Debug("Shutting down", "signal", <-sigs)
-		// 	s.Shutdown()
-		// }()
-
-		// log.Info("Starting Regulator", "host", host, "port", port)
 
 		if err := s.Serve(l); err != grpc.ErrServerStopped {
 			log.Crit("Server stopped unexpectedly", "err", err)
