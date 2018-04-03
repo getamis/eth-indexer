@@ -2,9 +2,7 @@ package store
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/indexer/pb"
-
-	mpb "github.com/maichain/mapi/api/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 )
 
 const (

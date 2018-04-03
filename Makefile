@@ -27,9 +27,9 @@ PROTOC_INCLUDES := \
 		-I$(GOPATH)/src
 
 GRPC_PROTOS := \
-	indexer/pb/*.proto
+	service/pb/*.proto
 
-indexer-grpc: FORCE
+service-grpc: FORCE
 	@protoc $(PROTOC_INCLUDES) \
 		--gofast_out=plugins=grpc,\
 Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,\

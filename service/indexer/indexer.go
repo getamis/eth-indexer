@@ -8,7 +8,7 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/indexer/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 	manager "github.com/maichain/eth-indexer/store/store_manager"
 
 	common "github.com/ethereum/go-ethereum/common"
