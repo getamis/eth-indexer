@@ -8,6 +8,14 @@ services:
       - MYSQL_ROOT_PASSWORD=my-secret-pw
       - MYSQL_CHARSET=utf8
       - MYSQL_DATABASE=eth-db
+  geth:
+    image: ethereum/client-go:v1.8.3
+    ports:
+      - "30303:30303"
+      - "8546:8546"
+    volumes:
+      - ./geth-data:/root/.ethereum
+    command: "--ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
   eth-indexer-migration:
     build:
       context: ./migration
@@ -31,7 +39,7 @@ services:
       - --db.host
       - eth-indexer-database
       - --eth.host
-      - host.docker.internal # geth --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins "*"
+      - geth # geth --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins "*"
       - --start
       - "2000000"
       - --end
@@ -40,3 +48,4 @@ services:
     depends_on:
       - eth-indexer-database
       - eth-indexer-migration
+      - geth
