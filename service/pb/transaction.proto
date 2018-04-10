@@ -20,67 +20,73 @@ message Transaction {
     (gogoproto.moretags) = "gorm:\"primary_key\" deepequal:\"-\""
   ];
 
-  string hash = 2
+  string block_hash = 2
+  [
+    (gogoproto.jsontag) = "block_hash,omitempty",
+    (gogoproto.moretags) = "gorm:\"column:block_hash;size:255\""
+  ];
+
+  string hash = 3
   [
     (gogoproto.jsontag) = "hash,omitempty",
     (gogoproto.moretags) = "gorm:\"column:hash;size:255\""
   ];
 
-  string from = 3
+  string from = 4
   [
     (gogoproto.jsontag) = "from,omitempty",
     (gogoproto.moretags) = "gorm:\"column:from;size:255\""
   ];
 
-  string to = 4
+  string to = 5
   [
     (gogoproto.jsontag) = "to,omitempty",
     (gogoproto.moretags) = "gorm:\"column:to;size:255\""
   ];
 
-  bytes nonce = 5
+  bytes nonce = 6
   [
     (gogoproto.jsontag) = "nonce,omitempty",
     (gogoproto.moretags) = "gorm:\"column:nonce\""
   ];
 
-  int64 gas_price = 6
+  int64 gas_price = 7
   [
     (gogoproto.jsontag) = "gas_price,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_price\""
   ];
 
-  uint64 gas_limit = 7
+  uint64 gas_limit = 8
   [
     (gogoproto.jsontag) = "gas_limit,omitempty",
     (gogoproto.moretags) = "gorm:\"column:gas_limit\""
   ];
 
-  int64 amount = 8
+  int64 amount = 9
   [
     (gogoproto.jsontag) = "amount,omitempty",
     (gogoproto.moretags) = "gorm:\"column:amount\""
   ];
 
-  bytes payload = 9
+  bytes payload = 10
   [
     (gogoproto.jsontag) = "payload,omitempty",
     (gogoproto.moretags) = "gorm:\"column:payload\""
   ];
 
-  int64 v = 10
+  int64 v = 11
   [
     (gogoproto.jsontag) = "v,omitempty",
     (gogoproto.moretags) = "gorm:\"column:v\""
   ];
 
-  int64 r = 11
+  int64 r = 12
   [
     (gogoproto.jsontag) = "r,omitempty",
     (gogoproto.moretags) = "gorm:\"column:r\""
   ];
 
-  int64 s = 12
+  int64 s = 13
   [
     (gogoproto.jsontag) = "s,omitempty",
     (gogoproto.moretags) = "gorm:\"column:s\""
@@ -139,8 +145,7 @@ message TransactionQueryResponse {
 service TransactionService {
   rpc GetTransactionByHash(TransactionQueryRequest) returns (TransactionQueryResponse) {
     option (google.api.http) = {
-      get: "/v1/tx"
-      body: ""
+      get: "/v1/transactions/{hash}"
     };
   }
 }

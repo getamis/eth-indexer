@@ -63,26 +63,30 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 
 	// get transactions
 	transactions, err := s.txStore.Find(&pb.Transaction{
-		Hash: req.Hash,
+		BlockHash: req.Hash,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	// get receipts
-	receipts, err := s.trStore.Find(&pb.TransactionReceipt{
-		TxHash: req.Hash,
-	})
-	if err != nil {
-		return nil, err
+	var tqrs []*pb.TransactionQueryResponse
+	for _, transaction := range transactions {
+		tqrs = append(tqrs, &pb.TransactionQueryResponse{
+			Hash:     transaction.Hash,
+			From:     transaction.From,
+			To:       transaction.To,
+			Nonce:    transaction.Nonce,
+			GasPrice: transaction.GasPrice,
+			GasLimit: transaction.GasLimit,
+			Amount:   transaction.Amount,
+			Payload:  transaction.Payload,
+		})
 	}
 
 	return &pb.BlockQueryResponse{
 		Hash:         header.Hash,
 		Number:       header.Number,
 		Nonce:        header.Nonce,
-		Transactions: transactions,
-		Receipts:     receipts,
+		Transactions: tqrs,
 	}, nil
 }
 

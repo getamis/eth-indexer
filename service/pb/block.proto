@@ -5,7 +5,6 @@ package pb;
 import "google/api/annotations.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/maichain/eth-indexer/service/pb/transaction.proto";
-import "github.com/maichain/eth-indexer/service/pb/transaction_receipt.proto";
 
 option (gogoproto.goproto_getters_all) = false;
 option (gogoproto.goproto_stringer_all) = false;
@@ -38,22 +37,16 @@ message BlockQueryResponse {
     (gogoproto.jsontag) = "nonce,omitempty"
   ];
 
-  repeated Transaction transactions = 4
+  repeated TransactionQueryResponse transactions = 4
   [
     (gogoproto.jsontag) = "transactions,omitempty"
-  ];
-
-  repeated TransactionReceipt receipts = 5
-  [
-    (gogoproto.jsontag) = "receipts,omitempty"
   ];
 }
 
 service BlockService {
   rpc GetBlockByHash(BlockQueryRequest) returns (BlockQueryResponse) {
     option (google.api.http) = {
-      get: "/v1/block"
-      body: ""
+      get: "/v1/blocks/{hash}"
     };
   }
 }
