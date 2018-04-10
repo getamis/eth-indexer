@@ -507,6 +507,8 @@
     "metadata",
     "naming",
     "peer",
+    "reflection",
+    "reflection/grpc_reflection_v1alpha",
     "resolver",
     "resolver/dns",
     "resolver/passthrough",
@@ -558,6 +560,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a0c43163c71fa2cb08445fb46c98df1a70ab2106e025e4c48e18b000ada82469"
+  inputs-digest = "bf6e8e150faf02de4a959cddbae1f3dafb32749e0a60cdb28dcd772d0f6844fa"
   solver-name = "gps-cdcl"
   solver-version = 1

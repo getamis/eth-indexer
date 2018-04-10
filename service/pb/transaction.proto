@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package pb;
 
+import "google/api/annotations.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 option (gogoproto.goproto_getters_all) = false;
@@ -136,5 +137,10 @@ message TransactionQueryResponse {
 }
 
 service TransactionService {
-  rpc GetTransactionByHash(TransactionQueryRequest) returns (TransactionQueryResponse);
+  rpc GetTransactionByHash(TransactionQueryRequest) returns (TransactionQueryResponse) {
+    option (google.api.http) = {
+      get: "/v1/tx"
+      body: ""
+    };
+  }
 }

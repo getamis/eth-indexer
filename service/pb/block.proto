@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package pb;
 
+import "google/api/annotations.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/maichain/eth-indexer/service/pb/transaction.proto";
 import "github.com/maichain/eth-indexer/service/pb/transaction_receipt.proto";
@@ -49,5 +50,10 @@ message BlockQueryResponse {
 }
 
 service BlockService {
-  rpc GetBlockByHash(BlockQueryRequest) returns (BlockQueryResponse);
+  rpc GetBlockByHash(BlockQueryRequest) returns (BlockQueryResponse) {
+    option (google.api.http) = {
+      get: "/v1/block"
+      body: ""
+    };
+  }
 }

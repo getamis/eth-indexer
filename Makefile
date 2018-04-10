@@ -24,6 +24,7 @@ $(GOBIN)/%: $(GOBIN) FORCE
 
 PROTOC_INCLUDES := \
 		-I$(CURDIR)/vendor/github.com/gogo/protobuf/types \
+		-I$(CURDIR)/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 		-I$(GOPATH)/src
 
 GRPC_PROTOS := \
