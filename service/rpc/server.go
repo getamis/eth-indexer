@@ -10,20 +10,21 @@ import (
 	txStore "github.com/maichain/eth-indexer/store/transaction"
 	trStore "github.com/maichain/eth-indexer/store/transaction_receipt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 const datetimeFormat string = "2006-01-02 15:04:05.000"
 
-type rpc struct {
+type server struct {
 	bhStore bhStore.Store
 	txStore txStore.Store
 	trStore trStore.Store
 	logger  log.Logger
 }
 
-func New(db *gorm.DB) *rpc {
+func New(db *gorm.DB) *server {
 	logger := log.New("ws", "grpc")
-	return &rpc{
+	return &server{
 		bhStore: bhStore.NewWithDB(db),
 		txStore: txStore.NewWithDB(db),
 		trStore: trStore.NewWithDB(db),
@@ -31,24 +32,27 @@ func New(db *gorm.DB) *rpc {
 	}
 }
 
-func (srv *rpc) Bind(server *grpc.Server) {
+func (s *server) Bind(server *grpc.Server) {
 	// register block service
-	var bs pb.BlockServiceServer = srv
+	var bs pb.BlockServiceServer = s
 	pb.RegisterBlockServiceServer(server, bs)
 
 	// register transaction service
-	var ts pb.TransactionServiceServer = srv
+	var ts pb.TransactionServiceServer = s
 	pb.RegisterTransactionServiceServer(server, ts)
+
+	// Register reflection service on gRPC server
+	reflection.Register(server)
 }
 
-func (srv *rpc) Shutdown() {
+func (s *server) Shutdown() {
 	log.Info("Transaction gRPC API shutdown successfully")
 }
 
 // Implement grpc functions
 
-func (srv *rpc) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
-	headers, err := srv.bhStore.Find(&pb.BlockHeader{
+func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
+	headers, err := s.bhStore.Find(&pb.BlockHeader{
 		Hash: req.Hash,
 	})
 	if err != nil {
@@ -58,7 +62,7 @@ func (srv *rpc) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (
 	header := headers[0]
 
 	// get transactions
-	transactions, err := srv.txStore.Find(&pb.Transaction{
+	transactions, err := s.txStore.Find(&pb.Transaction{
 		Hash: req.Hash,
 	})
 	if err != nil {
@@ -66,7 +70,7 @@ func (srv *rpc) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (
 	}
 
 	// get receipts
-	receipts, err := srv.trStore.Find(&pb.TransactionReceipt{
+	receipts, err := s.trStore.Find(&pb.TransactionReceipt{
 		TxHash: req.Hash,
 	})
 	if err != nil {
@@ -82,8 +86,8 @@ func (srv *rpc) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (
 	}, nil
 }
 
-func (srv *rpc) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
-	transactions, err := srv.txStore.Find(&pb.Transaction{
+func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
+	transactions, err := s.txStore.Find(&pb.Transaction{
 		Hash: req.Hash,
 	})
 	if err != nil {
