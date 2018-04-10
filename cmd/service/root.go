@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/maichain/eth-indexer/cmd/service/indexer"
+	"github.com/maichain/eth-indexer/cmd/service/proxy"
 	"github.com/maichain/eth-indexer/cmd/service/rpc"
 )
 
@@ -48,5 +49,6 @@ func Execute() {
 
 func init() {
 	RootCmd.AddCommand(indexer.ServerCmd)
+	RootCmd.AddCommand(proxy.ServerCmd)
 	RootCmd.AddCommand(rpc.ServerCmd)
 }

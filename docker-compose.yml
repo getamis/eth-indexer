@@ -44,6 +44,21 @@ services:
     depends_on:
       - ws-database
       - ws-migration
+  ws-proxy:
+    build:
+      context: .
+      dockerfile: ./cmd/service/Dockerfile
+    command:
+      - "proxy"
+      - "--grpc.host"
+      - "ws-rpc"
+      - "--cors.origins"
+      - "*"
+      - "--cors.credentials"
+      - "true"
+    ports:
+      - 8080:8080
+    restart: always
   ws-indexer:
     build:
       context: .
