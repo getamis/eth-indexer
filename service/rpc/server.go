@@ -10,7 +10,6 @@ import (
 	txStore "github.com/maichain/eth-indexer/store/transaction"
 	trStore "github.com/maichain/eth-indexer/store/transaction_receipt"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 const datetimeFormat string = "2006-01-02 15:04:05.000"
@@ -40,9 +39,6 @@ func (s *server) Bind(server *grpc.Server) {
 	// register transaction service
 	var ts pb.TransactionServiceServer = s
 	pb.RegisterTransactionServiceServer(server, ts)
-
-	// Register reflection service on gRPC server
-	reflection.Register(server)
 }
 
 func (s *server) Shutdown() {
