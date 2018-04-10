@@ -15,32 +15,14 @@ option (gogoproto.sizer_all) = true;
 option (gogoproto.goproto_registration) = true;
 
 message BlockQueryRequest {
-  string hash = 1
-  [
-    (gogoproto.jsontag) = "hash,omitempty"
-  ];
+  string hash = 1;
 }
 
 message BlockQueryResponse {
-  string hash = 1
-  [
-    (gogoproto.jsontag) = "hash,omitempty"
-  ];
-
-  int64 number = 2
-  [
-    (gogoproto.jsontag) = "number,omitempty"
-  ];
-
-  bytes nonce = 3
-  [
-    (gogoproto.jsontag) = "nonce,omitempty"
-  ];
-
-  repeated TransactionQueryResponse transactions = 4
-  [
-    (gogoproto.jsontag) = "transactions,omitempty"
-  ];
+  string hash = 1;
+  int64 number = 2;
+  bytes nonce = 3;
+  repeated TransactionQueryResponse transactions = 4;
 }
 
 service BlockService {
