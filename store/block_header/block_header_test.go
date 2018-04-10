@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/indexer/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/mapi/base/test"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

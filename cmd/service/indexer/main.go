@@ -16,16 +16,20 @@ package indexer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
 	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	manager "github.com/maichain/eth-indexer/store/store_manager"
 )
 
 var (
@@ -75,8 +79,13 @@ var ServerCmd = &cobra.Command{
 		db := MustNewDatabase()
 		defer db.Close()
 
-		indexer := indexer.New(ethClient, db)
-		indexer.Start(start, end)
+		indexer := indexer.NewIndexer(ethClient, manager.NewStoreManager(db))
+		if listen {
+			ch := make(chan *types.Header)
+			indexer.Listen(context.Background(), ch)
+		} else {
+			indexer.Start(start, end)
+		}
 
 		return
 	},

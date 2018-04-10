@@ -24,7 +24,6 @@ import (
 	"syscall"
 
 	"github.com/getamis/sirius/log"
-	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
@@ -64,10 +63,6 @@ var ServerCmd = &cobra.Command{
 			api.Proxies(
 				proxy.NewProxy(gRPCEndpoint, opts...),
 			),
-			api.AllowCORS(cors.Options{
-				AllowedOrigins:   corsOrigins,
-				AllowCredentials: corsCredentials,
-			}),
 		)
 
 		go func() {
@@ -78,7 +73,7 @@ var ServerCmd = &cobra.Command{
 			s.Shutdown()
 		}()
 
-		log.Info("Starting Regulator proxy", "host", host, "port", port)
+		log.Info("Starting WS proxy", "host", host, "port", port)
 
 		if err := s.Serve(l); err != http.ErrServerClosed {
 			log.Crit("Server stopped unexpectedly", "err", err)
