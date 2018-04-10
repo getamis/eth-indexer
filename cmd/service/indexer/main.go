@@ -32,8 +32,9 @@ var (
 	configFile string
 
 	// flags for indexer
-	start int64
-	end   int64
+	listen bool
+	start  int64
+	end    int64
 
 	// flags for ethereum service
 	ethProtocol string
@@ -92,6 +93,7 @@ func Execute() {
 
 func init() {
 	// indexer flags
+	ServerCmd.Flags().BoolVar(&listen, "listen", false, "listen mode to recent block")
 	ServerCmd.Flags().Int64Var(&start, flags.StartFlag, 0, "The start block height")
 	ServerCmd.Flags().Int64Var(&end, flags.EndFlag, 0, "The end block height")
 

@@ -22,8 +22,9 @@ const (
 	Port = "port"
 
 	// flag names for indexer
-	StartFlag = "start"
-	EndFlag   = "end"
+	ListenFlag = "listen"
+	StartFlag  = "start"
+	EndFlag    = "end"
 
 	// flag names for ethereum service
 	EthProtocolFlag = "eth.protocol"
