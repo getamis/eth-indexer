@@ -35,9 +35,9 @@ services:
       context: .
       dockerfile: ./cmd/service/Dockerfile
     command:
-      - "rpc"
-      - "--db.host"
-      - "ws-database"
+      - rpc
+      - --db.host
+      - ws-database
     ports:
       - 5487:5487
     restart: always
@@ -49,13 +49,9 @@ services:
       context: .
       dockerfile: ./cmd/service/Dockerfile
     command:
-      - "proxy"
-      - "--grpc.host"
-      - "ws-rpc"
-      - "--cors.origins"
-      - "*"
-      - "--cors.credentials"
-      - "true"
+      - proxy
+      - --grpc.host
+      - ws-rpc
     ports:
       - 8080:8080
     restart: always
@@ -73,6 +69,7 @@ services:
       - "2000000"
       - --end
       - "2000100"
+      - --listen
     restart: on-failure
     depends_on:
       - ws-database
