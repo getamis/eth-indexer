@@ -2,7 +2,7 @@ package store
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/indexer/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 	headerStore "github.com/maichain/eth-indexer/store/block_header"
 	txStore "github.com/maichain/eth-indexer/store/transaction"
 	receiptStore "github.com/maichain/eth-indexer/store/transaction_receipt"

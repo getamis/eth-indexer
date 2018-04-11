@@ -8,7 +8,7 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/indexer/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 	manager "github.com/maichain/eth-indexer/store/store_manager"
 
 	common "github.com/ethereum/go-ethereum/common"
@@ -32,10 +32,10 @@ type EthClient interface {
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 }
 
-func NewIndexer(client EthClient, manager manager.StoreManager) Indexer {
+func NewIndexer(client EthClient, storeManager manager.StoreManager) Indexer {
 	return &indexer{
-		client,
-		manager,
+		client:  client,
+		manager: storeManager,
 	}
 }
 
@@ -106,8 +106,7 @@ func (indexer *indexer) Start(from int64, to int64) error {
 			receipts     = []*pb.TransactionReceipt{}
 		)
 		for _, tx := range block.Transactions() {
-			// logger.Info(tx.String())
-			transaction, receipt, err := indexer.ParseTransaction(tx, block.Number())
+			transaction, receipt, err := indexer.ParseTransaction(tx, block)
 			if err != nil {
 				return err
 			}
@@ -151,7 +150,7 @@ func (indexer *indexer) ParseBlockHeader(b *types.Block) *pb.BlockHeader {
 	return bh
 }
 
-func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big.Int) (*pb.Transaction, *pb.TransactionReceipt, error) {
+func (indexer *indexer) ParseTransaction(tx *types.Transaction, b *types.Block) (*pb.Transaction, *pb.TransactionReceipt, error) {
 	receipt, err := indexer.client.TransactionReceipt(ctx, tx.Hash())
 	if err != nil {
 		return nil, nil, err
@@ -159,7 +158,7 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 
 	// the transactions in block must include a receipt
 	if receipt != nil {
-		signer := types.MakeSigner(params.MainnetChainConfig, blockNumber)
+		signer := types.MakeSigner(params.MainnetChainConfig, b.Number())
 		msg, err := tx.AsMessage(signer)
 		if err != nil {
 			return nil, nil, err
@@ -175,17 +174,18 @@ func (indexer *indexer) ParseTransaction(tx *types.Transaction, blockNumber *big
 		binary.BigEndian.PutUint64(nonce, msg.Nonce())
 
 		t := &pb.Transaction{
-			Hash:     tx.Hash().String(),
-			From:     msg.From().String(),
-			To:       to,
-			Nonce:    nonce,
-			GasPrice: msg.GasPrice().Int64(),
-			GasLimit: msg.Gas(),
-			Amount:   msg.Value().Int64(),
-			Payload:  msg.Data(),
-			V:        v.Int64(),
-			R:        r.Int64(),
-			S:        s.Int64(),
+			Hash:      tx.Hash().String(),
+			BlockHash: b.Hash().String(),
+			From:      msg.From().String(),
+			To:        to,
+			Nonce:     nonce,
+			GasPrice:  msg.GasPrice().Int64(),
+			GasLimit:  msg.Gas(),
+			Amount:    msg.Value().Int64(),
+			Payload:   msg.Data(),
+			V:         v.Int64(),
+			R:         r.Int64(),
+			S:         s.Int64(),
 		}
 
 		// Receipt

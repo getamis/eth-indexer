@@ -1,13 +1,5 @@
 version: "3"
 services:
-  eth-indexer-database:
-    image: mysql:5.7
-    ports:
-      - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=my-secret-pw
-      - MYSQL_CHARSET=utf8
-      - MYSQL_DATABASE=eth-db
   geth:
     image: ethereum/client-go:v1.8.3
     ports:
@@ -16,36 +8,70 @@ services:
     volumes:
       - ./geth-data:/root/.ethereum
     command: "--ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
-  eth-indexer-migration:
+  ws-database:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=my-secret-pw
+      - MYSQL_CHARSET=utf8
+      - MYSQL_DATABASE=eth-db
+  ws-migration:
     build:
       context: ./migration
     command: ["rake", "db:migrate"]
     restart: on-failure
     depends_on:
-      - eth-indexer-database
+      - ws-database
     environment:
       - RAILS_ENV=customized
-      - HOST=eth-indexer-database
+      - HOST=ws-database
       - PORT=3306
       - DATABASE=eth-db
       - USERNAME=root
       - PASSWORD=my-secret-pw
-  eth-indexer:
+  ws-rpc:
     build:
       context: .
-      dockerfile: ./cmd/indexer/Dockerfile
+      dockerfile: ./cmd/service/Dockerfile
+    command:
+      - rpc
+      - --db.host
+      - ws-database
+    ports:
+      - 5487:5487
+    restart: always
+    depends_on:
+      - ws-database
+      - ws-migration
+  ws-proxy:
+    build:
+      context: .
+      dockerfile: ./cmd/service/Dockerfile
+    command:
+      - proxy
+      - --grpc.host
+      - ws-rpc
+    ports:
+      - 8080:8080
+    restart: always
+  ws-indexer:
+    build:
+      context: .
+      dockerfile: ./cmd/service/Dockerfile
     command:
       - indexer
       - --db.host
-      - eth-indexer-database
+      - ws-database
       - --eth.host
       - geth # geth --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins "*"
       - --start
       - "2000000"
       - --end
       - "2000100"
+      - --listen
     restart: on-failure
     depends_on:
-      - eth-indexer-database
-      - eth-indexer-migration
+      - ws-database
+      - ws-migration
       - geth

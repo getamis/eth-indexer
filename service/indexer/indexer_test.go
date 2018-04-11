@@ -2,15 +2,16 @@ package indexer
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	rlp "github.com/ethereum/go-ethereum/rlp"
 	rpc "github.com/ethereum/go-ethereum/rpc"
-	indexerMocks "github.com/maichain/eth-indexer/indexer/mocks"
+	indexerMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	ManagerMocks "github.com/maichain/eth-indexer/store/store_manager/mocks"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 func TestListen(t *testing.T) {

@@ -22,6 +22,7 @@ class InitializeIndexerTables < ActiveRecord::Migration
 
     create_table :transactions do |t|
       t.string :hash
+      t.string :block_hash
       t.string :from
       t.string :to
       t.binary :nonce

@@ -73,16 +73,17 @@ ActiveRecord::Schema.define(version: 20180313051512) do
   end
 
   create_table "transactions", force: :cascade do |t|
-    t.binary  "nonce",     limit: 65535, null: false
-    t.integer "price",     limit: 8,     null: false
-    t.integer "gas_limit", limit: 8,     null: false
-    t.string  "recipient", limit: 255
-    t.integer "amount",    limit: 8,     null: false
-    t.binary  "payload",   limit: 65535
-    t.integer "v",         limit: 8,     null: false
-    t.integer "r",         limit: 8,     null: false
-    t.integer "s",         limit: 8,     null: false
-    t.string  "hash",      limit: 255,   null: false
+    t.binary  "nonce",      limit: 65535, null: false
+    t.integer "price",      limit: 8,     null: false
+    t.integer "gas_limit",  limit: 8,     null: false
+    t.string  "recipient",  limit: 255
+    t.integer "amount",     limit: 8,     null: false
+    t.binary  "payload",    limit: 65535
+    t.integer "v",          limit: 8,     null: false
+    t.integer "r",          limit: 8,     null: false
+    t.integer "s",          limit: 8,     null: false
+    t.string  "hash",       limit: 255,   null: false
+    t.string  "block_hash", limit: 255,   null: false
   end
 
 end

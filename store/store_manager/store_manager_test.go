@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/indexer/pb"
+	"github.com/maichain/eth-indexer/service/pb"
 	HeaderStore "github.com/maichain/eth-indexer/store/block_header"
 	TxStore "github.com/maichain/eth-indexer/store/transaction"
 	ReceiptStore "github.com/maichain/eth-indexer/store/transaction_receipt"

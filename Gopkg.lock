@@ -120,7 +120,8 @@
     "database",
     "database/gorm",
     "database/mysql",
-    "log"
+    "log",
+    "rpc"
   ]
   revision = "9a5816081dd63f102c618242900fca59de33b662"
 
@@ -169,6 +170,16 @@
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    "retry",
+    "util/backoffutils",
+    "util/metautils"
+  ]
+  revision = "bc372cc64f55abd91995ba3f219b380ffbc59e9d"
 
 [[projects]]
   branch = "master"
@@ -221,14 +232,17 @@
   version = "v1.7.6"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/maichain/mapi"
   packages = [
+    "api",
     "api/pb",
     "base/test",
-    "types"
+    "store/webhook",
+    "types",
+    "types/model"
   ]
-  revision = "fb9d07fda45073504a1547dd173e48c6d022ec3c"
-  version = "v0.3.1"
+  revision = "3344bc4a3ba2acd21874353c9c88b496e2963983"
 
 [[projects]]
   branch = "master"
@@ -393,6 +407,12 @@
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
+  name = "github.com/urfave/negroni"
+  packages = ["."]
+  revision = "5dbbc83f748fc3ad38585842b0aedab546d0ea1e"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -487,6 +507,8 @@
     "metadata",
     "naming",
     "peer",
+    "reflection",
+    "reflection/grpc_reflection_v1alpha",
     "resolver",
     "resolver/dns",
     "resolver/passthrough",
@@ -538,6 +560,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e95ef76da74e47293b52a7bb88ecf741d4f98f541dc731703c82d75917956839"
+  inputs-digest = "bf6e8e150faf02de4a959cddbae1f3dafb32749e0a60cdb28dcd772d0f6844fa"
   solver-name = "gps-cdcl"
   solver-version = 1

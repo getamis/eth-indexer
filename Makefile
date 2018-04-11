@@ -24,12 +24,13 @@ $(GOBIN)/%: $(GOBIN) FORCE
 
 PROTOC_INCLUDES := \
 		-I$(CURDIR)/vendor/github.com/gogo/protobuf/types \
+		-I$(CURDIR)/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 		-I$(GOPATH)/src
 
 GRPC_PROTOS := \
-	indexer/pb/*.proto
+	service/pb/*.proto
 
-indexer-grpc: FORCE
+service-grpc: FORCE
 	@protoc $(PROTOC_INCLUDES) \
 		--gofast_out=plugins=grpc,\
 Mgoogle/protobuf/any.proto=github.com/gogo/protobuf/types,\
