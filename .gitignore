@@ -27,3 +27,4 @@ profile.out
 .vscode/
 cmd/indexer/debug
 geth-data
+mysql-data
