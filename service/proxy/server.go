@@ -30,5 +30,9 @@ func (proxy *grpcProxy) Bind(mux *runtime.ServeMux) error {
 	if err != nil {
 		return err
 	}
+	err = pb.RegisterAccountServiceHandlerFromEndpoint(context.Background(), mux, proxy.endpoint, proxy.grpcOptions)
+	if err != nil {
+		return err
+	}
 	return nil
 }
