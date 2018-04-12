@@ -1,16 +1,14 @@
 version: "3"
 services:
   geth:
-    image: quay.io/amis/geth:mysql_1.8.3
+    image: ethereum/client-go:v1.8.3
     ports:
       - "30303:30303"
       - "8546:8546"
     volumes:
       - ./geth-data:/root/.ethereum
-    command: "--ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\" --mysql --mysql.address ws-database --mysql.password my-secret-pw --mysql.database eth-db"
+    command: "--ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
     restart: always
-    depends_on:
-      - ws-database
   ws-database:
     image: mysql:5.7
     ports:
