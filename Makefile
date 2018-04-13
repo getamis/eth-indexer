@@ -64,6 +64,10 @@ test: coverage.txt FORCE
 		fi								\
 	done;
 
+contracts:
+	$(shell solc eth/contracts/erc20.sol --abi --overwrite --output-dir eth/contracts)
+	$(shell abigen --type ERC20 --abi eth/contracts/ERC20.abi --out eth/contracts/erc20.go --pkg contracts)
+
 # dashboard-%:
 # 	@$(MAKE) -f dashboard/Makefile $@
 

@@ -26,7 +26,8 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  version = "1.8.2"
+  branch = "feature/mysql"
+  source = "github.com/getamis/go-ethereum"
 
 [[constraint]]
   branch = "develop"
@@ -43,6 +44,22 @@
 [[constraint]]
   name = "github.com/spf13/viper"
   version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.1"
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.9.2"
 
 [prune]
   go-tests = true
@@ -68,15 +85,3 @@
     name = "github.com/stretchr/testify"
     non-go = false
     unused-packages = false
-
-[[constraint]]
-  name = "github.com/stretchr/testify"
-  version = "1.2.1"
-
-[[constraint]]
-  name = "github.com/gogo/protobuf"
-  version = "1.0.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/grpc-ecosystem/grpc-gateway"

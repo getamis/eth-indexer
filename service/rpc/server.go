@@ -3,8 +3,12 @@ package rpc
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
+	"github.com/maichain/eth-indexer/service/account"
 	"github.com/maichain/eth-indexer/service/pb"
 	bhStore "github.com/maichain/eth-indexer/store/block_header"
 	txStore "github.com/maichain/eth-indexer/store/transaction"
@@ -15,19 +19,21 @@ import (
 const datetimeFormat string = "2006-01-02 15:04:05.000"
 
 type server struct {
-	bhStore bhStore.Store
-	txStore txStore.Store
-	trStore trStore.Store
-	logger  log.Logger
+	accountAPI *account.API
+	bhStore    bhStore.Store
+	txStore    txStore.Store
+	trStore    trStore.Store
+	logger     log.Logger
 }
 
-func New(db *gorm.DB) *server {
+func New(db *gorm.DB, ethDB ethdb.Database) *server {
 	logger := log.New("ws", "grpc")
 	return &server{
-		bhStore: bhStore.NewWithDB(db),
-		txStore: txStore.NewWithDB(db),
-		trStore: trStore.NewWithDB(db),
-		logger:  logger,
+		accountAPI: account.NewAPI(ethDB),
+		bhStore:    bhStore.NewWithDB(db),
+		txStore:    txStore.NewWithDB(db),
+		trStore:    trStore.NewWithDB(db),
+		logger:     logger,
 	}
 }
 
@@ -39,6 +45,10 @@ func (s *server) Bind(server *grpc.Server) {
 	// register transaction service
 	var ts pb.TransactionServiceServer = s
 	pb.RegisterTransactionServiceServer(server, ts)
+
+	// register balance service
+	var bls pb.AccountServiceServer = s
+	pb.RegisterAccountServiceServer(server, bls)
 }
 
 func (s *server) Shutdown() {
@@ -46,7 +56,6 @@ func (s *server) Shutdown() {
 }
 
 // Implement grpc functions
-
 func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
 	headers, err := s.bhStore.Find(&pb.BlockHeader{
 		Hash: req.Hash,
@@ -105,5 +114,29 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 		GasLimit: transaction.GasLimit,
 		Amount:   transaction.Amount,
 		Payload:  transaction.Payload,
+	}, nil
+}
+
+func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
+	log.Info("GetBalance 1", "req", req)
+	// Get ETH
+	if req.Token == "ETH" {
+		amount, err := s.accountAPI.GetBalance(ctx, common.HexToAddress(req.Address), rpc.BlockNumber(req.BlockNumber))
+		if err != nil {
+			log.Error("Failed to get ETH balance", "addr", req.Address, "number", req.BlockNumber, "err", err)
+			return nil, err
+		}
+		return &pb.GetBalanceResponse{
+			Amount: amount.Int64(),
+		}, nil
+	}
+	// Get ERC20 token
+	amount, err := s.accountAPI.GetERC20Balance(ctx, common.HexToAddress(req.Token), common.HexToAddress(req.Address), rpc.BlockNumber(req.BlockNumber))
+	if err != nil {
+		log.Error("Failed to get Token balance", "token", req.Token, "addr", req.Address, "number", req.BlockNumber, "err", err)
+		return nil, err
+	}
+	return &pb.GetBalanceResponse{
+		Amount: amount.Int64(),
 	}, nil
 }
