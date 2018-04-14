@@ -1,13 +1,13 @@
 class InitializeIndexerTables < ActiveRecord::Migration
   def change
     create_table :block_headers do |t|
-      t.string :hash, :null => false
-      t.string :parent_hash, :null => false
-      t.string :uncle_hash, :null => false
-      t.string :coinbase, :null => false
-      t.string :root, :null => false
-      t.string :tx_hash, :null => false
-      t.string :receipt_hash, :null => false
+      t.string :hash, :limit => 64, :null => false
+      t.string :parent_hash, :limit => 64, :null => false
+      t.string :uncle_hash, :limit => 64, :null => false
+      t.string :coinbase, :limit => 40, :null => false
+      t.string :root, :limit => 64, :null => false
+      t.string :tx_hash, :limit => 64, :null => false
+      t.string :receipt_hash, :limit => 64, :null => false
       t.binary :bloom
       t.integer :difficulty, :limit => 8, :null => false
       t.integer :number, :limit => 8, :null => false
@@ -18,13 +18,13 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.string :mix_digest
       t.binary :nonce
     end
-    # TODO: Add indexes to block_headers
+    add_index :block_headers, :number, :unique => true
 
     create_table :transactions do |t|
-      t.string :hash
-      t.string :block_hash
-      t.string :from
-      t.string :to
+      t.string :hash, :limit => 64
+      t.string :block_hash, :limit => 64
+      t.string :from, :limit => 40
+      t.string :to, :limit => 40
       t.binary :nonce
       t.integer :gas_price, :limit => 8
       t.column :gas_limit, 'BIGINT UNSIGNED'
@@ -34,55 +34,19 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.integer :s, :limit => 8
       t.integer :r, :limit => 8
     end
-    # TODO: Add indexes to transactions
+    add_index :transactions, :hash, :unique => true
 
     create_table :transaction_receipts do |t|
-      t.binary :root
+      t.binary :root, :limit => 64
       t.column :status, 'INT UNSIGNED'
       t.column :cumulative_gas_used, 'BIGINT UNSIGNED'
       t.binary :bloom
-      t.string :tx_hash
-      t.string :contract_address
+      t.string :tx_hash, :limit => 64
+      t.string :contract_address, :limit => 40
       t.column :gas_used, 'BIGINT UNSIGNED'
     end
-    # TODO: Add indexes to transaction_receipts
+    add_index :transaction_receipts, :tx_hash, :unique => true
 
-    create_table :transaction_logs do |t|
-      t.string :tx_hash, :null => false
-      t.integer :tx_index, :null => false
-      t.string :block_hash, :null => false
-      t.integer :log_index, :null => false
-      t.boolean :removed
-      t.string
-      t.string :address
-      t.string :topic_0
-      t.string :topic_1
-      t.string :topic_2
-      t.binary :data
-      t.integer :block_number, :limit => 8, :null => false
-    end
-    # TODO: Add indexes to transaction_logs
-
-    create_table :tokens do |t|
-      t.string :contract_address
-      t.string :type, :null => false
-      t.string :full_name, :null => false
-    end
-    # TODO: Add indexes to tokens
-
-    create_table :accounts do |t|
-      t.string :address, :null => false
-      t.binary :code
-    end
-    # TODO: Add indexes to accounts
-
-    create_table :account_balances do |t|
-      t.string :address, :null => false
-      t.integer :token_id, :null => false
-      t.integer :balance, :limit => 8, :null => false
-      t.integer :evaluated_height, :limit => 8, :null => false
-    end
-    # TODO: Add indexes to account_balances
-
+    # TODO: Add foreign keys?
   end
 end
