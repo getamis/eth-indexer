@@ -21,11 +21,6 @@ const (
 	Host = "host"
 	Port = "port"
 
-	// flag names for indexer
-	ListenFlag = "listen"
-	StartFlag  = "start"
-	EndFlag    = "end"
-
 	// flag names for ethereum service
 	EthProtocolFlag = "eth.protocol"
 	EthHostFlag     = "eth.host"

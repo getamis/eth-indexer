@@ -26,19 +26,13 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
 	"github.com/maichain/eth-indexer/service/indexer"
+	"github.com/maichain/eth-indexer/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	manager "github.com/maichain/eth-indexer/store/store_manager"
 )
 
 var (
 	configFile string
-
-	// flags for indexer
-	listen bool
-	start  int64
-	end    int64
 
 	// flags for ethereum service
 	ethProtocol string
@@ -59,35 +53,27 @@ var ServerCmd = &cobra.Command{
 	Use:   "indexer",
 	Short: "blockchain data indexer",
 	Long:  `blockchain data indexer`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		vp := viper.New()
 		vp.BindPFlags(cmd.Flags())
 		vp.AutomaticEnv() // read in environment variables that match
 		if configFile := vp.GetString(flags.ConfigFileFlag); configFile != "" {
 			if err := loadConfigUsingViper(vp, configFile); err != nil {
 				log.Error("Failed to load config file", "err", err)
-				return
+				return err
 			}
 			loadFlagToVar(vp)
 		}
 
 		// eth-client
 		ethClient := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		// log.Info("eth=client" + ethClient)
 
 		// database
 		db := MustNewDatabase()
 		defer db.Close()
-
-		indexer := indexer.NewIndexer(ethClient, manager.NewStoreManager(db))
-		if listen {
-			ch := make(chan *types.Header)
-			indexer.Listen(context.Background(), ch)
-		} else {
-			indexer.Start(start, end)
-		}
-
-		return
+		indexer := indexer.New(ethClient, store.NewManager(db))
+		ch := make(chan *types.Header)
+		return indexer.Listen(context.Background(), ch)
 	},
 }
 
@@ -101,11 +87,6 @@ func Execute() {
 }
 
 func init() {
-	// indexer flags
-	ServerCmd.Flags().BoolVar(&listen, "listen", false, "listen mode to recent block")
-	ServerCmd.Flags().Int64Var(&start, flags.StartFlag, 0, "The start block height")
-	ServerCmd.Flags().Int64Var(&end, flags.EndFlag, 0, "The end block height")
-
 	// eth-client flags
 	ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocolFlag, "ws", "The eth-client protocol")
 	ServerCmd.Flags().StringVar(&ethHost, flags.EthHostFlag, "127.0.0.1", "The eth-client host")
