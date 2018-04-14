@@ -1,4 +1,4 @@
-package store
+package transaction_receipt
 
 import (
 	"github.com/jinzhu/gorm"
@@ -10,26 +10,31 @@ const (
 )
 
 type Store interface {
+	Insert(data *pb.TransactionReceipt) error
 	Upsert(data, result *pb.TransactionReceipt) error
 	Find(filter *pb.TransactionReceipt) (result []*pb.TransactionReceipt, err error)
 }
 
-type ReceiptStore struct {
+type store struct {
 	db *gorm.DB
 }
 
 func NewWithDB(db *gorm.DB) Store {
-	return &ReceiptStore{
+	return &store{
 		db: db.Table(TableName),
 	}
 }
 
-func (r *ReceiptStore) Upsert(data, result *pb.TransactionReceipt) error {
+func (r *store) Insert(data *pb.TransactionReceipt) error {
+	return r.db.Create(data).Error
+}
+
+func (r *store) Upsert(data, result *pb.TransactionReceipt) error {
 	filter := pb.TransactionReceipt{TxHash: data.TxHash}
 	return r.db.Where(filter).Attrs(data).FirstOrCreate(result).Error
 }
 
-func (r *ReceiptStore) Find(filter *pb.TransactionReceipt) (result []*pb.TransactionReceipt, err error) {
+func (r *store) Find(filter *pb.TransactionReceipt) (result []*pb.TransactionReceipt, err error) {
 	err = r.db.Where(filter).Find(&result).Error
 	return
 }
