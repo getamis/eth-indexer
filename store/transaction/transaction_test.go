@@ -1,4 +1,4 @@
-package store
+package transaction
 
 import (
 	"os"
@@ -50,4 +50,15 @@ func TestTransaction(t *testing.T) {
 	transactions, err = store.Find(filter)
 	assert.NoError(t, err, "shouldn't get error:%v", err)
 	assert.Len(t, transactions, 0, "shold have 0 transaction")
+
+	// Insert test
+	data2 := &pb.Transaction{
+		Hash: "Hash2",
+		From: "From",
+	}
+	err = store.Insert(data2)
+	assert.NoError(t, err, "shouldn't get error:%v", err)
+
+	err = store.Insert(data2)
+	assert.Error(t, err, "should get duplicate key error")
 }
