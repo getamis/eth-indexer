@@ -1,4 +1,4 @@
-package store
+package block_header
 
 import (
 	"fmt"
