@@ -15,6 +15,8 @@ type Store interface {
 	Upsert(data, result *pb.BlockHeader) error
 	Find(filter *pb.BlockHeader) (result []*pb.BlockHeader, err error)
 	Query(filter interface{}, queryOpt *QueryOption) (result []*pb.BlockHeader, pag *mpb.Pagination, err error)
+	// Last retruns the header with the greatest number
+	Last() (result *pb.BlockHeader, err error)
 }
 
 type store struct {
@@ -77,5 +79,11 @@ func (t *store) Query(filter interface{}, queryOpt *QueryOption) (result []*pb.B
 		Order:      queryOpt.OrderString(),
 		TotalCount: uint64(total),
 	}
+	return
+}
+
+func (t *store) Last() (result *pb.BlockHeader, err error) {
+	result = &pb.BlockHeader{}
+	err = t.db.Order("number DESC").Limit(1).Find(result).Error
 	return
 }

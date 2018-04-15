@@ -71,6 +71,10 @@ var _ = Describe("Block Header Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(len(result)).Should(Equal(options.Limit))
 		Expect(result[0].Number).Should(Equal(data1.Number))
+
+		lastResult, err := store.Last()
+		Expect(err).Should(Succeed())
+		Expect(result[0]).Should(Equal(lastResult))
 	})
 
 	It("should insert one new record in database", func() {
