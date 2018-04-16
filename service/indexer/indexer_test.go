@@ -1,17 +1,34 @@
+// Copyright 2018 AMIS Technologies
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package indexer
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	indexerMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	"github.com/maichain/eth-indexer/service/pb"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
+	"github.com/maichain/eth-indexer/store/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -37,12 +54,18 @@ var _ = Describe("Indexer Test", func() {
 	Context("Listen()", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ch := make(chan *types.Header)
+		unknownErr := errors.New("unknown error")
+
 		It("should be ok", func() {
 			// blocks from 11 to 15 are ethereum
 			// receive 18, 19 blocks from header channel
 			mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
 				Number: 10,
 			}, nil).Once()
+			mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+				Number: 10,
+			}, nil).Once()
+
 			var num *big.Int
 			mockEthClient.On("BlockByNumber", mock.Anything, num).Return(types.NewBlockWithHeader(
 				&types.Header{
@@ -56,9 +79,21 @@ var _ = Describe("Indexer Test", func() {
 				block := types.NewBlock(
 					&types.Header{
 						Number: big.NewInt(i),
+						Root:   common.StringToHash("1234567890" + strconv.Itoa(int(i))),
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
 				mockStoreManager.On("InsertBlock", block, []*types.Receipt{receipt}).Return(nil).Once()
+
+				// Sometimes we cannot get account states successfully
+				if i%2 == 0 {
+					dump := &state.Dump{
+						Root: fmt.Sprintf("%x", block.Root()),
+					}
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
+					mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+				} else {
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
+				}
 			}
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(9)
 			var recvCh chan<- *types.Header
@@ -81,11 +116,14 @@ var _ = Describe("Indexer Test", func() {
 		})
 
 		Context("with something wrong", func() {
-			unknownErr := errors.New("unknown error")
 			It("failed to subscribe new head", func() {
 				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
 					Number: 10,
 				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+					Number: 10,
+				}, nil).Once()
+
 				var num *big.Int
 				mockEthClient.On("BlockByNumber", mock.Anything, num).Return(types.NewBlockWithHeader(
 					&types.Header{
@@ -99,9 +137,21 @@ var _ = Describe("Indexer Test", func() {
 					block := types.NewBlock(
 						&types.Header{
 							Number: big.NewInt(i),
+							Root:   common.StringToHash("1234567890" + strconv.Itoa(int(i))),
 						}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 					mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
 					mockStoreManager.On("InsertBlock", block, []*types.Receipt{receipt}).Return(nil).Once()
+
+					// Sometimes we cannot get account states successfully
+					if i%2 == 0 {
+						dump := &state.Dump{
+							Root: fmt.Sprintf("%x", block.Root()),
+						}
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
+						mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+					} else {
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
+					}
 				}
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(5)
 				var recvCh chan<- *types.Header
@@ -114,6 +164,9 @@ var _ = Describe("Indexer Test", func() {
 
 			It("failed to insert block to db", func() {
 				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+					Number: 10,
+				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
 					Number: 10,
 				}, nil).Once()
 				var num *big.Int
@@ -141,6 +194,9 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
 					Number: 10,
 				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+					Number: 10,
+				}, nil).Once()
 				var num *big.Int
 				mockEthClient.On("BlockByNumber", mock.Anything, num).Return(types.NewBlockWithHeader(
 					&types.Header{
@@ -165,6 +221,9 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
 					Number: 10,
 				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+					Number: 10,
+				}, nil).Once()
 				var num *big.Int
 				mockEthClient.On("BlockByNumber", mock.Anything, num).Return(types.NewBlockWithHeader(
 					&types.Header{
@@ -181,8 +240,20 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
 					Number: 10,
 				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+					Number: 10,
+				}, nil).Once()
 				var num *big.Int
 				mockEthClient.On("BlockByNumber", mock.Anything, num).Return(nil, unknownErr).Once()
+				err := idx.Listen(ctx, ch)
+				Expect(err).Should(Equal(unknownErr))
+			})
+
+			It("failed to get state block", func() {
+				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+					Number: 10,
+				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(nil, unknownErr).Once()
 				err := idx.Listen(ctx, ch)
 				Expect(err).Should(Equal(unknownErr))
 			})
