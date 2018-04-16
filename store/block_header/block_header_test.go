@@ -1,4 +1,4 @@
-package store
+package block_header
 
 import (
 	"os"
@@ -31,7 +31,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	AfterSuite(func() {
-		defer mysql.Stop()
+		mysql.Stop()
 	})
 
 	It("should get one new record in database", func() {
@@ -71,6 +71,24 @@ var _ = Describe("Block Header Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(len(result)).Should(Equal(options.Limit))
 		Expect(result[0].Number).Should(Equal(data1.Number))
+
+		lastResult, err := store.Last()
+		Expect(err).Should(Succeed())
+		Expect(result[0]).Should(Equal(lastResult))
+	})
+
+	It("should insert one new record in database", func() {
+		By("insert new one header")
+		store := NewWithDB(db)
+		data := &pb.BlockHeader{
+			Number: 10,
+		}
+		err := store.Insert(data)
+		Expect(err).Should(Succeed())
+
+		By("failed to insert again")
+		err = store.Insert(data)
+		Expect(err).ShouldNot(BeNil())
 	})
 })
 
