@@ -1,11 +1,13 @@
 package store
 
 import (
+	"fmt"
 	"math/big"
 	"os"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/mapi/base/test"
@@ -91,6 +93,75 @@ var _ = Describe("Manager Test", func() {
 		header, err := manager.LatestHeader()
 		Expect(err).Should(Succeed())
 		Expect(reflect.DeepEqual(header, Header(block1))).Should(BeTrue())
+	})
+
+	Context("UpdateState()", func() {
+		It("should be ok", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+				Root:   common.StringToHash("1234567890"),
+			})
+
+			dump := &state.Dump{
+				Root: fmt.Sprintf("%x", block1.Root()),
+				Accounts: map[string]state.DumpAccount{
+					"account": {
+						Nonce:   100,
+						Balance: "101",
+					},
+					"contract": {
+						Nonce:    900,
+						Balance:  "901",
+						Code:     "code",
+						CodeHash: "codeHash",
+						Storage: map[string]string{
+							"key1": "storage1",
+							"key2": "storage2",
+						},
+					},
+				},
+			}
+			err := manager.UpdateState(block1, dump)
+			Expect(err).Should(Succeed())
+
+			By("update the same state again, should be ok")
+			err = manager.UpdateState(block1, dump)
+			Expect(err).Should(Succeed())
+		})
+
+		It("failed due to wrong signer", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+				Root:   common.StringToHash("1234567890"),
+			})
+
+			dump := &state.Dump{
+				Root: "wrong root",
+			}
+			err := manager.UpdateState(block1, dump)
+			Expect(err).Should(Equal(ErrInconsistentRoot))
+		})
+	})
+
+	It("LatestStateBlock()", func() {
+		manager := NewManager(db)
+		block1 := types.NewBlockWithHeader(&types.Header{
+			Number: big.NewInt(100),
+			Root:   common.StringToHash("1234567890"),
+		})
+
+		dump := &state.Dump{
+			Root: fmt.Sprintf("%x", block1.Root()),
+		}
+
+		err := manager.UpdateState(block1, dump)
+		Expect(err).Should(Succeed())
+
+		block, err := manager.LatestStateBlock()
+		Expect(err).Should(Succeed())
+		Expect(block.Number).Should(Equal(block1.Number().Int64()))
 	})
 })
 
