@@ -17,6 +17,7 @@
 package types
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -92,6 +93,10 @@ func (l *Log) DecodeRLP(s *rlp.Stream) error {
 		l.Address, l.Topics, l.Data = dec.Address, dec.Topics, dec.Data
 	}
 	return err
+}
+
+func (l *Log) String() string {
+	return fmt.Sprintf(`log: %x %x %x %x %d %x %d`, l.Address, l.Topics, l.Data, l.TxHash, l.TxIndex, l.BlockHash, l.Index)
 }
 
 // LogForStorage is a wrapper around a Log that flattens and parses the entire content of

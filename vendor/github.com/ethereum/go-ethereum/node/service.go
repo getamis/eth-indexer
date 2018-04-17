@@ -21,7 +21,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/mysql"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -40,15 +39,11 @@ type ServiceContext struct {
 // OpenDatabase opens an existing database with the given name (or creates one
 // if no previous can be found) from within the node's data directory. If the
 // node is an ephemeral one, a memory database is returned.
-func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int) (db ethdb.Database, err error) {
-	if ctx.config.MySQL != nil {
-		db, err = mysql.NewDatabase(name, ctx.config.MySQL)
-		return
-	}
+func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int) (ethdb.Database, error) {
 	if ctx.config.DataDir == "" {
 		return ethdb.NewMemDatabase()
 	}
-	db, err = ethdb.NewLDBDatabase(ctx.config.resolvePath(name), cache, handles)
+	db, err := ethdb.NewLDBDatabase(ctx.config.resolvePath(name), cache, handles)
 	if err != nil {
 		return nil, err
 	}

@@ -45,7 +45,6 @@ type LogConfig struct {
 	DisableMemory  bool // disable memory capture
 	DisableStack   bool // disable stack capture
 	DisableStorage bool // disable storage capture
-	Debug          bool // print output during capture end
 	Limit          int  // maximum length of output, but zero means unlimited
 }
 
@@ -185,12 +184,6 @@ func (l *StructLogger) CaptureFault(env *EVM, pc uint64, op OpCode, gas, cost ui
 func (l *StructLogger) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) error {
 	l.output = output
 	l.err = err
-	if l.cfg.Debug {
-		fmt.Printf("0x%x\n", output)
-		if err != nil {
-			fmt.Printf(" error: %v\n", err)
-		}
-	}
 	return nil
 }
 

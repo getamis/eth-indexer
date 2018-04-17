@@ -85,7 +85,6 @@
   version = "v0.3.2"
 
 [[projects]]
-  branch = "feature/mysql"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -112,7 +111,6 @@
     "crypto/sha3",
     "ethclient",
     "ethdb",
-    "ethdb/mysql",
     "event",
     "log",
     "metrics",
@@ -121,8 +119,8 @@
     "rpc",
     "trie"
   ]
-  revision = "15f8675f9ddb1ecb9cb206070a07f0551aef851d"
-  source = "github.com/getamis/go-ethereum"
+  revision = "329ac18ef617d0238f71637bffe78f028b0f13f7"
+  version = "v1.8.3"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -247,10 +245,7 @@
 
 [[projects]]
   name = "github.com/jinzhu/gorm"
-  packages = [
-    ".",
-    "dialects/mysql"
-  ]
+  packages = ["."]
   revision = "6ed508ec6a4ecb3531899a69cbc746ccf65a4166"
   version = "v1.9.1"
 
@@ -620,6 +615,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2a6b3d45925a41017e3dd6ae85c3ca3f2b707f2da1905dacbcee45b33d610110"
+  inputs-digest = "ced3d0b485723dbd326ca7c2ebf4b432ac143756b4a52500611ca7999088dae4"
   solver-name = "gps-cdcl"
   solver-version = 1
