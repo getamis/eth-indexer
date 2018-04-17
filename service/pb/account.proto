@@ -20,7 +20,8 @@ message GetBalanceRequest {
 }
 
 message GetBalanceResponse {
-  int64 amount = 1 [(gogoproto.jsontag) = "amount"];
+  string amount = 1 [(gogoproto.jsontag) = "amount"];
+  int64 block_number = 2 [(gogoproto.jsontag) = "block_number"];
 }
 
 service AccountService {
