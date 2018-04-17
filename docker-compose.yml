@@ -70,9 +70,7 @@ services:
       - --db.host
       - ws-database
       - --eth.host
-      - 206.189.44.219 # this is geth from 55, we will use our own geth in docker when we got geth with up-to-date data.
-      - --eth.port
-      - "9546" # this is geth from 55, please remove this argument and `--eth-port` when we use our geth in docker
+      - 10.1.113.176
     restart: on-failure
     depends_on:
       - ws-database
