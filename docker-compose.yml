@@ -1,5 +1,17 @@
 version: "3"
 services:
+  # Customized geth image for indexer
+  # geth:
+  #   image: quay.io/amis/geth:indexer_1.8.3
+  #   ports:
+  #     - "30303:30303"
+  #     - "8546:8546"
+  #   volumes:
+  #     - ./geth-data:/root/.ethereum
+  #   command: "--wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
+  #   restart: always
+  #   depends_on:
+  #     - ws-database
   ws-database:
     image: mysql:5.7
     ports:

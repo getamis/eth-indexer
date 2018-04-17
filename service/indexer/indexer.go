@@ -1,24 +1,29 @@
+// Copyright 2018 AMIS Technologies
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package indexer
 
 import (
 	"context"
 	"math/big"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
+	"github.com/maichain/eth-indexer/store/model"
 )
-
-//go:generate mockery -name EthClient
-
-type EthClient interface {
-	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
-	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
-	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
-}
 
 // New news an indexer service
 func New(client EthClient, storeManager store.Manager) *indexer {
@@ -51,15 +56,30 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 		}
 	}
 
+	// Get latest state block from db
+	stateBlock, err := idx.manager.LatestStateBlock()
+	if err != nil {
+		if store.NotFoundError(err) {
+			log.Info("The state db is empty")
+			stateBlock = &model.StateBlock{
+				Number: 0,
+			}
+		} else {
+			log.Error("Failed to get latest state block from db", "err", err)
+			return err
+		}
+	}
+
 	// Get latest blocks from ethereum
-	latestBlock, err := idx.client.BlockByNumber(ctx, nil)
+	latestBlock, err := idx.client.BlockByNumber(childCtx, nil)
 	if err != nil {
 		log.Error("Failed to get latest header from ethereum", "err", err)
 		return err
 	}
+	lastBlockHeader := latestBlock.Header()
 
 	// Sync missing blocks from ethereum
-	latestBlock, err = idx.sync(childCtx, header.Number, header.Hash, latestBlock.Number().Int64())
+	stateBlock, err = idx.sync(childCtx, header.Number, header.Hash, lastBlockHeader.Number.Int64(), stateBlock.Number)
 	if err != nil {
 		log.Error("Failed to sync to latest blocks from ethereum", "from", header.Number, "fromHash", header.Hash, "err", err)
 		return err
@@ -76,11 +96,12 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 		select {
 		case head := <-ch:
 			log.Trace("Got new header", "number", head.Number, "hash", store.HashHex(head.Hash()))
-			latestBlock, err = idx.sync(childCtx, latestBlock.Number().Int64(), store.HashHex(latestBlock.Hash()), head.Number.Int64())
+			stateBlock, err = idx.sync(childCtx, lastBlockHeader.Number.Int64(), store.HashHex(lastBlockHeader.Hash()), head.Number.Int64(), stateBlock.Number)
 			if err != nil {
-				log.Error("Failed to sync to blocks from ethereum", "from", latestBlock.Number, "fromHash", latestBlock.Hash, "to", head.Number.Int64(), "err", err)
+				log.Error("Failed to sync to blocks from ethereum", "from", lastBlockHeader.Number, "fromHash", lastBlockHeader.Hash(), "to", head.Number.Int64(), "fromState", stateBlock.Number, "err", err)
 				return err
 			}
+			lastBlockHeader = head
 		case <-childCtx.Done():
 			return childCtx.Err()
 		}
@@ -88,10 +109,10 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 }
 
 // sync syncs the blocks and header into database
-func (idx *indexer) sync(ctx context.Context, from int64, fromHash string, to int64) (block *types.Block, err error) {
+func (idx *indexer) sync(ctx context.Context, from int64, fromHash string, to int64, fromStateBlock int64) (*model.StateBlock, error) {
 	// Update existing blocks from ethereum to db
 	for i := from + 1; i <= to; i++ {
-		block, err = idx.client.BlockByNumber(ctx, big.NewInt(i))
+		block, err := idx.client.BlockByNumber(ctx, big.NewInt(i))
 		if err != nil {
 			log.Error("Failed to get block from ethereum", "number", i, "err", err)
 			return nil, err
@@ -117,9 +138,40 @@ func (idx *indexer) sync(ctx context.Context, from int64, fromHash string, to in
 		err = idx.manager.InsertBlock(block, receipts)
 		if err != nil {
 			log.Error("Failed to insert block", "number", i, "err", err)
-			return
+			return nil, err
 		}
 		log.Trace("Inserted block", "number", i, "hash", store.HashHex(block.Hash()), "txs", len(block.Transactions()))
+
+		// Get modified accounts
+		// Noted: we skip dump block or get modified state error because the state db may not exist
+		var dump *state.Dump
+		isGenesis := i == 0
+		if isGenesis {
+			dump, err = idx.client.DumpBlock(ctx, 0)
+			if err != nil {
+				log.Warn("Failed to get state from ethereum, ignore it", "number", i, "err", err)
+				continue
+			}
+		} else {
+			// This API is only supportted on our customized geth.
+			dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, uint64(fromStateBlock), block.Number().Uint64())
+			if err != nil {
+				log.Warn("Failed to get modified accounts from ethereum, ignore it", "from", fromStateBlock, "to", i, "err", err)
+				continue
+			}
+		}
+
+		// Update state db
+		err = idx.manager.UpdateState(block, dump)
+		if err != nil {
+			log.Error("Failed to update state to database", "number", i, "err", err)
+			return nil, err
+		}
+		log.Trace("Inserted state", "number", i, "hash", store.HashHex(block.Hash()), "accounts", len(dump.Accounts))
+
+		fromStateBlock = i
 	}
-	return
+	return &model.StateBlock{
+		Number: fromStateBlock,
+	}, nil
 }

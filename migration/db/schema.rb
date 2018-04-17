@@ -13,6 +13,16 @@
 
 ActiveRecord::Schema.define(version: 20180313051512) do
 
+  create_table "accounts", force: :cascade do |t|
+    t.binary  "address",      limit: 20, null: false
+    t.integer "block_number", limit: 8,  null: false
+    t.string  "balance",      limit: 32, null: false
+    t.integer "nonce",        limit: 8
+  end
+
+  add_index "accounts", ["address", "block_number"], name: "index_accounts_on_address_and_block_number", unique: true, using: :btree
+  add_index "accounts", ["address"], name: "index_accounts_on_address", using: :btree
+
   create_table "block_headers", force: :cascade do |t|
     t.string  "hash",         limit: 64,    null: false
     t.string  "parent_hash",  limit: 64,    null: false
@@ -33,6 +43,32 @@ ActiveRecord::Schema.define(version: 20180313051512) do
   end
 
   add_index "block_headers", ["number"], name: "index_block_headers_on_number", unique: true, using: :btree
+
+  create_table "contract_code", force: :cascade do |t|
+    t.binary "address", limit: 20,       null: false
+    t.binary "hash",    limit: 32,       null: false
+    t.text   "code",    limit: 16777215, null: false
+  end
+
+  add_index "contract_code", ["address"], name: "index_contract_code_on_address", unique: true, using: :btree
+
+  create_table "contracts", force: :cascade do |t|
+    t.binary  "address",      limit: 20,       null: false
+    t.integer "block_number", limit: 8,        null: false
+    t.string  "balance",      limit: 32,       null: false
+    t.integer "nonce",        limit: 8,        null: false
+    t.binary  "root",         limit: 32,       null: false
+    t.binary  "storage",      limit: 16777215, null: false
+  end
+
+  add_index "contracts", ["address", "block_number"], name: "index_contracts_on_address_and_block_number", unique: true, using: :btree
+  add_index "contracts", ["address"], name: "index_contracts_on_address", using: :btree
+
+  create_table "state_blocks", force: :cascade do |t|
+    t.integer "number", limit: 8, null: false
+  end
+
+  add_index "state_blocks", ["number"], name: "index_state_blocks_on_number", unique: true, using: :btree
 
   create_table "transaction_receipts", force: :cascade do |t|
     t.binary  "root",                limit: 64

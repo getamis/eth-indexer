@@ -2,7 +2,9 @@
 package mocks
 
 import mock "github.com/stretchr/testify/mock"
+import model "github.com/maichain/eth-indexer/store/model"
 import pb "github.com/maichain/eth-indexer/service/pb"
+import state "github.com/ethereum/go-ethereum/core/state"
 
 import types "github.com/ethereum/go-ethereum/core/types"
 
@@ -46,4 +48,41 @@ func (_m *Manager) LatestHeader() (*pb.BlockHeader, error) {
 	}
 
 	return r0, r1
+}
+
+// LatestStateBlock provides a mock function with given fields:
+func (_m *Manager) LatestStateBlock() (*model.StateBlock, error) {
+	ret := _m.Called()
+
+	var r0 *model.StateBlock
+	if rf, ok := ret.Get(0).(func() *model.StateBlock); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.StateBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateState provides a mock function with given fields: block, dump
+func (_m *Manager) UpdateState(block *types.Block, dump *state.Dump) error {
+	ret := _m.Called(block, dump)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Block, *state.Dump) error); ok {
+		r0 = rf(block, dump)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }

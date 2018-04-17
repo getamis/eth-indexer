@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
@@ -66,14 +68,41 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// eth-client
-		ethClient := MustEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+		if err != nil {
+			log.Error("Failed to new a eth client", "err", err)
+			return err
+		}
+		defer ethClient.Close()
 
 		// database
-		db := MustNewDatabase()
+		db, err := NewDatabase()
+		if err != nil {
+			log.Error("Failed to connect to db", "err", err)
+			return err
+		}
 		defer db.Close()
+
+		sigs := make(chan os.Signal, 1)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+			defer signal.Stop(sigs)
+
+			log.Debug("Shutting down", "signal", <-sigs)
+			cancel()
+		}()
+
 		indexer := indexer.New(ethClient, store.NewManager(db))
 		ch := make(chan *types.Header)
-		return indexer.Listen(context.Background(), ch)
+
+		err = indexer.Listen(ctx, ch)
+		// Ignore if listener is stopped by signal
+		if err == context.Canceled {
+			return nil
+		}
+		cancel()
+		return err
 	},
 }
 

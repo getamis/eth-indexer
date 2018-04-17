@@ -19,33 +19,23 @@ package indexer
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/getamis/sirius/database"
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
-	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
+	"github.com/maichain/eth-indexer/service/indexer"
 )
 
-func MustEthConn(url string) *ethclient.Client {
-	ethConn, err := ethclient.Dial(url)
-	if err != nil {
-		log.Error("Failed to connect to ethereum", "url", url, "err", err)
-		panic(err)
-	}
-	return ethConn
+func NewEthConn(url string) (indexer.EthClient, error) {
+	return indexer.NewClient(url)
 }
 
-func MustNewDatabase() *gorm.DB {
-	db, err := gormFactory.New(dbDriver,
+func NewDatabase() (*gorm.DB, error) {
+	return gormFactory.New(dbDriver,
 		database.DriverOption(
 			mysql.Database(dbName),
 			mysql.Connector(mysql.DefaultProtocol, dbHost, fmt.Sprintf("%d", dbPort)),
 			mysql.UserInfo(dbUser, dbPassword),
 		),
 	)
-	if err != nil {
-		panic(err)
-	}
-	return db
 }
