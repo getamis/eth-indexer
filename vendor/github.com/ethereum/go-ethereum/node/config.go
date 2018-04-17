@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb/mysql"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discover"
@@ -145,9 +144,6 @@ type Config struct {
 	// *WARNING* Only set this if the node is running in a trusted network, exposing
 	// private APIs to untrusted users is a major security risk.
 	WSExposeAll bool `toml:",omitempty"`
-
-	// MySQL setting
-	MySQL *mysql.Config `toml:",omitempty"`
 
 	// Logger is a custom logger to use with the p2p.Server.
 	Logger log.Logger `toml:",omitempty"`

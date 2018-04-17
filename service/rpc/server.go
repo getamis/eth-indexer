@@ -1,11 +1,21 @@
+// Copyright © 2018 AMIS Technologies
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package rpc
 
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/service/account"
@@ -16,20 +26,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-const datetimeFormat string = "2006-01-02 15:04:05.000"
+const (
+	datetimeFormat = "2006-01-02 15:04:05.000"
+)
 
 type server struct {
-	accountAPI *account.API
+	accountAPI account.API
 	bhStore    bhStore.Store
 	txStore    txStore.Store
 	trStore    trStore.Store
 	logger     log.Logger
 }
 
-func New(db *gorm.DB, ethDB ethdb.Database) *server {
+func New(db *gorm.DB) *server {
 	logger := log.New("ws", "grpc")
 	return &server{
-		accountAPI: account.NewAPI(ethDB),
+		accountAPI: account.NewAPIWithWithDB(db),
 		bhStore:    bhStore.NewWithDB(db),
 		txStore:    txStore.NewWithDB(db),
 		trStore:    trStore.NewWithDB(db),
@@ -114,29 +126,5 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 		GasLimit: transaction.GasLimit,
 		Amount:   transaction.Amount,
 		Payload:  transaction.Payload,
-	}, nil
-}
-
-func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
-	log.Info("GetBalance 1", "req", req)
-	// Get ETH
-	if req.Token == "ETH" {
-		amount, err := s.accountAPI.GetBalance(ctx, common.HexToAddress(req.Address), rpc.BlockNumber(req.BlockNumber))
-		if err != nil {
-			log.Error("Failed to get ETH balance", "addr", req.Address, "number", req.BlockNumber, "err", err)
-			return nil, err
-		}
-		return &pb.GetBalanceResponse{
-			Amount: amount.Int64(),
-		}, nil
-	}
-	// Get ERC20 token
-	amount, err := s.accountAPI.GetERC20Balance(ctx, common.HexToAddress(req.Token), common.HexToAddress(req.Address), rpc.BlockNumber(req.BlockNumber))
-	if err != nil {
-		log.Error("Failed to get Token balance", "token", req.Token, "addr", req.Address, "number", req.BlockNumber, "err", err)
-		return nil, err
-	}
-	return &pb.GetBalanceResponse{
-		Amount: amount.Int64(),
 	}, nil
 }

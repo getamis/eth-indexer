@@ -16,11 +16,8 @@ package rpc
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
-	"github.com/ethereum/go-ethereum/ethdb"
-	ethMySQL "github.com/ethereum/go-ethereum/ethdb/mysql"
 	"github.com/getamis/sirius/database"
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
@@ -43,21 +40,5 @@ func MustNewDatabase() *gorm.DB {
 		panic(err)
 	}
 
-	return db
-}
-
-func MustNewEthDatabase() ethdb.Database {
-	db, err := ethMySQL.NewDatabase("chaindata", &ethMySQL.Config{
-		Protocol:             mysql.DefaultProtocol,
-		Address:              dbHost,
-		Port:                 strconv.Itoa(dbPort),
-		User:                 dbUser,
-		Password:             dbPassword,
-		Database:             dbName,
-		AllowNativePasswords: true,
-	})
-	if err != nil {
-		panic(err)
-	}
 	return db
 }

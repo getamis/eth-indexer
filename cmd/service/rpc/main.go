@@ -54,11 +54,8 @@ var ServerCmd = &cobra.Command{
 		db := MustNewDatabase()
 		defer db.Close()
 
-		ethDB := MustNewEthDatabase()
-		defer ethDB.Close()
-
 		s := api.NewServer(
-			rpc.New(db, ethDB),
+			rpc.New(db),
 		)
 
 		if err := s.Serve(l); err != grpc.ErrServerStopped {
