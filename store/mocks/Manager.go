@@ -2,7 +2,7 @@
 package mocks
 
 import mock "github.com/stretchr/testify/mock"
-import model "github.com/maichain/eth-indexer/store/model"
+import model "github.com/maichain/eth-indexer/model"
 import pb "github.com/maichain/eth-indexer/service/pb"
 import state "github.com/ethereum/go-ethereum/core/state"
 

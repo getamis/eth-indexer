@@ -22,10 +22,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store/account"
 	header "github.com/maichain/eth-indexer/store/block_header"
-	"github.com/maichain/eth-indexer/store/model"
 	"github.com/maichain/eth-indexer/store/transaction"
 	receipt "github.com/maichain/eth-indexer/store/transaction_receipt"
 )

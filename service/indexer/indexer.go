@@ -21,9 +21,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
-	"github.com/maichain/eth-indexer/store/model"
 )
 
 // New news an indexer service

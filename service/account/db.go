@@ -27,9 +27,9 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/account/contracts"
 	accountStore "github.com/maichain/eth-indexer/store/account"
-	"github.com/maichain/eth-indexer/store/model"
 )
 
 var ErrInvalidBalance = errors.New("invalid balance")
