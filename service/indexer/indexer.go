@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
 	"github.com/maichain/eth-indexer/store/model"
@@ -45,7 +46,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	// Get latest header from db
 	header, err := idx.manager.LatestHeader()
 	if err != nil {
-		if store.NotFoundError(err) {
+		if common.NotFoundError(err) {
 			log.Info("The header db is empty")
 			header = &pb.BlockHeader{
 				Number: -1,
@@ -59,7 +60,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	// Get latest state block from db
 	stateBlock, err := idx.manager.LatestStateBlock()
 	if err != nil {
-		if store.NotFoundError(err) {
+		if common.NotFoundError(err) {
 			log.Info("The state db is empty")
 			stateBlock = &model.StateBlock{
 				Number: 0,
@@ -95,8 +96,8 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	for {
 		select {
 		case head := <-ch:
-			log.Trace("Got new header", "number", head.Number, "hash", store.HashHex(head.Hash()))
-			stateBlock, err = idx.sync(childCtx, lastBlockHeader.Number.Int64(), store.HashHex(lastBlockHeader.Hash()), head.Number.Int64(), stateBlock.Number)
+			log.Trace("Got new header", "number", head.Number, "hash", common.HashHex(head.Hash()))
+			stateBlock, err = idx.sync(childCtx, lastBlockHeader.Number.Int64(), common.HashHex(lastBlockHeader.Hash()), head.Number.Int64(), stateBlock.Number)
 			if err != nil {
 				log.Error("Failed to sync to blocks from ethereum", "from", lastBlockHeader.Number, "fromHash", lastBlockHeader.Hash(), "to", head.Number.Int64(), "fromState", stateBlock.Number, "err", err)
 				return err
@@ -140,7 +141,7 @@ func (idx *indexer) sync(ctx context.Context, from int64, fromHash string, to in
 			log.Error("Failed to insert block", "number", i, "err", err)
 			return nil, err
 		}
-		log.Trace("Inserted block", "number", i, "hash", store.HashHex(block.Hash()), "txs", len(block.Transactions()))
+		log.Trace("Inserted block", "number", i, "hash", common.HashHex(block.Hash()), "txs", len(block.Transactions()))
 
 		// Get modified accounts
 		// Noted: we skip dump block or get modified state error because the state db may not exist
@@ -167,7 +168,7 @@ func (idx *indexer) sync(ctx context.Context, from int64, fromHash string, to in
 			log.Error("Failed to update state to database", "number", i, "err", err)
 			return nil, err
 		}
-		log.Trace("Inserted state", "number", i, "hash", store.HashHex(block.Hash()), "accounts", len(dump.Accounts))
+		log.Trace("Inserted state", "number", i, "hash", common.HashHex(block.Hash()), "accounts", len(dump.Accounts))
 
 		fromStateBlock = i
 	}

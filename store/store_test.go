@@ -6,10 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	ecommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
+	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/mapi/base/test"
 	"github.com/maichain/mapi/types/reflect"
 	. "github.com/onsi/ginkgo"
@@ -65,7 +66,7 @@ var _ = Describe("Manager Test", func() {
 				Number: big.NewInt(11),
 			}
 			block := types.NewBlock(header, []*types.Transaction{
-				types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{}),
+				types.NewTransaction(0, ecommon.Address{}, ecommon.Big0, 0, ecommon.Big0, []byte{}),
 			}, []*types.Header{
 				header,
 			}, []*types.Receipt{
@@ -73,7 +74,7 @@ var _ = Describe("Manager Test", func() {
 			})
 
 			err := manager.InsertBlock(block, nil)
-			Expect(err).Should(Equal(ErrWrongSigner))
+			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
 
@@ -92,7 +93,7 @@ var _ = Describe("Manager Test", func() {
 
 		header, err := manager.LatestHeader()
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(header, Header(block1))).Should(BeTrue())
+		Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
 	})
 
 	Context("UpdateState()", func() {
@@ -100,7 +101,7 @@ var _ = Describe("Manager Test", func() {
 			manager := NewManager(db)
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-				Root:   common.StringToHash("1234567890"),
+				Root:   ecommon.StringToHash("1234567890"),
 			})
 
 			dump := &state.Dump{
@@ -134,14 +135,14 @@ var _ = Describe("Manager Test", func() {
 			manager := NewManager(db)
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-				Root:   common.StringToHash("1234567890"),
+				Root:   ecommon.StringToHash("1234567890"),
 			})
 
 			dump := &state.Dump{
 				Root: "wrong root",
 			}
 			err := manager.UpdateState(block1, dump)
-			Expect(err).Should(Equal(ErrInconsistentRoot))
+			Expect(err).Should(Equal(common.ErrInconsistentRoot))
 		})
 	})
 
@@ -149,7 +150,7 @@ var _ = Describe("Manager Test", func() {
 		manager := NewManager(db)
 		block1 := types.NewBlockWithHeader(&types.Header{
 			Number: big.NewInt(100),
-			Root:   common.StringToHash("1234567890"),
+			Root:   ecommon.StringToHash("1234567890"),
 		})
 
 		dump := &state.Dump{
