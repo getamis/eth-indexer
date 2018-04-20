@@ -14,6 +14,53 @@
 
 package model
 
+// Header represents the header of a block
+type Header struct {
+	Hash        []byte
+	ParentHash  []byte
+	UncleHash   []byte
+	Coinbase    []byte
+	Root        []byte
+	TxHash      []byte
+	ReceiptHash []byte
+	Difficulty  int64
+	Number      int64
+	GasLimit    int64
+	GasUsed     int64
+	Time        int64
+	ExtraData   []byte
+	MixDigest   []byte
+	Nonce       []byte
+	// golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
+	// for block header. (only block's nonce may go over int64 range)
+	// https://github.com/golang/go/issues/6113
+	// https://github.com/golang/go/issues/9373
+}
+
+// Transaction represents a transaction
+type Transaction struct {
+	Hash      []byte
+	BlockHash []byte
+	From      []byte
+	To        []byte
+	Nonce     int64
+	GasPrice  string
+	GasLimit  int64
+	Amount    string
+	Payload   []byte
+}
+
+// Receipt represents a transaction receipt
+type Receipt struct {
+	Root              []byte
+	Status            uint
+	CumulativeGasUsed int64
+	Bloom             []byte
+	TxHash            []byte
+	ContractAddress   []byte
+	GasUsed           int64
+}
+
 // StateBlock represents the state is at the given block
 type StateBlock struct {
 	Number int64

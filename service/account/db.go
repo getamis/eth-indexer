@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	ecommon "github.com/ethereum/go-ethereum/common"
+	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
@@ -45,7 +45,7 @@ func NewAPIWithWithDB(db *gorm.DB) API {
 	}
 }
 
-func (api *dbAPI) GetBalance(ctx context.Context, address ecommon.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
+func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
 	logger := log.New("addr", address.Hex(), "number", blockNr)
 	// Find state block
 	var stateBlock *model.StateBlock
@@ -65,7 +65,7 @@ func (api *dbAPI) GetBalance(ctx context.Context, address ecommon.Address, block
 	account, err := api.store.FindAccount(address, stateBlock.Number)
 	if err != nil {
 		if common.NotFoundError(err) {
-			balance = ecommon.Big0
+			balance = gethCommon.Big0
 		} else {
 			logger.Error("Failed to find account", "err", err)
 			return nil, nil, err
@@ -83,7 +83,7 @@ func (api *dbAPI) GetBalance(ctx context.Context, address ecommon.Address, block
 }
 
 // TODO: Not verified yet
-func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address ecommon.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
+func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
 	contractCode, err := api.store.FindContractCode(contractAddress)
@@ -122,15 +122,15 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 	return
 }
 
-func getBalance(contractAddress, address ecommon.Address, code *model.ContractCode, contractData *model.Contract) (balance *big.Int, err error) {
+func getBalance(contractAddress, address gethCommon.Address, code *model.ContractCode, contractData *model.Contract) (balance *big.Int, err error) {
 	from := &account{}
 	to := &account{
 		address: contractAddress,
 	}
 
 	// Construct EVM and contract
-	contract := vm.NewContract(from, to, ecommon.Big0, math.MaxUint64)
-	contract.SetCallCode(&contractAddress, ecommon.BytesToHash(code.Hash), ecommon.Hex2Bytes(code.Code))
+	contract := vm.NewContract(from, to, gethCommon.Big0, math.MaxUint64)
+	contract.SetCallCode(&contractAddress, gethCommon.BytesToHash(code.Hash), gethCommon.Hex2Bytes(code.Code))
 	evm := vm.NewEVM(vm.Context{}, nil, params.MainnetChainConfig, vm.Config{})
 	inter := vm.NewInterpreter(evm, vm.Config{})
 

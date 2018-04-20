@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	ecommon "github.com/ethereum/go-ethereum/common"
+	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
@@ -66,7 +66,7 @@ var _ = Describe("Manager Test", func() {
 				Number: big.NewInt(11),
 			}
 			block := types.NewBlock(header, []*types.Transaction{
-				types.NewTransaction(0, ecommon.Address{}, ecommon.Big0, 0, ecommon.Big0, []byte{}),
+				types.NewTransaction(0, gethCommon.Address{}, gethCommon.Big0, 0, gethCommon.Big0, []byte{}),
 			}, []*types.Header{
 				header,
 			}, []*types.Receipt{
@@ -101,7 +101,7 @@ var _ = Describe("Manager Test", func() {
 			manager := NewManager(db)
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-				Root:   ecommon.StringToHash("1234567890"),
+				Root:   gethCommon.StringToHash("1234567890"),
 			})
 
 			dump := &state.Dump{
@@ -135,7 +135,7 @@ var _ = Describe("Manager Test", func() {
 			manager := NewManager(db)
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-				Root:   ecommon.StringToHash("1234567890"),
+				Root:   gethCommon.StringToHash("1234567890"),
 			})
 
 			dump := &state.Dump{
@@ -150,7 +150,7 @@ var _ = Describe("Manager Test", func() {
 		manager := NewManager(db)
 		block1 := types.NewBlockWithHeader(&types.Header{
 			Number: big.NewInt(100),
-			Root:   ecommon.StringToHash("1234567890"),
+			Root:   gethCommon.StringToHash("1234567890"),
 		})
 
 		dump := &state.Dump{

@@ -19,10 +19,11 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/model"
 )
 
 // Hex returns a hash string and lower-case string without '0x'
@@ -35,89 +36,78 @@ func HashHex(hash common.Hash) string {
 	return Hex(hash.Hex())
 }
 
-// AddressHex returns an address hex and lower-case string without '0x'
-func AddressHex(address common.Address) string {
-	return Hex(address.Hex())
+// BytesToHex returns a hex representation (lower-case string without '0x') of a byte array
+func BytesToHex(data []byte) string {
+	return Hex(hexutil.Encode(data))
+}
+
+// HexToBytes returns byte array of a hex string (with or without '0x')
+func HexToBytes(hex string) []byte {
+	return common.FromHex(hex)
 }
 
 // Header converts ethereum block to db block
-func Header(b *types.Block) *pb.BlockHeader {
+func Header(b *types.Block) *model.Header {
 	header := b.Header()
 	nonce := make([]byte, 8)
 	binary.BigEndian.PutUint64(nonce, header.Nonce.Uint64())
 
-	bh := &pb.BlockHeader{
-		Hash:        HashHex(b.Hash()),
-		ParentHash:  HashHex(header.ParentHash),
-		UncleHash:   HashHex(header.UncleHash),
-		Coinbase:    AddressHex(header.Coinbase),
-		Root:        HashHex(header.Root),
-		TxHash:      HashHex(header.TxHash),
-		ReceiptHash: HashHex(header.ReceiptHash),
-		Bloom:       header.Bloom.Bytes(),
+	return &model.Header{
+		Hash:        b.Hash().Bytes(),
+		ParentHash:  header.ParentHash.Bytes(),
+		UncleHash:   header.UncleHash.Bytes(),
+		Coinbase:    header.Coinbase.Bytes(),
+		Root:        header.Root.Bytes(),
+		TxHash:      header.TxHash.Bytes(),
+		ReceiptHash: header.ReceiptHash.Bytes(),
 		Difficulty:  header.Difficulty.Int64(),
 		Number:      header.Number.Int64(),
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time.Uint64(),
+		GasLimit:    int64(header.GasLimit),
+		GasUsed:     int64(header.GasUsed),
+		Time:        header.Time.Int64(),
 		ExtraData:   header.Extra,
-		MixDigest:   HashHex(header.MixDigest),
+		MixDigest:   header.MixDigest.Bytes(),
 		Nonce:       nonce,
 	}
-	return bh
 }
 
 // Transaction converts ethereum transaction to db transaction
-func Transaction(b *types.Block, tx *types.Transaction) (*pb.Transaction, error) {
+func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, error) {
 	signer := types.MakeSigner(params.MainnetChainConfig, b.Number())
 	msg, err := tx.AsMessage(signer)
 	if err != nil {
 		log.Error("Failed to get transaction message", "err", err)
-		return nil, ErrWrongSigner
+		return &model.Transaction{}, ErrWrongSigner
 	}
 
-	// Transaction values
-	v, r, s := tx.RawSignatureValues()
-	to := ""
-	if msg.To() != nil {
-		AddressHex(*msg.To())
-	}
-
-	// Why it's nonce
-	nonce := make([]byte, 8)
-	binary.BigEndian.PutUint64(nonce, msg.Nonce())
-
-	t := &pb.Transaction{
-		Hash:      HashHex(tx.Hash()),
-		BlockHash: HashHex(b.Hash()),
-		From:      AddressHex(msg.From()),
-		To:        to,
-		Nonce:     nonce,
-		GasPrice:  msg.GasPrice().Int64(),
-		GasLimit:  msg.Gas(),
-		Amount:    msg.Value().Int64(),
+	t := &model.Transaction{
+		Hash:      tx.Hash().Bytes(),
+		BlockHash: b.Hash().Bytes(),
+		From:      msg.From().Bytes(),
+		Nonce:     int64(msg.Nonce()),
+		GasPrice:  msg.GasPrice().String(),
+		GasLimit:  int64(msg.Gas()),
+		Amount:    msg.Value().String(),
 		Payload:   msg.Data(),
-		V:         v.Int64(),
-		R:         r.Int64(),
-		S:         s.Int64(),
+	}
+	if msg.To() != nil {
+		t.To = msg.To().Bytes()
 	}
 	return t, nil
 }
 
 // Receipt converts ethereum transaction receipt to db transaction receipt
-func Receipt(receipt *types.Receipt) *pb.TransactionReceipt {
-	contractAddr := ""
-	if receipt.ContractAddress != (common.Address{}) {
-		contractAddr = AddressHex(receipt.ContractAddress)
-	}
-	tr := &pb.TransactionReceipt{
+func Receipt(receipt *types.Receipt) *model.Receipt {
+	r := &model.Receipt{
 		Root:              receipt.PostState,
-		Status:            uint32(receipt.Status),
-		CumulativeGasUsed: receipt.CumulativeGasUsed,
+		Status:            receipt.Status,
+		CumulativeGasUsed: int64(receipt.CumulativeGasUsed),
 		Bloom:             receipt.Bloom.Bytes(),
-		TxHash:            HashHex(receipt.TxHash),
-		ContractAddress:   contractAddr,
-		GasUsed:           receipt.GasUsed,
+		TxHash:            receipt.TxHash.Bytes(),
+		GasUsed:           int64(receipt.GasUsed),
 	}
-	return tr
+	if receipt.ContractAddress != (common.Address{}) {
+		r.ContractAddress = receipt.ContractAddress.Bytes()
+	}
+	return r
 }

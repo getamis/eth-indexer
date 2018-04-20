@@ -2,7 +2,7 @@ package transaction_receipt
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/model"
 )
 
 const (
@@ -10,9 +10,8 @@ const (
 )
 
 type Store interface {
-	Insert(data *pb.TransactionReceipt) error
-	Upsert(data, result *pb.TransactionReceipt) error
-	Find(filter *pb.TransactionReceipt) (result []*pb.TransactionReceipt, err error)
+	Insert(data *model.Receipt) error
+	Find(filter *model.Receipt) (result []model.Receipt, err error)
 }
 
 type store struct {
@@ -25,16 +24,11 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (r *store) Insert(data *pb.TransactionReceipt) error {
+func (r *store) Insert(data *model.Receipt) error {
 	return r.db.Create(data).Error
 }
 
-func (r *store) Upsert(data, result *pb.TransactionReceipt) error {
-	filter := pb.TransactionReceipt{TxHash: data.TxHash}
-	return r.db.Where(filter).Attrs(data).FirstOrCreate(result).Error
-}
-
-func (r *store) Find(filter *pb.TransactionReceipt) (result []*pb.TransactionReceipt, err error) {
+func (r *store) Find(filter *model.Receipt) (result []model.Receipt, err error) {
 	err = r.db.Where(filter).Find(&result).Error
 	return
 }
