@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/mapi/base/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,37 +26,29 @@ func TestTransaction(t *testing.T) {
 
 	store := NewWithDB(db)
 
-	data := &pb.TransactionReceipt{
-		TxHash: "TxHash",
+	data := model.Receipt{
+		CumulativeGasUsed: 43000,
+		Bloom:             []byte{12, 34, 66},
+		TxHash:            common.HexToBytes("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"),
+		ContractAddress:   common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+		GasUsed:           31000,
 	}
 
-	out := &pb.TransactionReceipt{}
-
-	err = store.Upsert(data, out)
+	err = store.Insert(&data)
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.NotNil(t, out, "out shouldn't be nil")
-	assert.Equal(t, out.TxHash, data.TxHash, "TxHash should be equal, exp:%v, got:%v", data.TxHash, out.TxHash)
 
-	out = &pb.TransactionReceipt{}
-	filter := &pb.TransactionReceipt{TxHash: "TxHash"}
-	transactions, err := store.Find(filter)
+	err = store.Insert(&data)
+	assert.Error(t, err, "should get duplicate key error")
+
+	filter := model.Receipt{TxHash: data.TxHash}
+	transactions, err := store.Find(&filter)
 
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 1, "shold have 1 transaction receipt")
+	assert.Len(t, transactions, 1, "should have 1 transaction receipt")
 	assert.Equal(t, transactions[0].TxHash, filter.TxHash, "Hash should be equal, exp:%v, got:%v", filter.TxHash, transactions[0].TxHash)
 
-	filter = &pb.TransactionReceipt{TxHash: "not-exist-hash"}
-	transactions, err = store.Find(filter)
+	filter = model.Receipt{TxHash: common.HexToBytes("not-exist-hash")}
+	transactions, err = store.Find(&filter)
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 0, "shold have 0 transaction receipt")
-
-	// Insert test
-	data2 := &pb.TransactionReceipt{
-		TxHash: "Hash2",
-	}
-	err = store.Insert(data2)
-	assert.NoError(t, err, "shouldn't get error:%v", err)
-
-	err = store.Insert(data2)
-	assert.Error(t, err, "should get duplicate key error")
+	assert.Len(t, transactions, 0, "should have 0 transaction receipt")
 }

@@ -107,15 +107,17 @@ var _ = Describe("Manager Test", func() {
 			dump := &state.Dump{
 				Root: fmt.Sprintf("%x", block1.Root()),
 				Accounts: map[string]state.DumpAccount{
-					"account": {
+					// account
+					common.StringToHex("account"): {
 						Nonce:   100,
 						Balance: "101",
 					},
-					"contract": {
+					// contract
+					common.StringToHex("contract"): {
 						Nonce:    900,
 						Balance:  "901",
 						Code:     "code",
-						CodeHash: "codeHash",
+						CodeHash: common.StringToHex("codeHash"),
 						Storage: map[string]string{
 							"key1": "storage1",
 							"key2": "storage2",

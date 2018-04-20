@@ -5,7 +5,8 @@ import (
 	"testing"
 
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/mapi/base/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,40 +26,32 @@ func TestTransaction(t *testing.T) {
 
 	store := NewWithDB(db)
 
-	data := &pb.Transaction{
-		Hash: "Hash",
-		From: "From",
+	data := model.Transaction{
+		Hash:      common.HexToBytes("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"),
+		BlockHash: common.HexToBytes("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"),
+		From:      common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+		Nonce:     10013,
+		GasPrice:  "123456789",
+		GasLimit:  45000,
+		Amount:    "4840283445",
+		Payload:   []byte{12, 34},
 	}
 
-	out := &pb.Transaction{}
-
-	err = store.Upsert(data, out)
+	err = store.Insert(&data)
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.NotNil(t, out, "out shouldn't be nil")
-	assert.Equal(t, out.Hash, data.Hash, "Hash should be equal, exp:%v, got:%v", data.Hash, out.Hash)
-	assert.Equal(t, out.From, data.From, "From should be equal, exp:%v, got:%v", data.From, out.From)
 
-	out = &pb.Transaction{}
-	filter := &pb.Transaction{Hash: "Hash"}
-	transactions, err := store.Find(filter)
+	err = store.Insert(&data)
+	assert.Error(t, err, "should get duplicate key error")
+
+	filter := model.Transaction{Hash: data.Hash}
+	transactions, err := store.Find(&filter)
 
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 1, "shold have 1 transaction")
+	assert.Len(t, transactions, 1, "should have 1 transaction")
 	assert.Equal(t, transactions[0].Hash, filter.Hash, "Hash should be equal, exp:%v, got:%v", filter.Hash, transactions[0].Hash)
 
-	filter = &pb.Transaction{Hash: "not-exist-hash"}
-	transactions, err = store.Find(filter)
+	filter = model.Transaction{Hash: common.HexToBytes("not-exist-hash")}
+	transactions, err = store.Find(&filter)
 	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 0, "shold have 0 transaction")
-
-	// Insert test
-	data2 := &pb.Transaction{
-		Hash: "Hash2",
-		From: "From",
-	}
-	err = store.Insert(data2)
-	assert.NoError(t, err, "shouldn't get error:%v", err)
-
-	err = store.Insert(data2)
-	assert.Error(t, err, "should get duplicate key error")
+	assert.Len(t, transactions, 0, "should have 0 transaction")
 }

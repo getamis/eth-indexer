@@ -46,6 +46,11 @@ func HexToBytes(hex string) []byte {
 	return common.FromHex(hex)
 }
 
+// StringToHex returns a hex representation (lower-case string without '0x') of a string
+func StringToHex(data string) string {
+	return BytesToHex([]byte(data))
+}
+
 // Header converts ethereum block to db block
 func Header(b *types.Block) *model.Header {
 	header := b.Header()
