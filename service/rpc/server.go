@@ -80,18 +80,19 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 	}
 
 	response := &pb.BlockQueryResponse{
-		Hash:   common.BytesToHex(header.Hash),
-		Number: header.Number,
-		Nonce:  header.Nonce}
+		Block: &pb.Block{
+			Hash:   common.BytesToHex(header.Hash),
+			Number: header.Number,
+			Nonce:  header.Nonce},
+	}
 
 	// get transactions
 	transactions, err := s.txStore.FindTransactionsByBlockHash(common.HexToBytes(req.Hash))
 	if err != nil {
 		return response, err
 	}
-	//var tqrs []*pb.TransactionQueryResponse
 	for _, transaction := range transactions {
-		txResponse := &pb.TransactionQueryResponse{
+		tx := &pb.Transaction{
 			Hash:     common.BytesToHex(transaction.Hash),
 			From:     common.BytesToHex(transaction.From),
 			Nonce:    transaction.Nonce,
@@ -101,10 +102,9 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 			Payload:  transaction.Payload,
 		}
 		if transaction.To != nil {
-			txResponse.To = common.BytesToHex(transaction.To)
+			tx.To = common.BytesToHex(transaction.To)
 		}
-		response.Transactions = append(response.Transactions, txResponse)
-		//tqrs = append(tqrs, txResponse)
+		response.Txs = append(response.Txs, tx)
 	}
 	return response, nil
 }
@@ -117,8 +117,7 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 	if err != nil {
 		return nil, err
 	}
-
-	return &pb.TransactionQueryResponse{
+	return &pb.TransactionQueryResponse{Tx: &pb.Transaction{
 		Hash:     common.BytesToHex(transaction.Hash),
 		From:     common.BytesToHex(transaction.From),
 		To:       common.BytesToHex(transaction.To),
@@ -127,5 +126,5 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 		GasLimit: transaction.GasLimit,
 		Amount:   transaction.Amount,
 		Payload:  transaction.Payload,
-	}, nil
+	}}, nil
 }

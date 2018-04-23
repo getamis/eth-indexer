@@ -18,6 +18,10 @@ message TransactionQueryRequest {
 }
 
 message TransactionQueryResponse {
+  Transaction tx = 1;
+}
+
+message Transaction {
   string hash = 1;
   string from = 2;
   string to = 3;

@@ -19,10 +19,14 @@ message BlockQueryRequest {
 }
 
 message BlockQueryResponse {
+  Block block = 1;
+  repeated Transaction txs = 2;
+}
+
+message Block {
   string hash = 1;
   int64 number = 2;
   bytes nonce = 3;
-  repeated TransactionQueryResponse transactions = 4;
 }
 
 service BlockService {
