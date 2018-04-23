@@ -13,8 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func makeHeader(number int64, hashHex string) model.Header {
-	return model.Header{
+func makeHeader(number int64, hashHex string) *model.Header {
+	return &model.Header{
 		Hash:        common.HexToBytes(hashHex),
 		ParentHash:  common.HexToBytes("0x35b9253b70be351059982e8d6a218146a18ef9b723e560c7efc540629b4e75f2"),
 		UncleHash:   common.HexToBytes("0x2d6159f94932bd669c7161e2563ea4cc0fbf848dd59adbed7df3da74072edd50"),
@@ -55,39 +55,76 @@ var _ = Describe("Block Header Database Test", func() {
 		mysql.Stop()
 	})
 
-	It("should get latest header", func() {
+	BeforeEach(func() {
+		db.Table(TableName).Delete(&model.Header{})
+	})
+
+	It("should get header by hash", func() {
 		store := NewWithDB(db)
+
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 
-		store.Insert(&data1)
-		store.Insert(&data2)
+		store.Insert(data1)
+		store.Insert(data2)
 
-		filter := model.Header{Hash: data1.Hash}
-		result, err := store.Find(&filter)
+		result, err := store.FindBlockByHash(data1.Hash)
 		Expect(err).Should(Succeed())
-		Expect(result[0].Number).Should(Equal(data1.Number))
+		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
 
-		filter = model.Header{Number: data2.Number}
-		result, err = store.Find(&filter)
+		result, err = store.FindBlockByHash(data2.Hash)
 		Expect(err).Should(Succeed())
-		Expect(result[0].Number).Should(Equal(data2.Number))
+		Expect(reflect.DeepEqual(*result, *data2)).Should(BeTrue())
 
 		lastResult, err := store.Last()
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*lastResult, data2)).Should(BeTrue())
+		Expect(reflect.DeepEqual(*lastResult, *data2)).Should(BeTrue())
+	})
+
+	It("should get header by number", func() {
+		store := NewWithDB(db)
+
+		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+
+		store.Insert(data1)
+		store.Insert(data2)
+
+		result, err := store.FindBlockByNumber(data1.Number)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
+
+		result, err = store.FindBlockByNumber(data2.Number)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*result, *data2)).Should(BeTrue())
 	})
 
 	It("should insert one new record in database", func() {
 		By("insert new one header")
 		store := NewWithDB(db)
-		data := makeHeader(1000302, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		err := store.Insert(&data)
+		data := makeHeader(1000300, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		err := store.Insert(data)
 		Expect(err).Should(Succeed())
 
 		By("failed to insert again")
-		err = store.Insert(&data)
+		err = store.Insert(data)
 		Expect(err).ShouldNot(BeNil())
+	})
+
+	It("should get the last header", func() {
+		store := NewWithDB(db)
+
+		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data3 := makeHeader(1000303, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+
+		store.Insert(data1)
+		store.Insert(data2)
+		store.Insert(data3)
+
+		lastResult, err := store.Last()
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*lastResult, *data3)).Should(BeTrue())
 	})
 })
 

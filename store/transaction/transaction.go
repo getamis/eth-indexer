@@ -11,7 +11,8 @@ const (
 
 type Store interface {
 	Insert(data *model.Transaction) error
-	Find(filter *model.Transaction) (result []model.Transaction, err error)
+	FindTransaction(hash []byte) (result *model.Transaction, err error)
+	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 }
 
 type store struct {
@@ -28,7 +29,13 @@ func (t *store) Insert(data *model.Transaction) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) Find(filter *model.Transaction) (result []model.Transaction, err error) {
-	err = t.db.Where(filter).Find(&result).Error
+func (t *store) FindTransaction(hash []byte) (result *model.Transaction, err error) {
+	result = &model.Transaction{}
+	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	return
+}
+
+func (t *store) FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error) {
+	err = t.db.Where("BINARY block_hash = ?", blockHash).Find(&result).Error
 	return
 }

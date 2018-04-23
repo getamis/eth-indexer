@@ -2,53 +2,98 @@ package transaction_receipt
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/mapi/base/test"
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestTransaction(t *testing.T) {
-	mysql, err := test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
-	assert.NotNil(t, mysql)
-	assert.NoError(t, err)
-	assert.NoError(t, mysql.Start())
-	defer mysql.Stop()
-
-	db, err := gorm.Open("mysql", mysql.URL)
-	assert.NoError(t, err, "should be no error")
-	assert.NotNil(t, db, "should not be nil")
-
-	db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
-
-	store := NewWithDB(db)
-
-	data := model.Receipt{
+func makeReceipt(txHex string) *model.Receipt {
+	return &model.Receipt{
 		CumulativeGasUsed: 43000,
 		Bloom:             []byte{12, 34, 66},
-		TxHash:            common.HexToBytes("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"),
+		TxHash:            common.HexToBytes(txHex),
 		ContractAddress:   common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
 		GasUsed:           31000,
 	}
+}
 
-	err = store.Insert(&data)
-	assert.NoError(t, err, "shouldn't get error:%v", err)
+var _ = Describe("Receipt Database Test", func() {
+	var (
+		mysql *test.MySQLContainer
+		db    *gorm.DB
+	)
+	BeforeSuite(func() {
+		var err error
+		mysql, err = test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
+		Expect(mysql).ShouldNot(BeNil())
+		Expect(err).Should(Succeed())
+		Expect(mysql.Start()).Should(Succeed())
 
-	err = store.Insert(&data)
-	assert.Error(t, err, "should get duplicate key error")
+		db, err = gorm.Open("mysql", mysql.URL)
+		Expect(err).Should(Succeed())
+		Expect(db).ShouldNot(BeNil())
 
-	filter := model.Receipt{TxHash: data.TxHash}
-	transactions, err := store.Find(&filter)
+		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
+	})
 
-	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 1, "should have 1 transaction receipt")
-	assert.Equal(t, transactions[0].TxHash, filter.TxHash, "Hash should be equal, exp:%v, got:%v", filter.TxHash, transactions[0].TxHash)
+	AfterSuite(func() {
+		mysql.Stop()
+	})
 
-	filter = model.Receipt{TxHash: common.HexToBytes("not-exist-hash")}
-	transactions, err = store.Find(&filter)
-	assert.NoError(t, err, "shouldn't get error:%v", err)
-	assert.Len(t, transactions, 0, "should have 0 transaction receipt")
+	BeforeEach(func() {
+		db.Table(TableName).Delete(&model.Transaction{})
+	})
+
+	It("should insert", func() {
+		store := NewWithDB(db)
+
+		data1 := makeReceipt("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeReceipt("0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+
+		By("insert new receipt")
+		err := store.Insert(data1)
+		Expect(err).Should(Succeed())
+
+		By("fail to insert the same receipt")
+		err = store.Insert(data1)
+		Expect(err).ShouldNot(BeNil())
+
+		By("insert another new receipt")
+		err = store.Insert(data2)
+		Expect(err).Should(Succeed())
+	})
+
+	It("should get receipt by hash", func() {
+		store := NewWithDB(db)
+
+		data1 := makeReceipt("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeReceipt("0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		err := store.Insert(data1)
+		Expect(err).Should(Succeed())
+		err = store.Insert(data2)
+		Expect(err).Should(Succeed())
+
+		receipt, err := store.FindReceipt(data1.TxHash)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*receipt, *data1)).Should(BeTrue())
+
+		receipt, err = store.FindReceipt(data2.TxHash)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*receipt, *data2)).Should(BeTrue())
+
+		receipt, err = store.FindReceipt(common.HexToBytes("0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"))
+		Expect(common.NotFoundError(err)).Should(BeTrue())
+		Expect(reflect.DeepEqual(*receipt, model.Receipt{})).Should(BeTrue())
+	})
+})
+
+func TestReceipt(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Receipt Test")
 }

@@ -11,7 +11,7 @@ const (
 
 type Store interface {
 	Insert(data *model.Receipt) error
-	Find(filter *model.Receipt) (result []model.Receipt, err error)
+	FindReceipt(hash []byte) (result *model.Receipt, err error)
 }
 
 type store struct {
@@ -28,7 +28,8 @@ func (r *store) Insert(data *model.Receipt) error {
 	return r.db.Create(data).Error
 }
 
-func (r *store) Find(filter *model.Receipt) (result []model.Receipt, err error) {
-	err = r.db.Where(filter).Find(&result).Error
+func (r *store) FindReceipt(hash []byte) (result *model.Receipt, err error) {
+	result = &model.Receipt{}
+	err = r.db.Where("BINARY tx_hash = ?", hash).Limit(1).Find(result).Error
 	return
 }

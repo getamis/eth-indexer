@@ -19,7 +19,6 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/account"
 	"github.com/maichain/eth-indexer/service/pb"
 	bhStore "github.com/maichain/eth-indexer/store/block_header"
@@ -28,8 +27,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	datetimeFormat = "2006-01-02 15:04:05.000"
+var (
+	EmptyBlockResponse = pb.BlockQueryResponse{}
+	EmptyTxResponse    = pb.TransactionQueryResponse{}
 )
 
 type server struct {
@@ -71,23 +71,25 @@ func (s *server) Shutdown() {
 
 // Implement grpc functions
 func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
-	headers, err := s.bhStore.Find(&model.Header{
-		Hash: common.HexToBytes(req.Hash),
-	})
+	header, err := s.bhStore.FindBlockByHash(common.HexToBytes(req.Hash))
+	if common.NotFoundError(err) {
+		return &EmptyBlockResponse, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	// get the only block header of results
-	header := headers[0]
+
+	response := &pb.BlockQueryResponse{
+		Hash:   common.BytesToHex(header.Hash),
+		Number: header.Number,
+		Nonce:  header.Nonce}
 
 	// get transactions
-	transactions, err := s.txStore.Find(&model.Transaction{
-		BlockHash: common.HexToBytes(req.Hash),
-	})
+	transactions, err := s.txStore.FindTransactionsByBlockHash(common.HexToBytes(req.Hash))
 	if err != nil {
-		return nil, err
+		return response, err
 	}
-	var tqrs []*pb.TransactionQueryResponse
+	//var tqrs []*pb.TransactionQueryResponse
 	for _, transaction := range transactions {
 		txResponse := &pb.TransactionQueryResponse{
 			Hash:     common.BytesToHex(transaction.Hash),
@@ -101,26 +103,20 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 		if transaction.To != nil {
 			txResponse.To = common.BytesToHex(transaction.To)
 		}
-		tqrs = append(tqrs, txResponse)
+		response.Transactions = append(response.Transactions, txResponse)
+		//tqrs = append(tqrs, txResponse)
 	}
-
-	return &pb.BlockQueryResponse{
-		Hash:         common.BytesToHex(header.Hash),
-		Number:       header.Number,
-		Nonce:        header.Nonce,
-		Transactions: tqrs,
-	}, nil
+	return response, nil
 }
 
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
-	transactions, err := s.txStore.Find(&model.Transaction{
-		Hash: common.HexToBytes(req.Hash),
-	})
+	transaction, err := s.txStore.FindTransaction(common.HexToBytes(req.Hash))
+	if common.NotFoundError(err) {
+		return &EmptyTxResponse, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	// get the only transaction of results
-	transaction := transactions[0]
 
 	return &pb.TransactionQueryResponse{
 		Hash:     common.BytesToHex(transaction.Hash),

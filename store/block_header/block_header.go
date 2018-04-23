@@ -11,7 +11,8 @@ const (
 
 type Store interface {
 	Insert(data *model.Header) error
-	Find(filter *model.Header) (result []model.Header, err error)
+	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
+	FindBlockByHash(hash []byte) (result *model.Header, err error)
 	// Last returns the header with the greatest number
 	Last() (result *model.Header, err error)
 }
@@ -30,8 +31,15 @@ func (t *store) Insert(data *model.Header) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) Find(filter *model.Header) (result []model.Header, err error) {
-	err = t.db.Where(filter).Find(&result).Error
+func (t *store) FindBlockByNumber(blockNumber int64) (result *model.Header, err error) {
+	result = &model.Header{}
+	err = t.db.Where("number = ?", blockNumber).Limit(1).Find(result).Error
+	return
+}
+
+func (t *store) FindBlockByHash(hash []byte) (result *model.Header, err error) {
+	result = &model.Header{}
+	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 
