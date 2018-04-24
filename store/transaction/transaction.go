@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/model"
 )
 
 const (
@@ -10,9 +10,9 @@ const (
 )
 
 type Store interface {
-	Insert(data *pb.Transaction) error
-	Upsert(data, result *pb.Transaction) error
-	Find(filter *pb.Transaction) (result []*pb.Transaction, err error)
+	Insert(data *model.Transaction) error
+	FindTransaction(hash []byte) (result *model.Transaction, err error)
+	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 }
 
 type store struct {
@@ -25,16 +25,17 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) Insert(data *pb.Transaction) error {
+func (t *store) Insert(data *model.Transaction) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) Upsert(data, result *pb.Transaction) error {
-	filter := pb.Transaction{Hash: data.Hash}
-	return t.db.Where(filter).Attrs(data).FirstOrCreate(result).Error
+func (t *store) FindTransaction(hash []byte) (result *model.Transaction, err error) {
+	result = &model.Transaction{}
+	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	return
 }
 
-func (t *store) Find(filter *pb.Transaction) (result []*pb.Transaction, err error) {
-	err = t.db.Where(filter).Find(&result).Error
+func (t *store) FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error) {
+	err = t.db.Where("BINARY block_hash = ?", blockHash).Find(&result).Error
 	return
 }

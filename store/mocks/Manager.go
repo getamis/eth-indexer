@@ -2,8 +2,7 @@
 package mocks
 
 import mock "github.com/stretchr/testify/mock"
-import model "github.com/maichain/eth-indexer/store/model"
-import pb "github.com/maichain/eth-indexer/service/pb"
+import model "github.com/maichain/eth-indexer/model"
 import state "github.com/ethereum/go-ethereum/core/state"
 
 import types "github.com/ethereum/go-ethereum/core/types"
@@ -28,15 +27,15 @@ func (_m *Manager) InsertBlock(block *types.Block, receipts []*types.Receipt) er
 }
 
 // LatestHeader provides a mock function with given fields:
-func (_m *Manager) LatestHeader() (*pb.BlockHeader, error) {
+func (_m *Manager) LatestHeader() (*model.Header, error) {
 	ret := _m.Called()
 
-	var r0 *pb.BlockHeader
-	if rf, ok := ret.Get(0).(func() *pb.BlockHeader); ok {
+	var r0 *model.Header
+	if rf, ok := ret.Get(0).(func() *model.Header); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.BlockHeader)
+			r0 = ret.Get(0).(*model.Header)
 		}
 	}
 

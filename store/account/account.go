@@ -17,7 +17,7 @@ package account
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/store/model"
+	"github.com/maichain/eth-indexer/model"
 )
 
 const (

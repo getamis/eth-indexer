@@ -17,14 +17,13 @@ package store
 import (
 	"encoding/json"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/store/account"
 	header "github.com/maichain/eth-indexer/store/block_header"
-	"github.com/maichain/eth-indexer/store/model"
 	"github.com/maichain/eth-indexer/store/transaction"
 	receipt "github.com/maichain/eth-indexer/store/transaction_receipt"
 )
@@ -38,7 +37,7 @@ type Manager interface {
 	// UpdateState updates states for the given blocks
 	UpdateState(block *types.Block, dump *state.Dump) error
 	// LatestHeader returns a latest header from db
-	LatestHeader() (*pb.BlockHeader, error)
+	LatestHeader() (*model.Header, error)
 	// LatestStateBlock returns a latest state block from db
 	LatestStateBlock() (*model.StateBlock, error)
 }
@@ -63,13 +62,13 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 	}()
 
 	// TODO: how to ensure all data are inserted?
-	err = headerStore.Insert(Header(block))
+	err = headerStore.Insert(common.Header(block))
 	if err != nil {
 		return err
 	}
 
 	for _, t := range block.Transactions() {
-		tx, err := Transaction(block, t)
+		tx, err := common.Transaction(block, t)
 		if err != nil {
 			return err
 		}
@@ -80,7 +79,7 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 	}
 
 	for _, r := range receipts {
-		err = receiptStore.Insert(Receipt(r))
+		err = receiptStore.Insert(common.Receipt(r))
 		if err != nil {
 			return err
 		}
@@ -89,15 +88,15 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 	return nil
 }
 
-func (m *manager) LatestHeader() (*pb.BlockHeader, error) {
+func (m *manager) LatestHeader() (*model.Header, error) {
 	hs := header.NewWithDB(m.db)
 	return hs.Last()
 }
 
 func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) {
 	// Ensure the state root is the same
-	if HashHex(block.Root()) != dump.Root {
-		return ErrInconsistentRoot
+	if common.HashHex(block.Root()) != dump.Root {
+		return common.ErrInconsistentRoot
 	}
 
 	dbtx := m.db.Begin()
@@ -142,7 +141,7 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	if err != nil {
 		dbtx.Rollback()
 		// If it's a duplicate key error, ignore it
-		if DuplicateError(err) {
+		if common.DuplicateError(err) {
 			err = nil
 		}
 		return err
@@ -153,12 +152,12 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 func insertContract(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
 	// Insert contract code
 	err := accountStore.InsertContractCode(model.ContractCode{
-		Address: common.HexToAddress(addr).Bytes(),
-		Hash:    common.HexToHash(account.CodeHash).Bytes(),
+		Address: common.HexToBytes(addr),
+		Hash:    common.HexToBytes(account.CodeHash),
 		Code:    account.Code,
 	})
 	// Ignore duplicate error
-	if err != nil && !DuplicateError(err) {
+	if err != nil && !common.DuplicateError(err) {
 		return err
 	}
 
@@ -170,10 +169,10 @@ func insertContract(accountStore account.Store, blockNumber int64, addr string, 
 	// Insert contract state
 	return accountStore.InsertContract(model.Contract{
 		BlockNumber: blockNumber,
-		Address:     common.HexToAddress(addr).Bytes(),
+		Address:     common.HexToBytes(addr),
 		Balance:     account.Balance,
 		Nonce:       int64(account.Nonce),
-		Root:        common.HexToHash(account.Root).Bytes(),
+		Root:        common.HexToBytes(account.Root),
 		Storage:     storage,
 	})
 }
@@ -181,7 +180,7 @@ func insertContract(accountStore account.Store, blockNumber int64, addr string, 
 func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
 	return accountStore.InsertAccount(model.Account{
 		BlockNumber: blockNumber,
-		Address:     common.HexToAddress(addr).Bytes(),
+		Address:     common.HexToBytes(addr),
 		Balance:     account.Balance,
 		Nonce:       int64(account.Nonce),
 	})

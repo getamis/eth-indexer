@@ -7,20 +7,15 @@
 	It is generated from these files:
 		github.com/maichain/eth-indexer/service/pb/account.proto
 		github.com/maichain/eth-indexer/service/pb/block.proto
-		github.com/maichain/eth-indexer/service/pb/block_header.proto
 		github.com/maichain/eth-indexer/service/pb/transaction.proto
-		github.com/maichain/eth-indexer/service/pb/transaction_receipt.proto
 
 	It has these top-level messages:
 		GetBalanceRequest
 		GetBalanceResponse
 		BlockQueryRequest
 		BlockQueryResponse
-		BlockHeader
-		Transaction
 		TransactionQueryRequest
 		TransactionQueryResponse
-		TransactionReceipt
 */
 package pb
 

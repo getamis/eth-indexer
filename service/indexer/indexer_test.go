@@ -25,10 +25,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/maichain/eth-indexer/model"
 	indexerMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
-	"github.com/maichain/eth-indexer/service/pb"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
-	"github.com/maichain/eth-indexer/store/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -59,7 +58,7 @@ var _ = Describe("Indexer Test", func() {
 		It("should be ok", func() {
 			// blocks from 11 to 15 are ethereum
 			// receive 18, 19 blocks from header channel
-			mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+			mockStoreManager.On("LatestHeader").Return(&model.Header{
 				Number: 10,
 			}, nil).Once()
 			mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -117,7 +116,7 @@ var _ = Describe("Indexer Test", func() {
 
 		Context("with something wrong", func() {
 			It("failed to subscribe new head", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -163,7 +162,7 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to insert block to db", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -191,7 +190,7 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to get transaction receipt", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -218,7 +217,7 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to get block by number", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -237,7 +236,7 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to get block by number (the first time)", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
@@ -250,7 +249,7 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to get state block", func() {
-				mockStoreManager.On("LatestHeader").Return(&pb.BlockHeader{
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(nil, unknownErr).Once()
