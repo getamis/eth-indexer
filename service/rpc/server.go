@@ -17,13 +17,9 @@ import (
 	"context"
 
 	"github.com/getamis/sirius/log"
-	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/service/account"
 	"github.com/maichain/eth-indexer/service/pb"
-	bhStore "github.com/maichain/eth-indexer/store/block_header"
-	txStore "github.com/maichain/eth-indexer/store/transaction"
-	trStore "github.com/maichain/eth-indexer/store/transaction_receipt"
+	"github.com/maichain/eth-indexer/store"
 	"google.golang.org/grpc"
 )
 
@@ -33,21 +29,15 @@ var (
 )
 
 type server struct {
-	accountAPI account.API
-	bhStore    bhStore.Store
-	txStore    txStore.Store
-	trStore    trStore.Store
-	logger     log.Logger
+	manager store.ServiceManager
+	logger  log.Logger
 }
 
-func New(db *gorm.DB) *server {
+func New(manager store.ServiceManager) *server {
 	logger := log.New("ws", "grpc")
 	return &server{
-		accountAPI: account.NewAPIWithWithDB(db),
-		bhStore:    bhStore.NewWithDB(db),
-		txStore:    txStore.NewWithDB(db),
-		trStore:    trStore.NewWithDB(db),
-		logger:     logger,
+		manager: manager,
+		logger:  logger,
 	}
 }
 
@@ -71,7 +61,8 @@ func (s *server) Shutdown() {
 
 // Implement grpc functions
 func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
-	header, err := s.bhStore.FindBlockByHash(common.HexToBytes(req.Hash))
+	hashBytes := common.HexToBytes(req.Hash)
+	header, err := s.manager.FindBlockByHash(hashBytes)
 	if common.NotFoundError(err) {
 		return &EmptyBlockResponse, nil
 	}
@@ -87,7 +78,7 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 	}
 
 	// get transactions
-	transactions, err := s.txStore.FindTransactionsByBlockHash(common.HexToBytes(req.Hash))
+	transactions, err := s.manager.FindTransactionsByBlockHash(hashBytes)
 	if err != nil {
 		return response, err
 	}
@@ -110,7 +101,7 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 }
 
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
-	transaction, err := s.txStore.FindTransaction(common.HexToBytes(req.Hash))
+	transaction, err := s.manager.FindTransaction(common.HexToBytes(req.Hash))
 	if common.NotFoundError(err) {
 		return &EmptyTxResponse, nil
 	}
