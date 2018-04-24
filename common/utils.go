@@ -26,6 +26,11 @@ import (
 	"github.com/maichain/eth-indexer/model"
 )
 
+// QueryLatestBlock returns true if blockNumber < 0 and false otherwise.
+func QueryLatestBlock(blockNumber int64) bool {
+	return blockNumber < 0
+}
+
 // Hex returns a hash string and lower-case string without '0x'
 func Hex(str string) string {
 	return strings.ToLower(strings.TrimPrefix(str, "0x"))

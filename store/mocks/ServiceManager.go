@@ -58,6 +58,29 @@ func (_m *ServiceManager) FindBlockByNumber(blockNumber int64) (*model.Header, e
 	return r0, r1
 }
 
+// FindLatestBlock provides a mock function with given fields:
+func (_m *ServiceManager) FindLatestBlock() (*model.Header, error) {
+	ret := _m.Called()
+
+	var r0 *model.Header
+	if rf, ok := ret.Get(0).(func() *model.Header); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Header)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FindTransaction provides a mock function with given fields: hash
 func (_m *ServiceManager) FindTransaction(hash []byte) (*model.Transaction, error) {
 	ret := _m.Called(hash)

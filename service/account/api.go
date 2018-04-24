@@ -34,7 +34,3 @@ type API interface {
 	// we don't have state in the input one.
 	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
 }
-
-func isLatestBlock(num int64) bool {
-	return num < 0
-}

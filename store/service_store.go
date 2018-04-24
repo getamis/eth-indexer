@@ -33,6 +33,7 @@ import (
 type ServiceManager interface {
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
+	FindLatestBlock() (result *model.Header, err error)
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 	GetBalance(ctx context.Context, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
@@ -60,6 +61,10 @@ func (s *serviceManager) FindBlockByNumber(blockNumber int64) (result *model.Hea
 
 func (s *serviceManager) FindBlockByHash(hash []byte) (result *model.Header, err error) {
 	return s.bhStore.FindBlockByHash(hash)
+}
+
+func (s *serviceManager) FindLatestBlock() (result *model.Header, err error) {
+	return s.bhStore.Last()
 }
 
 func (s *serviceManager) FindTransaction(hash []byte) (result *model.Transaction, err error) {

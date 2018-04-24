@@ -43,7 +43,7 @@ var _ = Describe("Server Balance Test", func() {
 	})
 
 	Context("GetBalance()", func() {
-		ctx, _ := context.WithCancel(context.Background())
+		ctx := context.Background()
 
 		Context("bad block number", func() {
 			It("returns error", func() {

@@ -115,11 +115,13 @@ var _ = Describe("Server Test", func() {
 	})
 
 	Context("GetBlockByHash()", func() {
-		ctx, _ := context.WithCancel(context.Background())
+		ctx := context.Background()
+		blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
+		req := &pb.BlockQueryRequest{Hash: blockHashHex}
 
 		Context("block exists", func() {
 			It("returns the block", func() {
-				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
+
 				header := makeHeader(1000300, blockHashHex)
 				mockServiceManager.On("FindBlockByHash", common.HexToBytes(blockHashHex)).Return(header, nil).Once()
 				numTx := 10
@@ -128,7 +130,6 @@ var _ = Describe("Server Test", func() {
 					txs[i] = makeTx(common.StringToHex("transaction_"+strconv.Itoa(int(i))), blockHashHex)
 				}
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(txs, nil).Once()
-				req := &pb.BlockQueryRequest{Hash: blockHashHex}
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).Should(Succeed())
 				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, txs))).Should(BeTrue())
@@ -137,9 +138,7 @@ var _ = Describe("Server Test", func() {
 
 		Context("block does not exist", func() {
 			It("returns error", func() {
-				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				mockServiceManager.On("FindBlockByHash", common.HexToBytes(blockHashHex)).Return(nil, gorm.ErrRecordNotFound).Once()
-				req := &pb.BlockQueryRequest{Hash: blockHashHex}
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
@@ -148,20 +147,16 @@ var _ = Describe("Server Test", func() {
 
 		Context("transient error", func() {
 			It("returns nothing", func() {
-				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				mockServiceManager.On("FindBlockByHash", common.HexToBytes(blockHashHex)).Return(nil, driver.ErrBadConn).Once()
-				req := &pb.BlockQueryRequest{Hash: blockHashHex}
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
 			})
 
 			It("returns whatever it has got", func() {
-				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				header := makeHeader(1000300, blockHashHex)
 				mockServiceManager.On("FindBlockByHash", common.HexToBytes(blockHashHex)).Return(header, nil).Once()
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(nil, driver.ErrBadConn).Once()
-				req := &pb.BlockQueryRequest{Hash: blockHashHex}
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, []*model.Transaction{}))).Should(BeTrue())
@@ -169,15 +164,75 @@ var _ = Describe("Server Test", func() {
 		})
 	})
 
+	Context("GetBlockByNumber()", func() {
+		ctx := context.Background()
+		blockNum := int64(1000300)
+		req := &pb.BlockQueryRequest{Number: blockNum}
+
+		Context("bad block number", func() {
+			It("returns error", func() {
+				req := &pb.BlockQueryRequest{Number: -2}
+				res, err := svr.GetBlockByNumber(ctx, req)
+				Expect(err).Should(BeEquivalentTo(ErrInvalidBlockNumber))
+				Expect(res).Should(BeNil())
+			})
+		})
+
+		Context("block exists", func() {
+			It("returns the block", func() {
+				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
+				header := makeHeader(blockNum, blockHashHex)
+				mockServiceManager.On("FindBlockByNumber", blockNum).Return(header, nil).Once()
+				numTx := 10
+				txs := make([]*model.Transaction, numTx)
+				for i := 0; i < numTx; i++ {
+					txs[i] = makeTx(common.StringToHex("transaction_"+strconv.Itoa(int(i))), blockHashHex)
+				}
+				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(txs, nil).Once()
+				res, err := svr.GetBlockByNumber(ctx, req)
+				Expect(err).Should(Succeed())
+				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, txs))).Should(BeTrue())
+			})
+		})
+
+		Context("block does not exist", func() {
+			It("returns error", func() {
+				mockServiceManager.On("FindBlockByNumber", blockNum).Return(nil, gorm.ErrRecordNotFound).Once()
+				res, err := svr.GetBlockByNumber(ctx, req)
+				Expect(err).ShouldNot(BeNil())
+				Expect(res).Should(BeNil())
+			})
+		})
+
+		Context("transient error", func() {
+			It("returns nothing", func() {
+				mockServiceManager.On("FindBlockByNumber", blockNum).Return(nil, driver.ErrBadConn).Once()
+				res, err := svr.GetBlockByNumber(ctx, req)
+				Expect(err).ShouldNot(BeNil())
+				Expect(res).Should(BeNil())
+			})
+
+			It("returns whatever it has got", func() {
+				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
+				header := makeHeader(blockNum, blockHashHex)
+				mockServiceManager.On("FindBlockByNumber", blockNum).Return(header, nil).Once()
+				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(nil, driver.ErrBadConn).Once()
+				res, err := svr.GetBlockByNumber(ctx, req)
+				Expect(err).ShouldNot(BeNil())
+				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, []*model.Transaction{}))).Should(BeTrue())
+			})
+		})
+	})
+
 	Context("GetTransactionByHash()", func() {
-		ctx, _ := context.WithCancel(context.Background())
+		ctx := context.Background()
+		txHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
+		req := &pb.TransactionQueryRequest{Hash: txHashHex}
 
 		Context("tx exists", func() {
 			It("returns the block", func() {
-				txHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				tx := makeTx(txHashHex, "0x88bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 				mockServiceManager.On("FindTransaction", tx.Hash).Return(tx, nil).Once()
-				req := &pb.TransactionQueryRequest{Hash: txHashHex}
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).Should(Succeed())
 				Expect(reflect.DeepEqual(*res, *makeTxQueryResponse(tx))).Should(BeTrue())
@@ -186,9 +241,7 @@ var _ = Describe("Server Test", func() {
 
 		Context("tx does not exist", func() {
 			It("returns empty response", func() {
-				txHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				mockServiceManager.On("FindTransaction", common.HexToBytes(txHashHex)).Return(nil, gorm.ErrRecordNotFound).Once()
-				req := &pb.TransactionQueryRequest{Hash: txHashHex}
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
@@ -197,9 +250,7 @@ var _ = Describe("Server Test", func() {
 
 		Context("transient error", func() {
 			It("returns nothing", func() {
-				txHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				mockServiceManager.On("FindTransaction", common.HexToBytes(txHashHex)).Return(nil, driver.ErrBadConn).Once()
-				req := &pb.TransactionQueryRequest{Hash: txHashHex}
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())

@@ -18,6 +18,7 @@ import (
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
 	"google.golang.org/grpc"
@@ -70,9 +71,49 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 	}
 
 	// get transactions
-	transactions, err := s.manager.FindTransactionsByBlockHash(hashBytes)
+	err = s.buildTransactionsForBlock(hashBytes, response)
 	if err != nil {
 		return response, err
+	}
+	return response, nil
+}
+
+func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
+	if req.Number < latestBlockNumber {
+		log.Error("Invalid block number")
+		return nil, ErrInvalidBlockNumber
+	}
+
+	var header *model.Header
+	var err error
+	if common.QueryLatestBlock(req.Number) {
+		header, err = s.manager.FindLatestBlock()
+	} else {
+		header, err = s.manager.FindBlockByNumber(req.Number)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	response := &pb.BlockQueryResponse{
+		Block: &pb.Block{
+			Hash:   common.BytesToHex(header.Hash),
+			Number: header.Number,
+			Nonce:  header.Nonce},
+	}
+
+	// get transactions
+	err = s.buildTransactionsForBlock(header.Hash, response)
+	if err != nil {
+		return response, err
+	}
+	return response, nil
+}
+
+func (s *server) buildTransactionsForBlock(blockHash []byte, resp *pb.BlockQueryResponse) (err error) {
+	transactions, err := s.manager.FindTransactionsByBlockHash(blockHash)
+	if err != nil {
+		return err
 	}
 	for _, transaction := range transactions {
 		tx := &pb.Transaction{
@@ -87,9 +128,9 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 		if transaction.To != nil {
 			tx.To = common.BytesToHex(transaction.To)
 		}
-		response.Txs = append(response.Txs, tx)
+		resp.Txs = append(resp.Txs, tx)
 	}
-	return response, nil
+	return nil
 }
 
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {

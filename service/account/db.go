@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
+	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/account/contracts"
 	accountStore "github.com/maichain/eth-indexer/store/account"
@@ -48,7 +49,7 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	logger := log.New("addr", address.Hex(), "number", blockNr)
 	// Find state block
 	var stateBlock *model.StateBlock
-	if isLatestBlock(blockNr) {
+	if common.QueryLatestBlock(blockNr) {
 		stateBlock, err = api.store.FindStateBlock(address)
 	} else {
 		stateBlock, err = api.store.FindStateBlock(address, blockNr)
@@ -89,7 +90,7 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 
 	// Find state block
 	var stateBlock *model.StateBlock
-	if isLatestBlock(blockNr) {
+	if common.QueryLatestBlock(blockNr) {
 		stateBlock, err = api.store.FindStateBlock(address)
 	} else {
 		stateBlock, err = api.store.FindStateBlock(address, blockNr)
