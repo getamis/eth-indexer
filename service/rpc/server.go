@@ -23,11 +23,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	EmptyBlockResponse = pb.BlockQueryResponse{}
-	EmptyTxResponse    = pb.TransactionQueryResponse{}
-)
-
 type server struct {
 	manager store.ServiceManager
 	logger  log.Logger
@@ -63,9 +58,6 @@ func (s *server) Shutdown() {
 func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) (*pb.BlockQueryResponse, error) {
 	hashBytes := common.HexToBytes(req.Hash)
 	header, err := s.manager.FindBlockByHash(hashBytes)
-	if common.NotFoundError(err) {
-		return &EmptyBlockResponse, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +94,6 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
 	transaction, err := s.manager.FindTransaction(common.HexToBytes(req.Hash))
-	if common.NotFoundError(err) {
-		return &EmptyTxResponse, nil
-	}
 	if err != nil {
 		return nil, err
 	}

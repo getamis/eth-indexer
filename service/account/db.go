@@ -26,7 +26,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service/account/contracts"
 	accountStore "github.com/maichain/eth-indexer/store/account"
@@ -64,12 +63,8 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	// Find account
 	account, err := api.store.FindAccount(address, stateBlock.Number)
 	if err != nil {
-		if common.NotFoundError(err) {
-			balance = gethCommon.Big0
-		} else {
-			logger.Error("Failed to find account", "err", err)
-			return nil, nil, err
-		}
+		logger.Error("Failed to find account", "err", err)
+		return nil, nil, err
 	} else {
 		var ok bool
 		balance, ok = new(big.Int).SetString(account.Balance, 10)

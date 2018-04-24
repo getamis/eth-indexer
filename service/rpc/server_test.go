@@ -135,13 +135,13 @@ var _ = Describe("Server Test", func() {
 		})
 
 		Context("block does not exist", func() {
-			It("returns empty response", func() {
+			It("returns error", func() {
 				blockHashHex := "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 				mockServiceManager.On("FindBlockByHash", common.HexToBytes(blockHashHex)).Return(nil, gorm.ErrRecordNotFound).Once()
 				req := &pb.BlockQueryRequest{Hash: blockHashHex}
 				res, err := svr.GetBlockByHash(ctx, req)
-				Expect(err).Should(Succeed())
-				Expect(reflect.DeepEqual(*res, EmptyBlockResponse)).Should(BeTrue())
+				Expect(err).ShouldNot(BeNil())
+				Expect(res).Should(BeNil())
 			})
 		})
 
@@ -189,8 +189,8 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransaction", common.HexToBytes(txHashHex)).Return(nil, gorm.ErrRecordNotFound).Once()
 				req := &pb.TransactionQueryRequest{Hash: txHashHex}
 				res, err := svr.GetTransactionByHash(ctx, req)
-				Expect(err).Should(Succeed())
-				Expect(reflect.DeepEqual(*res, EmptyTxResponse)).Should(BeTrue())
+				Expect(err).ShouldNot(BeNil())
+				Expect(res).Should(BeNil())
 			})
 		})
 
