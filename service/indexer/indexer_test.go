@@ -266,7 +266,7 @@ var _ = Describe("Indexer Test", func() {
 	})
 })
 
-func TestBlockHeader(t *testing.T) {
+func TestIndexer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Indexer Test")
 }
