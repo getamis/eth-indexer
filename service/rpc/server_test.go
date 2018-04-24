@@ -104,12 +104,13 @@ var _ = Describe("Server Test", func() {
 		mockServiceManager *mocks.ServiceManager
 		svr                *server
 	)
-	BeforeSuite(func() {
+
+	BeforeEach(func() {
 		mockServiceManager = new(mocks.ServiceManager)
 		svr = New(mockServiceManager)
 	})
 
-	AfterSuite(func() {
+	AfterEach(func() {
 		mockServiceManager.AssertExpectations(GinkgoT())
 	})
 
@@ -209,5 +210,5 @@ var _ = Describe("Server Test", func() {
 
 func TestRpcServer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Server Test")
+	RunSpecs(t, "Server RPC Test")
 }
