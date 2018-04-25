@@ -50,6 +50,63 @@ var _ = Describe("Indexer Test", func() {
 		mockEthClient.AssertExpectations(GinkgoT())
 	})
 
+	Context("SyncToTarget()", func() {
+		unknownErr := errors.New("unknown error")
+		targetBlock := int64(19)
+
+		It("sync to target", func() {
+			// blocks from 11 to 15 are ethereum
+			// targetBlock to 19
+			mockStoreManager.On("LatestHeader").Return(&model.Header{
+				Number: 10,
+			}, nil).Once()
+			mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+				Number: 10,
+			}, nil).Once()
+
+			tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
+			receipt := types.NewReceipt([]byte{}, false, 0)
+			for i := int64(11); i <= targetBlock; i++ {
+				block := types.NewBlock(
+					&types.Header{
+						Number: big.NewInt(i),
+						Root:   common.StringToHash("1234567890" + strconv.Itoa(int(i))),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
+				mockStoreManager.On("InsertBlock", block, []*types.Receipt{receipt}).Return(nil).Once()
+
+				// Sometimes we cannot get account states successfully
+				if i%2 == 0 {
+					dump := &state.Dump{
+						Root: fmt.Sprintf("%x", block.Root()),
+					}
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
+					mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+				} else {
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
+				}
+			}
+			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(9)
+
+			err := idx.SyncToTarget(context.Background(), targetBlock)
+			Expect(err).Should(BeNil())
+		})
+
+		Context("bad target block", func() {
+			It("exits right away", func() {
+				mockStoreManager.On("LatestHeader").Return(&model.Header{
+					Number: 10,
+				}, nil).Once()
+				mockStoreManager.On("LatestStateBlock").Return(&model.StateBlock{
+					Number: 10,
+				}, nil).Once()
+
+				err := idx.SyncToTarget(context.Background(), 10)
+				Expect(err).ShouldNot(BeNil())
+			})
+		})
+	})
+
 	Context("Listen()", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ch := make(chan *types.Header)
@@ -266,7 +323,7 @@ var _ = Describe("Indexer Test", func() {
 	})
 })
 
-func TestBlockHeader(t *testing.T) {
+func TestIndexer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Indexer Test")
 }

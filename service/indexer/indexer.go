@@ -17,6 +17,8 @@ import (
 	"context"
 	"math/big"
 
+	"errors"
+	"fmt"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
@@ -38,36 +40,37 @@ type indexer struct {
 	manager store.Manager
 }
 
+func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
+	childCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Get local state from db
+	header, stateBlock, err := idx.getLocalState()
+	if err != nil {
+		return err
+	}
+
+	if targetBlock <= header.Number {
+		log.Error("Local block number is ahead of target block", "from", header.Number, "target", targetBlock)
+		return errors.New(fmt.Sprintf("targetBlock should be greater than %d", header.Number))
+	}
+
+	_, err = idx.sync(childCtx, header.Number, header.Hash, targetBlock, stateBlock.Number)
+	if err != nil {
+		log.Error("Failed to sync from ethereum", "from", header.Number, "target", targetBlock, "err", err)
+		return err
+	}
+	return nil
+}
+
 func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Get latest header from db
-	header, err := idx.manager.LatestHeader()
+	// Get local state from db
+	header, stateBlock, err := idx.getLocalState()
 	if err != nil {
-		if common.NotFoundError(err) {
-			log.Info("The header db is empty")
-			header = &model.Header{
-				Number: -1,
-			}
-		} else {
-			log.Error("Failed to get latest header from db", "err", err)
-			return err
-		}
-	}
-
-	// Get latest state block from db
-	stateBlock, err := idx.manager.LatestStateBlock()
-	if err != nil {
-		if common.NotFoundError(err) {
-			log.Info("The state db is empty")
-			stateBlock = &model.StateBlock{
-				Number: 0,
-			}
-		} else {
-			log.Error("Failed to get latest state block from db", "err", err)
-			return err
-		}
+		return err
 	}
 
 	// Get latest blocks from ethereum
@@ -106,6 +109,37 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 			return childCtx.Err()
 		}
 	}
+}
+
+func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.StateBlock, err error) {
+	// Get latest header from db
+	header, err = idx.manager.LatestHeader()
+	if err != nil {
+		if common.NotFoundError(err) {
+			log.Info("The header db is empty")
+			header = &model.Header{
+				Number: -1,
+			}
+		} else {
+			log.Error("Failed to get latest header from db", "err", err)
+			return
+		}
+	}
+
+	// Get latest state block from db
+	stateBlock, err = idx.manager.LatestStateBlock()
+	if err != nil {
+		if common.NotFoundError(err) {
+			log.Info("The state db is empty")
+			stateBlock = &model.StateBlock{
+				Number: 0,
+			}
+		} else {
+			log.Error("Failed to get latest state block from db", "err", err)
+			return
+		}
+	}
+	return
 }
 
 // sync syncs the blocks and header into database

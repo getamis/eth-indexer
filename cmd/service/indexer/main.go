@@ -48,6 +48,9 @@ var (
 	dbName     string
 	dbUser     string
 	dbPassword string
+
+	// flags for syncing
+	targetBlock int64
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -94,9 +97,13 @@ var ServerCmd = &cobra.Command{
 		}()
 
 		indexer := indexer.New(ethClient, store.NewManager(db))
-		ch := make(chan *types.Header)
+		if targetBlock > 0 {
+			err = indexer.SyncToTarget(ctx, targetBlock)
+		} else {
+			ch := make(chan *types.Header)
+			err = indexer.Listen(ctx, ch)
+		}
 
-		err = indexer.Listen(ctx, ch)
 		// Ignore if listener is stopped by signal
 		if err == context.Canceled {
 			return nil
@@ -128,6 +135,9 @@ func init() {
 	ServerCmd.Flags().StringVar(&dbName, flags.DbNameFlag, "eth-db", "The database name")
 	ServerCmd.Flags().StringVar(&dbUser, flags.DbUserFlag, "root", "The database username to login")
 	ServerCmd.Flags().StringVar(&dbPassword, flags.DbPasswordFlag, "my-secret-pw", "The database password to login")
+
+	// Syncing related flags
+	ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
 }
 
 func loadConfigUsingViper(vp *viper.Viper, filename string) error {
@@ -159,4 +169,7 @@ func loadFlagToVar(vp *viper.Viper) {
 	dbName = vp.GetString(flags.DbNameFlag)
 	dbUser = vp.GetString(flags.DbUserFlag)
 	dbPassword = vp.GetString(flags.DbPasswordFlag)
+
+	// flags for syncing
+	targetBlock = vp.GetInt64(flags.SyncTargetBlockFlag)
 }
