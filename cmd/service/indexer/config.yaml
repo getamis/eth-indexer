@@ -17,3 +17,7 @@ db:
   name: "indexer-db"
   user: "root"
   password: "my-secret-pw"
+
+# sync related config
+sync:
+  targetBlock: 0  # block number to sync to

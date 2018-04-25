@@ -33,4 +33,7 @@ const (
 	DbNameFlag     = "db.name"
 	DbUserFlag     = "db.user"
 	DbPasswordFlag = "db.password"
+
+	// flags for syncing
+	SyncTargetBlockFlag = "sync.targetBlock"
 )
