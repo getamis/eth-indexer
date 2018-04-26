@@ -49,7 +49,7 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	logger := log.New("addr", address.Hex(), "number", blockNr)
 	// Find state block
 	var stateBlock *model.StateBlock
-	if common.QueryLatestBlock(blockNr) {
+	if common.IsLatestBlock(blockNr) {
 		stateBlock, err = api.store.LastStateBlock()
 	} else {
 		stateBlock, err = api.store.FindStateBlock(blockNr)
@@ -90,7 +90,7 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 
 	// Find state block
 	var stateBlock *model.StateBlock
-	if common.QueryLatestBlock(blockNr) {
+	if common.IsLatestBlock(blockNr) {
 		stateBlock, err = api.store.LastStateBlock()
 	} else {
 		stateBlock, err = api.store.FindStateBlock(blockNr)

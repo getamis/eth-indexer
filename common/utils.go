@@ -26,8 +26,8 @@ import (
 	"github.com/maichain/eth-indexer/model"
 )
 
-// QueryLatestBlock returns true if blockNumber < 0 and false otherwise.
-func QueryLatestBlock(blockNumber int64) bool {
+// IsLatestBlock returns true if blockNumber < 0 and false otherwise.
+func IsLatestBlock(blockNumber int64) bool {
 	return blockNumber < 0
 }
 

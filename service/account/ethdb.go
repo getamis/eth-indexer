@@ -107,7 +107,7 @@ func (api *ethDBAPI) stateAt(ctx context.Context, blockNr int64) (*state.StateDB
 func (api *ethDBAPI) headerByNumber(ctx context.Context, blockNr int64) (*types.Header, error) {
 	var hash gethCommon.Hash
 	var number uint64
-	if common.QueryLatestBlock(blockNr) {
+	if common.IsLatestBlock(blockNr) {
 		hash = core.GetHeadBlockHash(api.ethDB)
 		if hash == (gethCommon.Hash{}) {
 			return nil, ErrBlockNotFound

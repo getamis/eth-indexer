@@ -86,7 +86,7 @@ func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockQueryRequest
 
 	var header *model.Header
 	var err error
-	if common.QueryLatestBlock(req.Number) {
+	if common.IsLatestBlock(req.Number) {
 		header, err = s.manager.FindLatestBlock()
 	} else {
 		header, err = s.manager.FindBlockByNumber(req.Number)
