@@ -33,13 +33,13 @@ message Block {
 service BlockService {
   rpc GetBlockByHash(BlockQueryRequest) returns (BlockQueryResponse) {
     option (google.api.http) = {
-      get: "/v1/blocks/{hash}"
+      get: "/v1/blocks/hash/{hash}"
     };
   }
 
   rpc GetBlockByNumber(BlockQueryRequest) returns (BlockQueryResponse) {
       option (google.api.http) = {
-      get: "/v1/blocks/{number}"
+      get: "/v1/blocks/number/{number}"
     };
   }
 }
