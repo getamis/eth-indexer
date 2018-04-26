@@ -25,9 +25,9 @@ message BlockQueryResponse {
 }
 
 message Block {
-  string hash = 1;
-  int64 number = 2;
-  bytes nonce = 3;
+  string hash = 1 [(gogoproto.jsontag) = "hash"];
+  int64 number = 2 [(gogoproto.jsontag) = "number"];
+  bytes nonce = 3 [(gogoproto.jsontag) = "nonce"];
 }
 
 service BlockService {
