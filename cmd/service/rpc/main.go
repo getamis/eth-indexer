@@ -22,6 +22,7 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
 	"github.com/maichain/eth-indexer/service/rpc"
+	"github.com/maichain/eth-indexer/store"
 	"github.com/maichain/mapi/api"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -55,7 +56,7 @@ var ServerCmd = &cobra.Command{
 		defer db.Close()
 
 		s := api.NewServer(
-			rpc.New(db),
+			rpc.New(store.NewServiceManager(db)),
 		)
 
 		if err := s.Serve(l); err != grpc.ErrServerStopped {

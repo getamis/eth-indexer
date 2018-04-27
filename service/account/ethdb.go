@@ -19,12 +19,13 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
+	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/service/account/contracts"
 )
 
@@ -56,7 +57,7 @@ func NewAPIWithWithEthDB(db ethdb.Database) API {
 	}
 }
 
-func (api *ethDBAPI) GetBalance(ctx context.Context, address common.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (api *ethDBAPI) GetBalance(ctx context.Context, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
 	state, header, err := api.stateAt(ctx, blockNr)
 	if err != nil {
 		log.Error("Failed to get ETH balance", "addr", address.Hex(), "number", blockNr, "err", err)
@@ -67,7 +68,7 @@ func (api *ethDBAPI) GetBalance(ctx context.Context, address common.Address, blo
 }
 
 // TODO: Not verified yet
-func (api *ethDBAPI) GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (api *ethDBAPI) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
 	state, header, err := api.stateAt(ctx, blockNr)
 	if err != nil {
 		return nil, nil, err
@@ -104,11 +105,11 @@ func (api *ethDBAPI) stateAt(ctx context.Context, blockNr int64) (*state.StateDB
 }
 
 func (api *ethDBAPI) headerByNumber(ctx context.Context, blockNr int64) (*types.Header, error) {
-	var hash common.Hash
+	var hash gethCommon.Hash
 	var number uint64
-	if isLatestBlock(blockNr) {
+	if common.IsLatestBlock(blockNr) {
 		hash = core.GetHeadBlockHash(api.ethDB)
-		if hash == (common.Hash{}) {
+		if hash == (gethCommon.Hash{}) {
 			return nil, ErrBlockNotFound
 		}
 		number = core.GetBlockNumber(api.ethDB, hash)
@@ -117,7 +118,7 @@ func (api *ethDBAPI) headerByNumber(ctx context.Context, blockNr int64) (*types.
 		}
 	} else {
 		hash = core.GetCanonicalHash(api.ethDB, uint64(blockNr))
-		if hash == (common.Hash{}) {
+		if hash == (gethCommon.Hash{}) {
 			return nil, ErrBlockNotFound
 		}
 		number = uint64(blockNr)

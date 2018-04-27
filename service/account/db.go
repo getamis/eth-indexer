@@ -49,10 +49,10 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	logger := log.New("addr", address.Hex(), "number", blockNr)
 	// Find state block
 	var stateBlock *model.StateBlock
-	if isLatestBlock(blockNr) {
-		stateBlock, err = api.store.FindStateBlock(address)
+	if common.IsLatestBlock(blockNr) {
+		stateBlock, err = api.store.LastStateBlock()
 	} else {
-		stateBlock, err = api.store.FindStateBlock(address, blockNr)
+		stateBlock, err = api.store.FindStateBlock(blockNr)
 	}
 	// State block should not have not found error
 	if err != nil {
@@ -64,12 +64,8 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	// Find account
 	account, err := api.store.FindAccount(address, stateBlock.Number)
 	if err != nil {
-		if common.NotFoundError(err) {
-			balance = gethCommon.Big0
-		} else {
-			logger.Error("Failed to find account", "err", err)
-			return nil, nil, err
-		}
+		logger.Error("Failed to find account", "err", err)
+		return nil, nil, err
 	} else {
 		var ok bool
 		balance, ok = new(big.Int).SetString(account.Balance, 10)
@@ -94,10 +90,10 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 
 	// Find state block
 	var stateBlock *model.StateBlock
-	if isLatestBlock(blockNr) {
-		stateBlock, err = api.store.FindStateBlock(address)
+	if common.IsLatestBlock(blockNr) {
+		stateBlock, err = api.store.LastStateBlock()
 	} else {
-		stateBlock, err = api.store.FindStateBlock(address, blockNr)
+		stateBlock, err = api.store.FindStateBlock(blockNr)
 	}
 	// State block should not have not found error
 	if err != nil {

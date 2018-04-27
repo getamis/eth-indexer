@@ -14,8 +14,10 @@
 		GetBalanceResponse
 		BlockQueryRequest
 		BlockQueryResponse
+		Block
 		TransactionQueryRequest
 		TransactionQueryResponse
+		Transaction
 */
 package pb
 

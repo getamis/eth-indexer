@@ -18,14 +18,18 @@ message TransactionQueryRequest {
 }
 
 message TransactionQueryResponse {
-  string hash = 1;
-  string from = 2;
-  string to = 3;
-  int64 nonce = 4;
-  string gas_price = 5;
-  int64 gas_limit = 6;
-  string amount = 7;
-  bytes payload = 8;
+  Transaction tx = 1;
+}
+
+message Transaction {
+  string hash = 1 [(gogoproto.jsontag) = "hash"];
+  string from = 2 [(gogoproto.jsontag) = "from"];
+  string to = 3 [(gogoproto.jsontag) = "to"];
+  int64 nonce = 4 [(gogoproto.jsontag) = "nonce"];
+  string gas_price = 5 [(gogoproto.jsontag) = "gas_price"];
+  int64 gas_limit = 6 [(gogoproto.jsontag) = "gas_limit"];
+  string amount = 7 [(gogoproto.jsontag) = "amount"];
+  bytes payload = 8 [(gogoproto.jsontag) = "payload"];
 }
 
 service TransactionService {
