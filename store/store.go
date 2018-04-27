@@ -152,9 +152,10 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 func insertContract(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
 	// Insert contract code
 	err := accountStore.InsertContractCode(model.ContractCode{
-		Address: common.HexToBytes(addr),
-		Hash:    common.HexToBytes(account.CodeHash),
-		Code:    account.Code,
+		BlockNumber: blockNumber,
+		Address:     common.HexToBytes(addr),
+		Hash:        common.HexToBytes(account.CodeHash),
+		Code:        account.Code,
 	})
 	// Ignore duplicate error
 	if err != nil && !common.DuplicateError(err) {

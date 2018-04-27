@@ -76,9 +76,10 @@ type Account struct {
 
 // ContractCode represents the contract code
 type ContractCode struct {
-	Address []byte
-	Hash    []byte
-	Code    string
+	BlockNumber int64
+	Address     []byte
+	Hash        []byte
+	Code        string
 }
 
 // Contract represents the state of contract accounts in Ethereum at given block

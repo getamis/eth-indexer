@@ -25,11 +25,12 @@ func makeContract(blockNum int64, hexAddr string) *model.Contract {
 	}
 }
 
-func makeContractCode(hexAddr string) *model.ContractCode {
+func makeContractCode(blockNum int64, hexAddr string) *model.ContractCode {
 	return &model.ContractCode{
-		Address: common.HexToBytes(hexAddr),
-		Hash:    common.HexToBytes("0x86f9a7ccb763958d0f6c01ea89b7a49eb5a3a8aff0f998ff514b97ad1c4e1fd6"),
-		Code:    "code",
+		BlockNumber: blockNum,
+		Address:     common.HexToBytes(hexAddr),
+		Hash:        common.HexToBytes("0x86f9a7ccb763958d0f6c01ea89b7a49eb5a3a8aff0f998ff514b97ad1c4e1fd6"),
+		Code:        "code",
 	}
 }
 
@@ -183,12 +184,22 @@ var _ = Describe("Account Database Test", func() {
 	Context("InsertContractCode()", func() {
 		It("inserts one new record", func() {
 			store := NewWithDB(db)
-			data := makeContractCode("0xB287a379e6caCa6732E50b88D23c290aA990A892")
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			data := makeContractCode(1000300, hexAddr)
 			err := store.InsertContractCode(*data)
 			Expect(err).Should(Succeed())
 
 			err = store.InsertContractCode(*data)
 			Expect(err).ShouldNot(BeNil())
+
+			// Insert another code at different block number should not alter the original block number
+			data2 := makeContractCode(data.BlockNumber+1, hexAddr)
+			err = store.InsertContractCode(*data2)
+			Expect(err).ShouldNot(BeNil())
+
+			code, err := store.FindContractCode(gethCommon.BytesToAddress(data.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*code, *data)).Should(BeTrue())
 		})
 	})
 
@@ -196,11 +207,11 @@ var _ = Describe("Account Database Test", func() {
 		It("finds the right record", func() {
 			store := NewWithDB(db)
 
-			data1 := makeContractCode("0xB287a379e6caCa6732E50b88D23c290aA990A892")
+			data1 := makeContractCode(34000, "0xB287a379e6caCa6732E50b88D23c290aA990A892")
 			err := store.InsertContractCode(*data1)
 			Expect(err).Should(Succeed())
 
-			data2 := makeContractCode("0xC287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeContractCode(34000, "0xC287a379e6caCa6732E50b88D23c290aA990A892")
 			err = store.InsertContractCode(*data2)
 			Expect(err).Should(Succeed())
 
