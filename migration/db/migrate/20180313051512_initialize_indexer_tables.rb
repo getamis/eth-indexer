@@ -53,10 +53,12 @@ class InitializeIndexerTables < ActiveRecord::Migration
 
     create_table :contract_code do |t|
       t.binary :address, :limit => 20, :null => false
+      t.integer :block_number, :limit => 8, :null => false
       t.binary :hash, :limit => 32, :null => false
       t.text :code, :limit => 1.megabyte, :null => false
     end
     add_index :contract_code, :address, :unique => true
+    add_index :contract_code, :block_number
 
     create_table :accounts do |t|
       t.binary :address, :limit => 20, :null => false
