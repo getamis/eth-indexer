@@ -63,33 +63,38 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 	return nil
 }
 
-func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
+func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, syncMissingBlocks bool) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Get local state from db
-	header, stateBlock, err := idx.getLocalState()
-	if err != nil {
-		return err
-	}
+	var lastBlockHeader *types.Header
+	var stateBlock *model.StateBlock
+	if syncMissingBlocks {
+		// Get local state from db
+		header, localState, err := idx.getLocalState()
+		if err != nil {
+			return err
+		}
 
-	// Get latest blocks from ethereum
-	latestBlock, err := idx.client.BlockByNumber(childCtx, nil)
-	if err != nil {
-		log.Error("Failed to get latest header from ethereum", "err", err)
-		return err
-	}
-	lastBlockHeader := latestBlock.Header()
+		// Get latest blocks from ethereum
+		latestBlock, err := idx.client.BlockByNumber(childCtx, nil)
+		if err != nil {
+			log.Error("Failed to get latest header from ethereum", "err", err)
+			return err
+		}
+		lastBlockHeader = latestBlock.Header()
+		stateBlock = localState
 
-	// Sync missing blocks from ethereum
-	stateBlock, err = idx.sync(childCtx, header.Number, header.Hash, lastBlockHeader.Number.Int64(), stateBlock.Number)
-	if err != nil {
-		log.Error("Failed to sync to latest blocks from ethereum", "from", header.Number, "err", err)
-		return err
+		// Sync missing blocks from ethereum
+		stateBlock, err = idx.sync(childCtx, header.Number, header.Hash, lastBlockHeader.Number.Int64(), stateBlock.Number)
+		if err != nil {
+			log.Error("Failed to sync to latest blocks from ethereum", "from", header.Number, "err", err)
+			return err
+		}
 	}
 
 	// Listen new channel events
-	_, err = idx.client.SubscribeNewHead(childCtx, ch)
+	_, err := idx.client.SubscribeNewHead(childCtx, ch)
 	if err != nil {
 		log.Error("Failed to subscribe event for new header from ethereum", "err", err)
 		return err
@@ -99,7 +104,12 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 		select {
 		case head := <-ch:
 			log.Trace("Got new header", "number", head.Number, "hash", common.HashHex(head.Hash()))
-			stateBlock, err = idx.sync(childCtx, lastBlockHeader.Number.Int64(), lastBlockHeader.Hash().Bytes(), head.Number.Int64(), stateBlock.Number)
+			if lastBlockHeader == nil {
+				from := head.Number.Int64() - 1
+				stateBlock, err = idx.sync(childCtx, from, []byte{}, head.Number.Int64(), from)
+			} else {
+				stateBlock, err = idx.sync(childCtx, lastBlockHeader.Number.Int64(), lastBlockHeader.Hash().Bytes(), head.Number.Int64(), stateBlock.Number)
+			}
 			if err != nil {
 				log.Error("Failed to sync to blocks from ethereum", "from", lastBlockHeader.Number, "fromHash", common.HashHex(lastBlockHeader.Hash()), "to", head.Number.Int64(), "fromState", stateBlock.Number, "err", err)
 				return err

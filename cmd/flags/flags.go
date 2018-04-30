@@ -35,5 +35,6 @@ const (
 	DbPasswordFlag = "db.password"
 
 	// flags for syncing
-	SyncTargetBlockFlag = "sync.targetBlock"
+	SyncTargetBlockFlag      = "sync.targetBlock"
+	SyncGetMissingBlocksFlag = "sync.getMissingBlocks"
 )

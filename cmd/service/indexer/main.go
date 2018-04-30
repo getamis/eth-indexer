@@ -50,7 +50,8 @@ var (
 	dbPassword string
 
 	// flags for syncing
-	targetBlock int64
+	targetBlock      int64
+	syncMissingBlock bool
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -101,7 +102,7 @@ var ServerCmd = &cobra.Command{
 			err = indexer.SyncToTarget(ctx, targetBlock)
 		} else {
 			ch := make(chan *types.Header)
-			err = indexer.Listen(ctx, ch)
+			err = indexer.Listen(ctx, ch, syncMissingBlock)
 		}
 
 		// Ignore if listener is stopped by signal
@@ -138,6 +139,7 @@ func init() {
 
 	// Syncing related flags
 	ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
+	ServerCmd.Flags().BoolVar(&syncMissingBlock, flags.SyncGetMissingBlocksFlag, true, "Whether to get state for the current block")
 }
 
 func loadConfigUsingViper(vp *viper.Viper, filename string) error {
@@ -172,4 +174,5 @@ func loadFlagToVar(vp *viper.Viper) {
 
 	// flags for syncing
 	targetBlock = vp.GetInt64(flags.SyncTargetBlockFlag)
+	syncMissingBlock = vp.GetBool(flags.SyncGetMissingBlocksFlag)
 }
