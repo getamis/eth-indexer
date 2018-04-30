@@ -139,7 +139,7 @@ func init() {
 
 	// Syncing related flags
 	ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
-	ServerCmd.Flags().BoolVar(&syncMissingBlock, flags.SyncGetMissingBlocksFlag, false, "Whether to get state for the current block")
+	ServerCmd.Flags().BoolVar(&syncMissingBlock, flags.SyncGetMissingBlocksFlag, true, "Whether to get state for the current block")
 }
 
 func loadConfigUsingViper(vp *viper.Viper, filename string) error {
