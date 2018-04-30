@@ -70,7 +70,7 @@ services:
       - --db.host
       - ws-database
       - --eth.host
-      - 10.1.113.176
+      - 10.1.113.178
     restart: on-failure
     depends_on:
       - ws-database
