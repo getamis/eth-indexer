@@ -78,10 +78,10 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 
 			data := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			err := store.InsertAccount(*data)
+			err := store.InsertAccount(data)
 			Expect(err).Should(Succeed())
 
-			err = store.InsertAccount(*data)
+			err = store.InsertAccount(data)
 			Expect(err).ShouldNot(BeNil())
 		})
 	})
@@ -91,15 +91,15 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 
 			data1 := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			err := store.InsertAccount(*data1)
+			err := store.InsertAccount(data1)
 			Expect(err).Should(Succeed())
 
 			data2 := makeAccount(1000310, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertAccount(*data2)
+			err = store.InsertAccount(data2)
 			Expect(err).Should(Succeed())
 
 			data3 := makeAccount(1000314, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertAccount(*data3)
+			err = store.InsertAccount(data3)
 			Expect(err).Should(Succeed())
 
 			// should return this account at latest block number
@@ -132,10 +132,10 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 			data := makeContract(1000300, "0xB287a379e6caCa6732E50b88D23c290aA990A892")
 
-			err := store.InsertContract(*data)
+			err := store.InsertContract(data)
 			Expect(err).Should(Succeed())
 
-			err = store.InsertContract(*data)
+			err = store.InsertContract(data)
 			Expect(err).ShouldNot(BeNil())
 		})
 	})
@@ -145,15 +145,15 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 
 			data1 := makeContract(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			err := store.InsertContract(*data1)
+			err := store.InsertContract(data1)
 			Expect(err).Should(Succeed())
 
 			data2 := makeContract(1000310, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertContract(*data2)
+			err = store.InsertContract(data2)
 			Expect(err).Should(Succeed())
 
 			data3 := makeContract(1000314, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertContract(*data3)
+			err = store.InsertContract(data3)
 			Expect(err).Should(Succeed())
 
 			// should return this contract at latest block number
@@ -186,15 +186,15 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			data := makeContractCode(1000300, hexAddr)
-			err := store.InsertContractCode(*data)
+			err := store.InsertContractCode(data)
 			Expect(err).Should(Succeed())
 
-			err = store.InsertContractCode(*data)
+			err = store.InsertContractCode(data)
 			Expect(err).ShouldNot(BeNil())
 
 			// Insert another code at different block number should not alter the original block number
 			data2 := makeContractCode(data.BlockNumber+1, hexAddr)
-			err = store.InsertContractCode(*data2)
+			err = store.InsertContractCode(data2)
 			Expect(err).ShouldNot(BeNil())
 
 			code, err := store.FindContractCode(gethCommon.BytesToAddress(data.Address))
@@ -208,11 +208,11 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 
 			data1 := makeContractCode(34000, "0xB287a379e6caCa6732E50b88D23c290aA990A892")
-			err := store.InsertContractCode(*data1)
+			err := store.InsertContractCode(data1)
 			Expect(err).Should(Succeed())
 
 			data2 := makeContractCode(34000, "0xC287a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertContractCode(*data2)
+			err = store.InsertContractCode(data2)
 			Expect(err).Should(Succeed())
 
 			code, err := store.FindContractCode(gethCommon.BytesToAddress(data1.Address))
@@ -233,7 +233,7 @@ var _ = Describe("Account Database Test", func() {
 		It("inserts one new record", func() {
 			store := NewWithDB(db)
 
-			data := model.StateBlock{Number: 3001200}
+			data := &model.StateBlock{Number: 3001200}
 			err := store.InsertStateBlock(data)
 			Expect(err).Should(Succeed())
 
@@ -246,11 +246,11 @@ var _ = Describe("Account Database Test", func() {
 		It("gets the last state block", func() {
 			store := NewWithDB(db)
 
-			err := store.InsertStateBlock(model.StateBlock{Number: 3001200})
+			err := store.InsertStateBlock(&model.StateBlock{Number: 3001200})
 			Expect(err).Should(Succeed())
-			err = store.InsertStateBlock(model.StateBlock{Number: 3001205})
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001205})
 			Expect(err).Should(Succeed())
-			err = store.InsertStateBlock(model.StateBlock{Number: 3001210})
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001210})
 			Expect(err).Should(Succeed())
 
 			block, err := store.LastStateBlock()
@@ -263,11 +263,11 @@ var _ = Describe("Account Database Test", func() {
 		It("gets the state block", func() {
 			store := NewWithDB(db)
 
-			err := store.InsertStateBlock(model.StateBlock{Number: 3001200})
+			err := store.InsertStateBlock(&model.StateBlock{Number: 3001200})
 			Expect(err).Should(Succeed())
-			err = store.InsertStateBlock(model.StateBlock{Number: 3001205})
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001205})
 			Expect(err).Should(Succeed())
-			err = store.InsertStateBlock(model.StateBlock{Number: 3001210})
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001210})
 			Expect(err).Should(Succeed())
 
 			// we have state for this block
