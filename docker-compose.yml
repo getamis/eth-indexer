@@ -21,7 +21,7 @@ services:
       - MYSQL_CHARSET=utf8
       - MYSQL_DATABASE=eth-db
     volumes:
-      - ./mysql-data:/var/lib/mysql
+      - ${MYSQL_DATA_PATH}:/var/lib/mysql
   ws-migration:
     build:
       context: ./migration
