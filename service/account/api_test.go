@@ -11,33 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package account
 
 import (
-	"math/big"
+	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-// Implement vm.ContractRef
-type account struct {
-	address common.Address
-}
-
-func (account *account) ReturnGas(*big.Int, *big.Int) {
-	// Do nothing
-}
-func (account *account) Address() common.Address {
-	return account.address
-}
-func (account *account) Value() *big.Int {
-	return common.Big0
-}
-
-func (account *account) SetCode(common.Hash, []byte) {
-	// Do nothing
-}
-func (account *account) ForEachStorage(callback func(key, value common.Hash) bool) {
-	// Do nothing
+func TestAccountAPI(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Account API Suite")
 }
