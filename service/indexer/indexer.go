@@ -130,6 +130,7 @@ func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.Sta
 			header = &model.Header{
 				Number: -1,
 			}
+			err = nil
 		} else {
 			log.Error("Failed to get latest header from db", "err", err)
 			return
@@ -144,6 +145,7 @@ func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.Sta
 			stateBlock = &model.StateBlock{
 				Number: 0,
 			}
+			err = nil
 		} else {
 			log.Error("Failed to get latest state block from db", "err", err)
 			return
