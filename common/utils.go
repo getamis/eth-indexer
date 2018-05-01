@@ -93,14 +93,15 @@ func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, err
 	}
 
 	t := &model.Transaction{
-		Hash:      tx.Hash().Bytes(),
-		BlockHash: b.Hash().Bytes(),
-		From:      msg.From().Bytes(),
-		Nonce:     int64(msg.Nonce()),
-		GasPrice:  msg.GasPrice().String(),
-		GasLimit:  int64(msg.Gas()),
-		Amount:    msg.Value().String(),
-		Payload:   msg.Data(),
+		Hash:        tx.Hash().Bytes(),
+		BlockHash:   b.Hash().Bytes(),
+		From:        msg.From().Bytes(),
+		Nonce:       int64(msg.Nonce()),
+		GasPrice:    msg.GasPrice().String(),
+		GasLimit:    int64(msg.Gas()),
+		Amount:      msg.Value().String(),
+		Payload:     msg.Data(),
+		BlockNumber: b.Number().Int64(),
 	}
 	if msg.To() != nil {
 		t.To = msg.To().Bytes()
@@ -109,7 +110,7 @@ func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, err
 }
 
 // Receipt converts ethereum transaction receipt to db transaction receipt
-func Receipt(receipt *types.Receipt) *model.Receipt {
+func Receipt(b *types.Block, receipt *types.Receipt) *model.Receipt {
 	r := &model.Receipt{
 		Root:              receipt.PostState,
 		Status:            receipt.Status,
@@ -117,6 +118,7 @@ func Receipt(receipt *types.Receipt) *model.Receipt {
 		Bloom:             receipt.Bloom.Bytes(),
 		TxHash:            receipt.TxHash.Bytes(),
 		GasUsed:           int64(receipt.GasUsed),
+		BlockNumber:       b.Number().Int64(),
 	}
 	if receipt.ContractAddress != (common.Address{}) {
 		r.ContractAddress = receipt.ContractAddress.Bytes()

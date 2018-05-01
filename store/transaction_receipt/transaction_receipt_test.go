@@ -13,13 +13,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func makeReceipt(txHex string) *model.Receipt {
+func makeReceipt(blockNumber int64, txHex string) *model.Receipt {
 	return &model.Receipt{
 		CumulativeGasUsed: 43000,
 		Bloom:             []byte{12, 34, 66},
 		TxHash:            common.HexToBytes(txHex),
 		ContractAddress:   common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
 		GasUsed:           31000,
+		BlockNumber:       blockNumber,
 	}
 }
 
@@ -53,8 +54,8 @@ var _ = Describe("Receipt Database Test", func() {
 	It("should insert", func() {
 		store := NewWithDB(db)
 
-		data1 := makeReceipt("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data2 := makeReceipt("0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data1 := makeReceipt(32100, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeReceipt(42100, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 
 		By("insert new receipt")
 		err := store.Insert(data1)
@@ -72,8 +73,8 @@ var _ = Describe("Receipt Database Test", func() {
 	It("should get receipt by hash", func() {
 		store := NewWithDB(db)
 
-		data1 := makeReceipt("0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data2 := makeReceipt("0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data1 := makeReceipt(32100, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeReceipt(42100, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		err := store.Insert(data1)
 		Expect(err).Should(Succeed())
 		err = store.Insert(data2)
@@ -90,6 +91,29 @@ var _ = Describe("Receipt Database Test", func() {
 		receipt, err = store.FindReceipt(common.HexToBytes("0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"))
 		Expect(common.NotFoundError(err)).Should(BeTrue())
 		Expect(reflect.DeepEqual(*receipt, model.Receipt{})).Should(BeTrue())
+	})
+
+	It("delete from a block number", func() {
+		store := NewWithDB(db)
+
+		data1 := makeReceipt(32100, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeReceipt(42100, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data3 := makeReceipt(52100, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data := []*model.Receipt{data1, data2, data3}
+		for _, receipt := range data {
+			err := store.Insert(receipt)
+			Expect(err).Should(Succeed())
+		}
+
+		err := store.DeleteFromBlock(42100)
+		receipt, err := store.FindReceipt(data1.TxHash)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*receipt, *data1)).Should(BeTrue())
+
+		receipt, err = store.FindReceipt(data2.TxHash)
+		Expect(common.NotFoundError(err)).Should(BeTrue())
+		receipt, err = store.FindReceipt(data3.TxHash)
+		Expect(common.NotFoundError(err)).Should(BeTrue())
 	})
 })
 

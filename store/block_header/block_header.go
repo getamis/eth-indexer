@@ -11,6 +11,7 @@ const (
 
 type Store interface {
 	Insert(data *model.Header) error
+	DeleteFromBlock(blockNumber int64) (err error)
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
 	// Last returns the header with the greatest number
@@ -29,6 +30,11 @@ func NewWithDB(db *gorm.DB) Store {
 
 func (t *store) Insert(data *model.Header) error {
 	return t.db.Create(data).Error
+}
+
+func (t *store) DeleteFromBlock(blockNumber int64) (err error) {
+	err = t.db.Delete(model.Header{}, "number >= ?", blockNumber).Error
+	return
 }
 
 func (t *store) FindBlockByNumber(blockNumber int64) (result *model.Header, err error) {

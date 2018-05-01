@@ -127,6 +127,31 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
+	Context("DeleteAccountsFromBlock()", func() {
+		It("deletes account states from a block number", func() {
+			store := NewWithDB(db)
+
+			data1 := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeAccount(1000313, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeAccount(1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data4 := makeAccount(1000333, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data := []*model.Account{data1, data2, data3, data4}
+			for _, acct := range data {
+				err := store.InsertAccount(acct)
+				Expect(err).Should(Succeed())
+			}
+
+			store.DeleteAccounts(1000301)
+
+			account, err := store.FindAccount(gethCommon.BytesToAddress(data1.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*account, *data1)).Should(BeTrue())
+
+			account, err = store.FindAccount(gethCommon.BytesToAddress(data3.Address))
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
 	Context("InsertContract()", func() {
 		It("inserts one new record", func() {
 			store := NewWithDB(db)
@@ -181,6 +206,31 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
+	Context("DeleteContractsFromBlock()", func() {
+		It("deletes contract states from a block number", func() {
+			store := NewWithDB(db)
+
+			data1 := makeContract(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeContract(1000313, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeContract(1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data4 := makeContract(1000333, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data := []*model.Contract{data1, data2, data3, data4}
+			for _, contract := range data {
+				err := store.InsertContract(contract)
+				Expect(err).Should(Succeed())
+			}
+
+			store.DeleteContracts(1000301)
+
+			contract, err := store.FindContract(gethCommon.BytesToAddress(data1.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*contract, *data1)).Should(BeTrue())
+
+			contract, err = store.FindContract(gethCommon.BytesToAddress(data3.Address))
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
 	Context("InsertContractCode()", func() {
 		It("inserts one new record", func() {
 			store := NewWithDB(db)
@@ -225,6 +275,38 @@ var _ = Describe("Account Database Test", func() {
 
 			// non-existent contract address
 			code, err = store.FindContractCode(gethCommon.StringToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
+	Context("DeleteContractCodesFromBlock()", func() {
+		It("deletes contract code states from a block number", func() {
+			store := NewWithDB(db)
+
+			data1 := makeContractCode(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeContractCode(1000313, "0xB287a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeContractCode(1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data4 := makeContractCode(1000333, "0xD487a379e6caCa6732E50b88D23c290aA990A892")
+			data := []*model.ContractCode{data1, data2, data3, data4}
+			for _, code := range data {
+				err := store.InsertContractCode(code)
+				Expect(err).Should(Succeed())
+			}
+
+			store.DeleteContractCodes(1000315)
+
+			code, err := store.FindContractCode(gethCommon.BytesToAddress(data1.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*code, *data1)).Should(BeTrue())
+
+			code, err = store.FindContractCode(gethCommon.BytesToAddress(data2.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*code, *data2)).Should(BeTrue())
+
+			code, err = store.FindContractCode(gethCommon.BytesToAddress(data3.Address))
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+
+			code, err = store.FindContractCode(gethCommon.BytesToAddress(data4.Address))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})
@@ -280,6 +362,33 @@ var _ = Describe("Account Database Test", func() {
 			block, err = store.FindStateBlock(3001207)
 			Expect(err).Should(Succeed())
 			Expect(block.Number).Should(Equal(int64(3001205)))
+		})
+	})
+
+	Context("DeleteStateBlocksFromBlock()", func() {
+		It("delete state blocks from a block number", func() {
+			store := NewWithDB(db)
+
+			err := store.InsertStateBlock(&model.StateBlock{Number: 3001200})
+			Expect(err).Should(Succeed())
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001205})
+			Expect(err).Should(Succeed())
+			err = store.InsertStateBlock(&model.StateBlock{Number: 3001210})
+			Expect(err).Should(Succeed())
+
+			store.DeleteStateBlocks(3001205)
+
+			block, err := store.FindStateBlock(3001200)
+			Expect(err).Should(Succeed())
+			Expect(block.Number).Should(Equal(int64(3001200)))
+
+			block, err = store.FindStateBlock(3001207)
+			Expect(err).Should(Succeed())
+			Expect(block.Number).Should(Equal(int64(3001200)))
+
+			block, err = store.FindStateBlock(3001210)
+			Expect(err).Should(Succeed())
+			Expect(block.Number).Should(Equal(int64(3001200)))
 		})
 	})
 })

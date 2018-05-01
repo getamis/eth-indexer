@@ -111,6 +111,29 @@ var _ = Describe("Block Header Database Test", func() {
 		Expect(err).ShouldNot(BeNil())
 	})
 
+	It("deletes header from a block number", func() {
+		store := NewWithDB(db)
+		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data3 := makeHeader(1000303, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data := []*model.Header{data1, data2, data3}
+		for _, header := range data {
+			err := store.Insert(header)
+			Expect(err).Should(Succeed())
+		}
+
+		err := store.DeleteFromBlock(1000301)
+		Expect(err).Should(Succeed())
+
+		result, err := store.FindBlockByNumber(data1.Number)
+		Expect(err).Should(Succeed())
+		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
+		_, err = store.FindBlockByNumber(data2.Number)
+		Expect(common.NotFoundError(err)).Should(BeTrue())
+		_, err = store.FindBlockByNumber(data3.Number)
+		Expect(common.NotFoundError(err)).Should(BeTrue())
+	})
+
 	It("should get the last header", func() {
 		store := NewWithDB(db)
 

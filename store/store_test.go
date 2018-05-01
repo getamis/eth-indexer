@@ -40,7 +40,7 @@ var _ = Describe("Manager Test", func() {
 		mysql.Stop()
 	})
 
-	Context("Insert()", func() {
+	Context("InsertBlock()", func() {
 		It("should be ok", func() {
 			manager := NewManager(db)
 			header := &types.Header{
@@ -78,22 +78,51 @@ var _ = Describe("Manager Test", func() {
 		})
 	})
 
-	It("LatestHeader()", func() {
-		manager := NewManager(db)
-		block1 := types.NewBlockWithHeader(&types.Header{
-			Number: big.NewInt(100),
-		})
-		block2 := types.NewBlockWithHeader(&types.Header{
-			Number: big.NewInt(99),
-		})
-		err := manager.InsertBlock(block1, nil)
-		Expect(err).Should(Succeed())
-		err = manager.InsertBlock(block2, nil)
-		Expect(err).Should(Succeed())
+	Context("GetHeaderByNumber()", func() {
+		It("gets the right header", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+			})
+			block2 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(99),
+			})
+			err := manager.InsertBlock(block1, nil)
+			Expect(err).Should(Succeed())
+			err = manager.InsertBlock(block2, nil)
+			Expect(err).Should(Succeed())
 
-		header, err := manager.LatestHeader()
-		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
+			header, err := manager.GetHeaderByNumber(100)
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
+
+			header, err = manager.GetHeaderByNumber(99)
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(header, common.Header(block2))).Should(BeTrue())
+
+			header, err = manager.GetHeaderByNumber(199)
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
+	Context("LatestHeader()", func() {
+		It("gets the latest header", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+			})
+			block2 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(99),
+			})
+			err := manager.InsertBlock(block1, nil)
+			Expect(err).Should(Succeed())
+			err = manager.InsertBlock(block2, nil)
+			Expect(err).Should(Succeed())
+
+			header, err := manager.LatestHeader()
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
+		})
 	})
 
 	Context("UpdateState()", func() {
@@ -148,27 +177,30 @@ var _ = Describe("Manager Test", func() {
 		})
 	})
 
-	It("LatestStateBlock()", func() {
-		manager := NewManager(db)
-		block1 := types.NewBlockWithHeader(&types.Header{
-			Number: big.NewInt(100),
-			Root:   gethCommon.StringToHash("1234567890"),
+	Context("LatestStateBlock()", func() {
+		It("gets the latest state block", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+				Root:   gethCommon.StringToHash("1234567890"),
+			})
+
+			dump := &state.Dump{
+				Root: fmt.Sprintf("%x", block1.Root()),
+			}
+
+			err := manager.UpdateState(block1, dump)
+			Expect(err).Should(Succeed())
+
+			block, err := manager.LatestStateBlock()
+			Expect(err).Should(Succeed())
+			Expect(block.Number).Should(Equal(block1.Number().Int64()))
 		})
-
-		dump := &state.Dump{
-			Root: fmt.Sprintf("%x", block1.Root()),
-		}
-
-		err := manager.UpdateState(block1, dump)
-		Expect(err).Should(Succeed())
-
-		block, err := manager.LatestStateBlock()
-		Expect(err).Should(Succeed())
-		Expect(block.Number).Should(Equal(block1.Number().Int64()))
 	})
+
 })
 
-func TestBlockHeader(t *testing.T) {
+func TestStore(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Store Test")
 }

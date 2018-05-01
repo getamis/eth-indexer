@@ -11,6 +11,7 @@ const (
 
 type Store interface {
 	Insert(data *model.Receipt) error
+	DeleteFromBlock(blockNumber int64) (err error)
 	FindReceipt(hash []byte) (result *model.Receipt, err error)
 }
 
@@ -26,6 +27,11 @@ func NewWithDB(db *gorm.DB) Store {
 
 func (r *store) Insert(data *model.Receipt) error {
 	return r.db.Create(data).Error
+}
+
+func (t *store) DeleteFromBlock(blockNumber int64) (err error) {
+	err = t.db.Delete(model.Receipt{}, "block_number >= ?", blockNumber).Error
+	return
 }
 
 func (r *store) FindReceipt(hash []byte) (result *model.Receipt, err error) {
