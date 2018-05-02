@@ -30,3 +30,13 @@ jobs:
         - make migration-docker
         - make test
       if: branch = develop AND type IN (pull_request)
+
+notifications:
+  slack:
+    rooms:
+    - ***REMOVED***
+  on_success: always
+  on_failure: always
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -t ***REMOVED***
