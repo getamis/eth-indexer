@@ -20,22 +20,21 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
-	accountStore "github.com/maichain/eth-indexer/store/account"
+	"github.com/maichain/eth-indexer/store"
 )
 
 var ErrInvalidBalance = errors.New("invalid balance")
 
 type dbAPI struct {
-	store accountStore.Store
+	manager store.ServiceManager
 }
 
-// NewAPIWithWithDB news a account api with DB
-func NewAPIWithWithDB(db *gorm.DB) API {
+// NewAPIWithStore news a account api with store manager
+func NewAPIWithStore(store store.ServiceManager) API {
 	return &dbAPI{
-		store: accountStore.NewWithDB(db),
+		manager: store,
 	}
 }
 
@@ -44,9 +43,9 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	// Find state block
 	var stateBlock *model.StateBlock
 	if common.IsLatestBlock(blockNr) {
-		stateBlock, err = api.store.LastStateBlock()
+		stateBlock, err = api.manager.LastStateBlock()
 	} else {
-		stateBlock, err = api.store.FindStateBlock(blockNr)
+		stateBlock, err = api.manager.FindStateBlock(blockNr)
 	}
 	// State block should not have not found error
 	if err != nil {
@@ -56,7 +55,7 @@ func (api *dbAPI) GetBalance(ctx context.Context, address gethCommon.Address, bl
 	blockNumber = big.NewInt(stateBlock.Number)
 
 	// Find account
-	account, err := api.store.FindAccount(address, stateBlock.Number)
+	account, err := api.manager.FindAccount(address, stateBlock.Number)
 	if err != nil {
 		logger.Error("Failed to find account", "err", err)
 		return nil, nil, err

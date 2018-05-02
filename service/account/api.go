@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+//go:generate mockery -name API
 type API interface {
 	// GetBalance returns the amount of wei for the given address in the state of the
 	// given block number. If blockNr < 0, the given block is the latest block.

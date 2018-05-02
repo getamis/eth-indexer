@@ -69,7 +69,7 @@ func (contractDB) AddRefund(fund uint64) {}
 func (contractDB) GetRefund() uint64     { return 0 }
 
 // self checks whether the address is the contract address.
-func (db *contractDB) self(addr ethCommon.Address) (result bool) {
+func (db *contractDB) self(addr ethCommon.Address) bool {
 	return addr == ethCommon.BytesToAddress(db.account.Address)
 }
 
@@ -88,7 +88,7 @@ func (db contractDB) Exist(addr ethCommon.Address) bool {
 func (db contractDB) Empty(addr ethCommon.Address) bool {
 	return !db.self(addr)
 }
-func (db contractDB) GetBalance(addr ethCommon.Address) *big.Int {
+func (db *contractDB) GetBalance(addr ethCommon.Address) *big.Int {
 	if db.mustBeSelf(addr) {
 		v, ok := new(big.Int).SetString(db.account.Balance, 10)
 		if ok {
@@ -99,31 +99,31 @@ func (db contractDB) GetBalance(addr ethCommon.Address) *big.Int {
 	}
 	return ethCommon.Big0
 }
-func (db contractDB) GetNonce(addr ethCommon.Address) uint64 {
+func (db *contractDB) GetNonce(addr ethCommon.Address) uint64 {
 	if db.mustBeSelf(addr) {
 		return uint64(db.account.Nonce)
 	}
 	return 0
 }
-func (db contractDB) GetCodeHash(addr ethCommon.Address) ethCommon.Hash {
+func (db *contractDB) GetCodeHash(addr ethCommon.Address) ethCommon.Hash {
 	if db.mustBeSelf(addr) {
 		return ethCommon.BytesToHash(db.code.Hash)
 	}
 	return ethCommon.Hash{}
 }
-func (db contractDB) GetCode(addr ethCommon.Address) []byte {
+func (db *contractDB) GetCode(addr ethCommon.Address) []byte {
 	if db.mustBeSelf(addr) {
 		return ethCommon.Hex2Bytes(db.code.Code)
 	}
 	return []byte{}
 }
-func (db contractDB) GetCodeSize(addr ethCommon.Address) int {
+func (db *contractDB) GetCodeSize(addr ethCommon.Address) int {
 	if db.mustBeSelf(addr) {
 		return len(db.GetCode(addr))
 	}
 	return 0
 }
-func (db contractDB) GetState(addr ethCommon.Address, hash ethCommon.Hash) ethCommon.Hash {
+func (db *contractDB) GetState(addr ethCommon.Address, hash ethCommon.Hash) ethCommon.Hash {
 	if db.mustBeSelf(addr) {
 		hashStr := ethCommon.Bytes2Hex(hash.Bytes())
 		storage := make(map[string]string)
@@ -147,7 +147,7 @@ func (db contractDB) GetState(addr ethCommon.Address, hash ethCommon.Hash) ethCo
 func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
-	contractCode, err := api.store.FindContractCode(contractAddress)
+	contractCode, err := api.manager.FindContractCode(contractAddress)
 	if err != nil {
 		logger.Error("Failed to find contract code", "err", err)
 		return nil, nil, err
@@ -156,9 +156,9 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 	// Find state block
 	var stateBlock *model.StateBlock
 	if common.IsLatestBlock(blockNr) {
-		stateBlock, err = api.store.LastStateBlock()
+		stateBlock, err = api.manager.LastStateBlock()
 	} else {
-		stateBlock, err = api.store.FindStateBlock(blockNr)
+		stateBlock, err = api.manager.FindStateBlock(blockNr)
 	}
 	// State block should not have not found error
 	if err != nil {
@@ -168,7 +168,7 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 	blockNumber := big.NewInt(stateBlock.Number)
 
 	// Find contract
-	contract, err := api.store.FindContract(contractAddress, stateBlock.Number)
+	contract, err := api.manager.FindContract(contractAddress, stateBlock.Number)
 	if err != nil {
 		logger.Error("Failed to find contract", "err", err)
 		return nil, nil, err
