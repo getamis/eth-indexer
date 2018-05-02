@@ -19,6 +19,12 @@ message GetBalanceRequest {
   int64 block_number = 3;
 }
 
+message GetOffsetBalanceRequest {
+  string token = 1;
+  string address = 2;
+  int64 offset = 3;
+}
+
 message GetBalanceResponse {
   string amount = 1 [(gogoproto.jsontag) = "amount"];
   int64 block_number = 2 [(gogoproto.jsontag) = "block_number"];
@@ -28,6 +34,11 @@ service AccountService {
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {
     option (google.api.http) = {
       get: "/v1/accounts/{address}/blocks/{block_number}/tokens/{token}"
+    };
+  }
+  rpc GetOffsetBalance(GetOffsetBalanceRequest) returns (GetBalanceResponse) {
+    option (google.api.http) = {
+      get: "/v1/accounts/{address}/offset/{offset}/tokens/{token}"
     };
   }
 }
