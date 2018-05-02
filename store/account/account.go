@@ -28,10 +28,10 @@ const (
 )
 
 type Store interface {
-	InsertContractCode(code model.ContractCode) error
-	InsertContract(contract model.Contract) error
-	InsertAccount(account model.Account) error
-	InsertStateBlock(block model.StateBlock) error
+	InsertContractCode(code *model.ContractCode) error
+	InsertContract(contract *model.Contract) error
+	InsertAccount(account *model.Account) error
+	InsertStateBlock(block *model.StateBlock) error
 	LastStateBlock() (result *model.StateBlock, err error)
 
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
@@ -50,19 +50,19 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) InsertContractCode(code model.ContractCode) error {
+func (t *store) InsertContractCode(code *model.ContractCode) error {
 	return t.db.Table(NameContractCode).Create(code).Error
 }
 
-func (t *store) InsertContract(contract model.Contract) error {
+func (t *store) InsertContract(contract *model.Contract) error {
 	return t.db.Table(NameContracts).Create(contract).Error
 }
 
-func (t *store) InsertAccount(account model.Account) error {
+func (t *store) InsertAccount(account *model.Account) error {
 	return t.db.Table(NameAccounts).Create(account).Error
 }
 
-func (t *store) InsertStateBlock(block model.StateBlock) error {
+func (t *store) InsertStateBlock(block *model.StateBlock) error {
 	return t.db.Table(NameStateBlocks).Create(block).Error
 }
 

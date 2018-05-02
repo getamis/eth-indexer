@@ -15,8 +15,6 @@
 package store
 
 import (
-	"encoding/json"
-
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
@@ -106,7 +104,7 @@ func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) 
 	}()
 
 	// Insert state block
-	err = accountStore.InsertStateBlock(model.StateBlock{
+	err = accountStore.InsertStateBlock(&model.StateBlock{
 		Number: block.Number().Int64(),
 	})
 	if err != nil {
@@ -150,36 +148,24 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 }
 
 func insertContract(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
+	code, data, err := common.Contract(blockNumber, addr, account)
+	if err != nil {
+		return err
+	}
+
 	// Insert contract code
-	err := accountStore.InsertContractCode(model.ContractCode{
-		BlockNumber: blockNumber,
-		Address:     common.HexToBytes(addr),
-		Hash:        common.HexToBytes(account.CodeHash),
-		Code:        account.Code,
-	})
+	err = accountStore.InsertContractCode(code)
 	// Ignore duplicate error
 	if err != nil && !common.DuplicateError(err) {
 		return err
 	}
 
-	var storage []byte
-	storage, err = json.Marshal(account.Storage)
-	if err != nil {
-		return err
-	}
 	// Insert contract state
-	return accountStore.InsertContract(model.Contract{
-		BlockNumber: blockNumber,
-		Address:     common.HexToBytes(addr),
-		Balance:     account.Balance,
-		Nonce:       int64(account.Nonce),
-		Root:        common.HexToBytes(account.Root),
-		Storage:     storage,
-	})
+	return accountStore.InsertContract(data)
 }
 
 func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
-	return accountStore.InsertAccount(model.Account{
+	return accountStore.InsertAccount(&model.Account{
 		BlockNumber: blockNumber,
 		Address:     common.HexToBytes(addr),
 		Balance:     account.Balance,

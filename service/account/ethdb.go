@@ -18,7 +18,6 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -26,7 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/service/account/contracts"
 )
 
 // missingNumber is returned by GetBlockNumber if no header with the
@@ -74,17 +72,13 @@ func (api *ethDBAPI) GetERC20Balance(ctx context.Context, contractAddress, addre
 		return nil, nil, err
 	}
 
-	backend := NewStateBackend(header, state)
-	erc20, err := contracts.NewERC20(contractAddress, backend)
+	// Get balance from contract
+	balance, err := BalanceOf(state, contractAddress, address)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	balance, err := erc20.BalanceOf(&bind.CallOpts{}, address)
-	if err != nil {
-		return nil, nil, err
-	}
-	return header.Number, balance, nil
+	return balance, header.Number, nil
 }
 
 func (api *ethDBAPI) stateAt(ctx context.Context, blockNr int64) (*state.StateDB, *types.Header, error) {

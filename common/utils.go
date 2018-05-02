@@ -16,10 +16,12 @@ package common
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
@@ -120,4 +122,26 @@ func Receipt(receipt *types.Receipt) *model.Receipt {
 		r.ContractAddress = receipt.ContractAddress.Bytes()
 	}
 	return r
+}
+
+// Contract converts ethereum contract account to db contract code and data
+func Contract(blockNumber int64, addr string, account state.DumpAccount) (*model.ContractCode, *model.Contract, error) {
+	storage, err := json.Marshal(account.Storage)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &model.ContractCode{
+			BlockNumber: blockNumber,
+			Address:     common.Hex2Bytes(addr),
+			Hash:        common.Hex2Bytes(account.CodeHash),
+			Code:        account.Code,
+		}, &model.Contract{
+			BlockNumber: blockNumber,
+			Address:     common.Hex2Bytes(addr),
+			Balance:     account.Balance,
+			Nonce:       int64(account.Nonce),
+			Root:        common.Hex2Bytes(account.Root),
+			Storage:     storage,
+		}, nil
 }
