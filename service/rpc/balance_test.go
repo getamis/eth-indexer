@@ -18,28 +18,38 @@ import (
 	"reflect"
 
 	"database/sql/driver"
+	"math/big"
+
 	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
+	accMocks "github.com/maichain/eth-indexer/service/account/mocks"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"math/big"
 )
 
 var _ = Describe("Server Balance Test", func() {
 	var (
 		mockServiceManager *mocks.ServiceManager
+		mockAccountAPI     *accMocks.API
 		svr                *server
 	)
 
 	BeforeEach(func() {
 		mockServiceManager = new(mocks.ServiceManager)
-		svr = New(mockServiceManager)
+		mockAccountAPI = new(accMocks.API)
+		svr = &server{
+			manager:    mockServiceManager,
+			accountAPI: mockAccountAPI,
+			logger:     log.Discard(),
+		}
 	})
 
 	AfterEach(func() {
 		mockServiceManager.AssertExpectations(GinkgoT())
+		mockAccountAPI.AssertExpectations(GinkgoT())
 	})
 
 	Context("GetBalance()", func() {
@@ -66,7 +76,7 @@ var _ = Describe("Server Balance Test", func() {
 					balanceString := "987654321098765432109876543210"
 					balance, ok := new(big.Int).SetString(balanceString, 10)
 					Expect(ok).Should(BeTrue())
-					mockServiceManager.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					mockAccountAPI.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).Should(Succeed())
 					Expect(reflect.DeepEqual(*res, pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum})).Should(BeTrue())
@@ -75,7 +85,7 @@ var _ = Describe("Server Balance Test", func() {
 
 			Context("account does not exist", func() {
 				It("returns the balance", func() {
-					mockServiceManager.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, gorm.ErrRecordNotFound).Once()
+					mockAccountAPI.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, gorm.ErrRecordNotFound).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).ShouldNot(BeNil())
 					Expect(res).Should(BeNil())
@@ -84,7 +94,7 @@ var _ = Describe("Server Balance Test", func() {
 
 			Context("transient error", func() {
 				It("returns the balance", func() {
-					mockServiceManager.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, driver.ErrBadConn).Once()
+					mockAccountAPI.On("GetBalance", ctx, gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, driver.ErrBadConn).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).ShouldNot(BeNil())
 					Expect(res).Should(BeNil())
@@ -104,7 +114,7 @@ var _ = Describe("Server Balance Test", func() {
 					balanceString := "987654321098765432109876543210"
 					balance, ok := new(big.Int).SetString(balanceString, 10)
 					Expect(ok).Should(BeTrue())
-					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					mockAccountAPI.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).Should(Succeed())
 					Expect(reflect.DeepEqual(*res, pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum})).Should(BeTrue())
@@ -113,7 +123,7 @@ var _ = Describe("Server Balance Test", func() {
 
 			Context("account does not exist", func() {
 				It("returns the balance", func() {
-					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, gorm.ErrRecordNotFound).Once()
+					mockAccountAPI.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, gorm.ErrRecordNotFound).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).ShouldNot(BeNil())
 					Expect(res).Should(BeNil())
@@ -122,7 +132,7 @@ var _ = Describe("Server Balance Test", func() {
 
 			Context("transient error", func() {
 				It("returns the balance", func() {
-					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, driver.ErrBadConn).Once()
+					mockAccountAPI.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(nil, nil, driver.ErrBadConn).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).ShouldNot(BeNil())
 					Expect(res).Should(BeNil())

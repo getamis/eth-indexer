@@ -40,10 +40,10 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 	var err error
 	if req.Token == ethToken {
 		// Get Ether
-		balance, number, err = s.manager.GetBalance(ctx, common.HexToAddress(req.Address), req.BlockNumber)
+		balance, number, err = s.accountAPI.GetBalance(ctx, common.HexToAddress(req.Address), req.BlockNumber)
 	} else {
 		// Get ERC20 token
-		balance, number, err = s.manager.GetERC20Balance(ctx, common.HexToAddress(req.Token), common.HexToAddress(req.Address), req.BlockNumber)
+		balance, number, err = s.accountAPI.GetERC20Balance(ctx, common.HexToAddress(req.Token), common.HexToAddress(req.Address), req.BlockNumber)
 	}
 	if err != nil {
 		logger.Error("Failed to get balance", "err", err)
