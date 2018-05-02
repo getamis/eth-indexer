@@ -35,19 +35,57 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 		return nil, ErrInvalidBlockNumber
 	}
 
-	var number *big.Int
-	var balance *big.Int
-	var err error
-	if req.Token == ethToken {
-		// Get Ether
-		balance, number, err = s.manager.GetBalance(ctx, common.HexToAddress(req.Address), req.BlockNumber)
-	} else {
-		// Get ERC20 token
-		balance, number, err = s.manager.GetERC20Balance(ctx, common.HexToAddress(req.Token), common.HexToAddress(req.Address), req.BlockNumber)
-	}
+	res, err := s.getBalance(ctx, req.BlockNumber, req.Address, req.Token)
 	if err != nil {
 		logger.Error("Failed to get balance", "err", err)
 		return nil, NewInternalServerError(err)
+	}
+	return res, nil
+}
+
+func (s *server) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceRequest) (*pb.GetBalanceResponse, error) {
+	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "offset", req.Offset, "token", req.Token)
+	if req.Offset < 0 {
+		log.Error("Invalid offset")
+		return nil, ErrInvalidOffset
+	}
+
+	// Get latest block
+	header, err := s.manager.FindLatestBlock()
+	if err != nil {
+		log.Error("Failed to get latest header", "err", err)
+		return nil, NewInternalServerError(err)
+	}
+
+	// Get target block
+	target := header.Number - req.Offset
+	if target < 0 {
+		log.Error("Offset is larger than current header number", "number", header.Number)
+		return nil, ErrInvalidOffset
+	}
+
+	res, err := s.getBalance(ctx, target, req.Address, req.Token)
+	if err != nil {
+		logger.Error("Failed to get balance", "err", err)
+		return nil, NewInternalServerError(err)
+	}
+	return res, nil
+}
+
+func (s *server) getBalance(ctx context.Context, blockNr int64, addr string, token string) (*pb.GetBalanceResponse, error) {
+	// Get balance
+	var err error
+	var number *big.Int
+	var balance *big.Int
+	if token == ethToken {
+		// Get Ether
+		balance, number, err = s.manager.GetBalance(ctx, common.HexToAddress(addr), blockNr)
+	} else {
+		// Get ERC20 token
+		balance, number, err = s.manager.GetERC20Balance(ctx, common.HexToAddress(token), common.HexToAddress(addr), blockNr)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return &pb.GetBalanceResponse{
 		Amount:      balance.String(),

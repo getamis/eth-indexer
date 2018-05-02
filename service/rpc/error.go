@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrInvalidBlockNumber = status.Error(codes.InvalidArgument, "invalid block number")
+	ErrInvalidOffset      = status.Error(codes.InvalidArgument, "invalid offset")
 )
 
 // NewInternalServerError returns statusError for internal server error
