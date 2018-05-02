@@ -14,8 +14,7 @@ type Store interface {
 	DeleteFromBlock(blockNumber int64) (err error)
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
-	// Last returns the header with the greatest number
-	Last() (result *model.Header, err error)
+	FindLatestBlock() (result *model.Header, err error)
 }
 
 type store struct {
@@ -49,7 +48,7 @@ func (t *store) FindBlockByHash(hash []byte) (result *model.Header, err error) {
 	return
 }
 
-func (t *store) Last() (result *model.Header, err error) {
+func (t *store) FindLatestBlock() (result *model.Header, err error) {
 	result = &model.Header{}
 	err = t.db.Order("number DESC").Limit(1).Find(&result).Error
 	return

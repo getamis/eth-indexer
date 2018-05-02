@@ -15,14 +15,11 @@
 package store
 
 import (
-	"context"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
-	"math/big"
 
 	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/service/account"
+	accStore "github.com/maichain/eth-indexer/store/account"
 	bhStore "github.com/maichain/eth-indexer/store/block_header"
 	txStore "github.com/maichain/eth-indexer/store/transaction"
 )
@@ -31,54 +28,38 @@ import (
 
 // ServiceManager is a wrapper interface that serves data for RPC services.
 type ServiceManager interface {
+	// Block header store
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
 	FindLatestBlock() (result *model.Header, err error)
+
+	// Transaction store
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
-	GetBalance(ctx context.Context, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
-	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
+
+	// Account store
+	LastStateBlock() (result *model.StateBlock, err error)
+	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
+	FindContract(address common.Address, blockNr ...int64) (result *model.Contract, err error)
+	FindContractCode(address common.Address) (result *model.ContractCode, err error)
+	FindStateBlock(blockNr int64) (result *model.StateBlock, err error)
 }
 
+type accountStore = accStore.Store
+type blockHeaderStore = bhStore.Store
+type transactionStore = txStore.Store
+
 type serviceManager struct {
-	accountAPI account.API
-	bhStore    bhStore.Store
-	txStore    txStore.Store
+	accountStore
+	blockHeaderStore
+	transactionStore
 }
 
 // NewServiceManager news a service manager to serve data for RPC services.
 func NewServiceManager(db *gorm.DB) ServiceManager {
 	return &serviceManager{
-		accountAPI: account.NewAPIWithWithDB(db),
-		bhStore:    bhStore.NewWithDB(db),
-		txStore:    txStore.NewWithDB(db),
+		accountStore:     accStore.NewWithDB(db),
+		blockHeaderStore: bhStore.NewWithDB(db),
+		transactionStore: txStore.NewWithDB(db),
 	}
-}
-
-func (s *serviceManager) FindBlockByNumber(blockNumber int64) (result *model.Header, err error) {
-	return s.bhStore.FindBlockByNumber(blockNumber)
-}
-
-func (s *serviceManager) FindBlockByHash(hash []byte) (result *model.Header, err error) {
-	return s.bhStore.FindBlockByHash(hash)
-}
-
-func (s *serviceManager) FindLatestBlock() (result *model.Header, err error) {
-	return s.bhStore.Last()
-}
-
-func (s *serviceManager) FindTransaction(hash []byte) (result *model.Transaction, err error) {
-	return s.txStore.FindTransaction(hash)
-}
-
-func (s *serviceManager) FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error) {
-	return s.txStore.FindTransactionsByBlockHash(blockHash)
-}
-
-func (s *serviceManager) GetBalance(ctx context.Context, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
-	return s.accountAPI.GetBalance(ctx, address, blockNr)
-}
-
-func (s *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
-	return s.accountAPI.GetERC20Balance(ctx, contractAddress, address, blockNr)
 }

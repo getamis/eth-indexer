@@ -76,7 +76,7 @@ var _ = Describe("Block Header Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(reflect.DeepEqual(*result, *data2)).Should(BeTrue())
 
-		lastResult, err := store.Last()
+		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
 		Expect(reflect.DeepEqual(*lastResult, *data2)).Should(BeTrue())
 	})
@@ -145,7 +145,7 @@ var _ = Describe("Block Header Database Test", func() {
 		store.Insert(data2)
 		store.Insert(data3)
 
-		lastResult, err := store.Last()
+		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
 		Expect(reflect.DeepEqual(*lastResult, *data3)).Should(BeTrue())
 	})

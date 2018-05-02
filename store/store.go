@@ -92,7 +92,7 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 
 func (m *manager) LatestHeader() (*model.Header, error) {
 	hs := header.NewWithDB(m.db)
-	return hs.Last()
+	return hs.FindLatestBlock()
 }
 
 func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
