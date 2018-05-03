@@ -35,19 +35,21 @@ type Header struct {
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
+	Td string
 }
 
 // Transaction represents a transaction
 type Transaction struct {
-	Hash      []byte
-	BlockHash []byte
-	From      []byte
-	To        []byte
-	Nonce     int64
-	GasPrice  string
-	GasLimit  int64
-	Amount    string
-	Payload   []byte
+	Hash        []byte
+	BlockHash   []byte
+	From        []byte
+	To          []byte
+	Nonce       int64
+	GasPrice    string
+	GasLimit    int64
+	Amount      string
+	Payload     []byte
+	BlockNumber int64
 }
 
 // Receipt represents a transaction receipt
@@ -59,6 +61,7 @@ type Receipt struct {
 	TxHash            []byte
 	ContractAddress   []byte
 	GasUsed           int64
+	BlockNumber       int64
 }
 
 // StateBlock represents the state is at the given block

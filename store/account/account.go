@@ -33,6 +33,10 @@ type Store interface {
 	InsertAccount(account *model.Account) error
 	InsertStateBlock(block *model.StateBlock) error
 	LastStateBlock() (result *model.StateBlock, err error)
+	DeleteContractCodes(fromBlock int64) error
+	DeleteContracts(fromBlock int64) error
+	DeleteAccounts(fromBlock int64) error
+	DeleteStateBlocks(fromBlock int64) error
 
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
 	FindContract(address common.Address, blockNr ...int64) (result *model.Contract, err error)
@@ -70,6 +74,22 @@ func (t *store) LastStateBlock() (result *model.StateBlock, err error) {
 	result = &model.StateBlock{}
 	err = t.db.Table(NameStateBlocks).Order("number DESC").Limit(1).Find(result).Error
 	return
+}
+
+func (t *store) DeleteContractCodes(fromBlock int64) error {
+	return t.db.Table(NameContractCode).Delete(model.ContractCode{}, "block_number >= ?", fromBlock).Error
+}
+
+func (t *store) DeleteContracts(fromBlock int64) error {
+	return t.db.Table(NameContracts).Delete(model.Contract{}, "block_number >= ?", fromBlock).Error
+}
+
+func (t *store) DeleteAccounts(fromBlock int64) error {
+	return t.db.Table(NameAccounts).Delete(model.Account{}, "block_number >= ?", fromBlock).Error
+}
+
+func (t *store) DeleteStateBlocks(fromBlock int64) error {
+	return t.db.Table(NameStateBlocks).Delete(model.StateBlock{}, "number >= ?", fromBlock).Error
 }
 
 func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error) {

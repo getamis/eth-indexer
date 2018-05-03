@@ -12,6 +12,43 @@ type Manager struct {
 	mock.Mock
 }
 
+// DeleteDataFromBlock provides a mock function with given fields: blockNumber
+func (_m *Manager) DeleteDataFromBlock(blockNumber int64) error {
+	ret := _m.Called(blockNumber)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = rf(blockNumber)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetHeaderByNumber provides a mock function with given fields: number
+func (_m *Manager) GetHeaderByNumber(number int64) (*model.Header, error) {
+	ret := _m.Called(number)
+
+	var r0 *model.Header
+	if rf, ok := ret.Get(0).(func(int64) *model.Header); ok {
+		r0 = rf(number)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Header)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(number)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // InsertBlock provides a mock function with given fields: block, receipts
 func (_m *Manager) InsertBlock(block *types.Block, receipts []*types.Receipt) error {
 	ret := _m.Called(block, receipts)

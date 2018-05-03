@@ -34,8 +34,12 @@ type Manager interface {
 	InsertBlock(block *types.Block, receipts []*types.Receipt) error
 	// UpdateState updates states for the given blocks
 	UpdateState(block *types.Block, dump *state.Dump) error
+	// DeleteDataFromBlock deletes all data from this block and higher
+	DeleteDataFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
 	LatestHeader() (*model.Header, error)
+	// GetHeaderByNumber returns the header of the given block number
+	GetHeaderByNumber(number int64) (*model.Header, error)
 	// LatestStateBlock returns a latest state block from db
 	LatestStateBlock() (*model.StateBlock, error)
 }
@@ -77,7 +81,7 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 	}
 
 	for _, r := range receipts {
-		err = receiptStore.Insert(common.Receipt(r))
+		err = receiptStore.Insert(common.Receipt(block, r))
 		if err != nil {
 			return err
 		}
@@ -89,6 +93,11 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 func (m *manager) LatestHeader() (*model.Header, error) {
 	hs := header.NewWithDB(m.db)
 	return hs.Last()
+}
+
+func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
+	hs := header.NewWithDB(m.db)
+	return hs.FindBlockByNumber(number)
 }
 
 func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) {
@@ -126,6 +135,52 @@ func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) 
 				return
 			}
 		}
+	}
+	return
+}
+
+func (m *manager) DeleteDataFromBlock(blockNumber int64) (err error) {
+	dbTx := m.db.Begin()
+	accountStore := account.NewWithDB(dbTx)
+	headerStore := header.NewWithDB(dbTx)
+	txStore := transaction.NewWithDB(dbTx)
+	receiptStore := receipt.NewWithDB(dbTx)
+
+	defer func(dbTx *gorm.DB) {
+		if err != nil {
+			dbTx.Rollback()
+			return
+		}
+		err = dbTx.Commit().Error
+	}(dbTx)
+
+	err = headerStore.DeleteFromBlock(blockNumber)
+	if err != nil {
+		return
+	}
+	err = txStore.DeleteFromBlock(blockNumber)
+	if err != nil {
+		return
+	}
+	err = receiptStore.DeleteFromBlock(blockNumber)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteAccounts(blockNumber)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteContracts(blockNumber)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteContractCodes(blockNumber)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteStateBlocks(blockNumber)
+	if err != nil {
+		return
 	}
 	return
 }

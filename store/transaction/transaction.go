@@ -11,6 +11,7 @@ const (
 
 type Store interface {
 	Insert(data *model.Transaction) error
+	DeleteFromBlock(blockNumber int64) (err error)
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 }
@@ -27,6 +28,11 @@ func NewWithDB(db *gorm.DB) Store {
 
 func (t *store) Insert(data *model.Transaction) error {
 	return t.db.Create(data).Error
+}
+
+func (t *store) DeleteFromBlock(blockNumber int64) (err error) {
+	err = t.db.Delete(model.Transaction{}, "block_number >= ?", blockNumber).Error
+	return
 }
 
 func (t *store) FindTransaction(hash []byte) (result *model.Transaction, err error) {

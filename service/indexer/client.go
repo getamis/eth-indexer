@@ -31,6 +31,7 @@ import (
 
 type EthClient interface {
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
+	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 	DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error)
