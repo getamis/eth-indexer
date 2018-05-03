@@ -27,6 +27,8 @@ const (
 	NameAccounts     = "accounts"
 )
 
+//go:generate mockery -name Store
+
 type Store interface {
 	InsertContractCode(code *model.ContractCode) error
 	InsertContract(contract *model.Contract) error

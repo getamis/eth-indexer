@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package account
+package store
 
 import (
 	"math"
@@ -23,13 +23,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/service/account/contracts"
+	"github.com/maichain/eth-indexer/contracts"
 )
 
 // Call calls the specific contract method call in given state
 func Call(db vm.StateDB, contractABI string, contractAddress ethCommon.Address, method string, result interface{}, inputs ...interface{}) error {
 	// Construct EVM and contract
-	contract := vm.NewContract(&account{}, &account{
+	contract := vm.NewContract(&contractAccount{}, &contractAccount{
 		address: contractAddress,
 	}, ethCommon.Big0, math.MaxUint64)
 	contract.SetCallCode(&contractAddress, db.GetCodeHash(contractAddress), db.GetCode(contractAddress))

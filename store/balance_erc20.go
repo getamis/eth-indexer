@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package account
+package store
 
 import (
 	"context"
@@ -34,15 +34,15 @@ var (
 )
 
 // Implement vm.ContractRef
-type account struct {
+type contractAccount struct {
 	address ethCommon.Address
 }
 
-func (account *account) ReturnGas(*big.Int, *big.Int)                                 {}
-func (account *account) Address() ethCommon.Address                                   { return account.address }
-func (account *account) Value() *big.Int                                              { return ethCommon.Big0 }
-func (account *account) SetCode(ethCommon.Hash, []byte)                               {}
-func (account *account) ForEachStorage(callback func(key, value ethCommon.Hash) bool) {}
+func (account *contractAccount) ReturnGas(*big.Int, *big.Int)                                 {}
+func (account *contractAccount) Address() ethCommon.Address                                   { return account.address }
+func (account *contractAccount) Value() *big.Int                                              { return ethCommon.Big0 }
+func (account *contractAccount) SetCode(ethCommon.Hash, []byte)                               {}
+func (account *contractAccount) ForEachStorage(callback func(key, value ethCommon.Hash) bool) {}
 
 // Implement vm.StateDB. In current version, we only read the states in the given account (contract).
 type contractDB struct {
@@ -144,10 +144,10 @@ func (db *contractDB) GetState(addr ethCommon.Address, hash ethCommon.Hash) ethC
 	return ethCommon.Hash{}
 }
 
-func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
-	contractCode, err := api.manager.FindContractCode(contractAddress)
+	contractCode, err := srv.FindContractCode(contractAddress)
 	if err != nil {
 		logger.Error("Failed to find contract code", "err", err)
 		return nil, nil, err
@@ -156,9 +156,9 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 	// Find state block
 	var stateBlock *model.StateBlock
 	if common.IsLatestBlock(blockNr) {
-		stateBlock, err = api.manager.LastStateBlock()
+		stateBlock, err = srv.LastStateBlock()
 	} else {
-		stateBlock, err = api.manager.FindStateBlock(blockNr)
+		stateBlock, err = srv.FindStateBlock(blockNr)
 	}
 	// State block should not have not found error
 	if err != nil {
@@ -168,7 +168,7 @@ func (api *dbAPI) GetERC20Balance(ctx context.Context, contractAddress, address 
 	blockNumber := big.NewInt(stateBlock.Number)
 
 	// Find contract
-	contract, err := api.manager.FindContract(contractAddress, stateBlock.Number)
+	contract, err := srv.FindContract(contractAddress, stateBlock.Number)
 	if err != nil {
 		logger.Error("Failed to find contract", "err", err)
 		return nil, nil, err

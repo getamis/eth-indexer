@@ -19,24 +19,21 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/service/account"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
 	"google.golang.org/grpc"
 )
 
 type server struct {
-	manager    store.ServiceManager
-	accountAPI account.API
-	logger     log.Logger
+	manager store.ServiceManager
+	logger  log.Logger
 }
 
 func New(manager store.ServiceManager) *server {
 	logger := log.New("ws", "grpc")
 	return &server{
-		manager:    manager,
-		accountAPI: account.NewAPIWithStore(manager),
-		logger:     logger,
+		manager: manager,
+		logger:  logger,
 	}
 }
 

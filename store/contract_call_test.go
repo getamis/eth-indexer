@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package account
+package store
 
 import (
 	"fmt"
@@ -24,9 +24,9 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	indexerCommon "github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/contracts"
+	"github.com/maichain/eth-indexer/contracts/backends"
 	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/service/account/contracts"
-	"github.com/maichain/eth-indexer/service/account/contracts/backends"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

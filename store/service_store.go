@@ -15,6 +15,9 @@
 package store
 
 import (
+	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
 
@@ -37,12 +40,17 @@ type ServiceManager interface {
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 
-	// Account store
-	LastStateBlock() (result *model.StateBlock, err error)
-	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
-	FindContract(address common.Address, blockNr ...int64) (result *model.Contract, err error)
-	FindContractCode(address common.Address) (result *model.ContractCode, err error)
-	FindStateBlock(blockNr int64) (result *model.StateBlock, err error)
+	// GetBalance returns the amount of wei for the given address in the state of the
+	// given block number. If blockNr < 0, the given block is the latest block.
+	// Noted that the return block number may be different from the input one because
+	// we don't have state in the input one.
+	GetBalance(ctx context.Context, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
+
+	// GetERC20Balance returns the amount of ERC20 token for the given address in the state of the
+	// given block number. If blockNr < 0, the given block is the latest block.
+	// Noted that the return block number may be different from the input one because
+	// we don't have state in the input one.
+	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
 }
 
 type accountStore = accStore.Store
