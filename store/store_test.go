@@ -11,8 +11,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
+	"github.com/maichain/eth-indexer/model"
+	"github.com/maichain/eth-indexer/store/account"
+	"github.com/maichain/eth-indexer/store/block_header"
+	"github.com/maichain/eth-indexer/store/transaction"
+	"github.com/maichain/eth-indexer/store/transaction_receipt"
 	"github.com/maichain/mapi/base/test"
-	"github.com/maichain/mapi/types/reflect"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -38,6 +42,17 @@ var _ = Describe("Manager Test", func() {
 
 	AfterSuite(func() {
 		mysql.Stop()
+	})
+
+	BeforeEach(func() {
+		db.Table(block_header.TableName).Delete(&model.Header{})
+		db.Table(transaction.TableName).Delete(&model.Transaction{})
+		db.Table(transaction_receipt.TableName).Delete(&model.Receipt{})
+		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
+		db.Table(account.NameAccounts).Delete(&model.Account{})
+		db.Table(account.NameContracts).Delete(&model.Contract{})
+		db.Table(account.NameContractCode).Delete(&model.ContractCode{})
+		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
 	})
 
 	Context("InsertBlock()", func() {
@@ -94,11 +109,11 @@ var _ = Describe("Manager Test", func() {
 
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(Succeed())
-			Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
+			Expect(header).Should(Equal(common.Header(block1)))
 
 			header, err = manager.GetHeaderByNumber(99)
 			Expect(err).Should(Succeed())
-			Expect(reflect.DeepEqual(header, common.Header(block2))).Should(BeTrue())
+			Expect(header).Should(Equal(common.Header(block2)))
 
 			header, err = manager.GetHeaderByNumber(199)
 			Expect(common.NotFoundError(err)).Should(BeTrue())
@@ -121,7 +136,7 @@ var _ = Describe("Manager Test", func() {
 
 			header, err := manager.LatestHeader()
 			Expect(err).Should(Succeed())
-			Expect(reflect.DeepEqual(header, common.Header(block1))).Should(BeTrue())
+			Expect(header).Should(Equal(common.Header(block1)))
 		})
 	})
 
@@ -198,6 +213,39 @@ var _ = Describe("Manager Test", func() {
 		})
 	})
 
+	Context("DeleteDataFromBlock()", func() {
+		It("deletes data from a block number", func() {
+			manager := NewManager(db)
+			for i := int64(100); i < 120; i++ {
+				block := types.NewBlockWithHeader(&types.Header{
+					Number: big.NewInt(i),
+					Root:   gethCommon.StringToHash("1234567890"),
+				})
+				err := manager.InsertBlock(block, nil)
+				Expect(err).Should(Succeed())
+
+				dump := &state.Dump{
+					Root: fmt.Sprintf("%x", block.Root()),
+				}
+				err = manager.UpdateState(block, dump)
+				Expect(err).Should(Succeed())
+			}
+			manager.DeleteDataFromBlock(111)
+
+			block, err := manager.LatestStateBlock()
+			Expect(err).Should(Succeed())
+			Expect(block.Number).Should(Equal(int64(110)))
+
+			header, err := manager.LatestHeader()
+			Expect(err).Should(Succeed())
+			Expect(header.Number).Should(Equal(int64(110)))
+
+			for i := int64(111); i < 120; i++ {
+				header, err = manager.GetHeaderByNumber(i)
+				Expect(common.NotFoundError(err)).Should(BeTrue())
+			}
+		})
+	})
 })
 
 func TestStore(t *testing.T) {

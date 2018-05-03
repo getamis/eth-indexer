@@ -146,9 +146,13 @@ func (m *manager) DeleteDataFromBlock(blockNumber int64) (err error) {
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
 
-	defer func() {
-		err = finalizeTransaction(dbTx, err)
-	}()
+	defer func(dbTx *gorm.DB) {
+		if err != nil {
+			dbTx.Rollback()
+			return
+		}
+		err = dbTx.Commit().Error
+	}(dbTx)
 
 	err = headerStore.DeleteFromBlock(blockNumber)
 	if err != nil {

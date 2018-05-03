@@ -237,12 +237,12 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 }
 
 func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
-	log.Trace("reorg: tracing starts", "from", block.Number(), "hash", common.HashHex(block.Hash()))
-	blocks := make([]*types.Block, 0, 100)
+	log.Trace("Reorg: tracing starts", "from", block.Number(), "hash", common.HashHex(block.Hash()))
+	var blocks []*types.Block
 	for {
 		thisBlock, err := idx.client.BlockByHash(ctx, block.ParentHash())
 		if err != nil || thisBlock == nil {
-			log.Error("reorg: failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
+			log.Error("Reorg: failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
 			return err
 		}
 		block = thisBlock
@@ -250,7 +250,7 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 
 		dbHeader, err := idx.manager.GetHeaderByNumber(block.Number().Int64() - 1)
 		if err != nil || dbHeader == nil {
-			log.Error("reorg: failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
+			log.Error("Reorg: failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
 			return err
 		}
 
@@ -258,7 +258,7 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 			break
 		}
 	}
-	log.Trace("reorg: tracing stops", "at", block.Number(), "hash", common.HashHex(block.Hash()))
+	log.Trace("Reorg: tracing stops", "at", block.Number(), "hash", block.Hash().Hex())
 	idx.manager.DeleteDataFromBlock(block.Number().Int64())
 
 	// Get local state from db
@@ -275,6 +275,6 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 			return err
 		}
 	}
-	log.Trace("reorg: done", "at", block.Number(), "hash", common.HashHex(block.Hash()))
+	log.Trace("Reorg: done", "at", block.Number(), "hash", block.Hash().Hex())
 	return nil
 }
