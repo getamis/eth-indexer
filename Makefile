@@ -64,10 +64,10 @@ test: coverage.txt FORCE
 		fi								\
 	done;
 
-contracts:
-	$(shell solc service/account/contracts/erc20.sol --bin --abi --optimize --overwrite --output-dir service/account/contracts)
-	$(shell abigen --type ERC20Token --abi service/account/contracts/ERC20Token.abi -bin service/account/contracts/ERC20Token.bin -out service/account/contracts/erc20_token.go --pkg contracts)
-	$(shell abigen --type MithrilToken --abi service/account/contracts/MithrilToken.abi -bin service/account/contracts/MithrilToken.bin -out service/account/contracts/mithril_token.go --pkg contracts)
+contracts: FORCE
+	$(shell solc contracts/erc20.sol --bin --abi --optimize --overwrite --output-dir contracts)
+	$(shell abigen --type ERC20Token --abi contracts/ERC20Token.abi -bin contracts/ERC20Token.bin -out contracts/erc20_token.go --pkg contracts)
+	$(shell abigen --type MithrilToken --abi contracts/MithrilToken.abi -bin contracts/MithrilToken.bin -out contracts/mithril_token.go --pkg contracts)
 
 # dashboard-%:
 # 	@$(MAKE) -f dashboard/Makefile $@

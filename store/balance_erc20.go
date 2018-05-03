@@ -186,7 +186,7 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 	}
 	if db.err != nil {
 		logger.Error("Failed to get balance due to state db error", "err", db.err)
-		return nil, nil, err
+		return nil, nil, db.err
 	}
 	return balance, blockNumber, nil
 }

@@ -128,7 +128,8 @@ var _ = Describe("DB ERC 20 Test", func() {
 			Expect(db.err).Should(BeNil())
 		})
 		It("GetBalance()", func() {
-			// Currently, the balance of contract is zero because we cannot put ether in this contract
+			// Currently, we cannot send ether to Mirthril contract because its contract implementation.
+			// The balance of contract is always zero.
 			balance, ok := new(big.Int).SetString(db.account.Balance, 10)
 			Expect(ok).Should(BeTrue())
 			Expect(db.GetBalance(contractAddr)).Should(Equal(balance))
