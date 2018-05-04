@@ -36,11 +36,6 @@ func Hex(str string) string {
 	return strings.ToLower(strings.TrimPrefix(str, "0x"))
 }
 
-// HashHex returns a hash hex and lower-case string without '0x'
-func HashHex(hash common.Hash) string {
-	return Hex(hash.Hex())
-}
-
 // AddressHex returns an address hex and lower-case string without '0x'
 func AddressHex(address common.Address) string {
 	return Hex(address.Hex())

@@ -57,7 +57,7 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 		return errors.New(fmt.Sprintf("targetBlock should be greater than %d", header.Number))
 	}
 
-	_, _, err = idx.sync(childCtx, header, &types.Header{Number: new(big.Int).SetInt64(targetBlock)}, stateBlock)
+	_, _, err = idx.sync(childCtx, header, &types.Header{Number: big.NewInt(targetBlock)}, stateBlock)
 	if err != nil {
 		log.Error("Failed to sync from ethereum", "from", header.Number, "target", targetBlock, "err", err)
 		return err
@@ -114,7 +114,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	for {
 		select {
 		case head := <-ch:
-			log.Trace("Got new header", "number", head.Number, "hash", common.HashHex(head.Hash()))
+			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
 			if lastSync == nil {
 				lastSync = &model.Header{
 					Number: head.Number.Int64() - 1,
@@ -183,7 +183,7 @@ func (idx *indexer) sync(ctx context.Context, from *model.Header, to *types.Head
 
 		if !bytes.Equal(block.ParentHash().Bytes(), from.Hash) {
 			if err = idx.reorg(ctx, block); err != nil {
-				log.Error("Failed to reorg", "number", i, "hash", common.HashHex(block.Hash()), "err", err)
+				log.Error("Failed to reorg", "number", i, "hash", block.Hash().Hex(), "err", err)
 				return from, stateBlock, err
 			}
 		}
@@ -217,7 +217,7 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 		logger.Error("Failed to insert block", "err", err)
 		return fromStateBlock, err
 	}
-	logger.Trace("Inserted block", "hash", common.HashHex(block.Hash()), "txs", len(block.Transactions()))
+	logger.Trace("Inserted block", "hash", block.Hash().Hex(), "txs", len(block.Transactions()))
 
 	// Get modified accounts
 	// Noted: we skip dump block or get modified state error because the state db may not exist
@@ -244,7 +244,7 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 			return fromStateBlock, nil
 		}
 	}
-	logger.Trace("Start to update state", "hash", common.HashHex(block.Hash()), "accounts", len(dump))
+	logger.Trace("Start to update state", "hash", block.Hash().Hex(), "accounts", len(dump))
 
 	// Update state db
 	err = idx.manager.UpdateState(block, dump)
@@ -252,14 +252,14 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 		log.Error("Failed to update state to database", "number", blockNumber, "err", err)
 		return fromStateBlock, err
 	}
-	log.Trace("Inserted state", "number", blockNumber, "hash", common.HashHex(block.Hash()), "accounts", len(dump))
+	log.Trace("Inserted state", "number", blockNumber, "hash", block.Hash().Hex(), "accounts", len(dump))
 	return &model.StateBlock{
 		Number: blockNumber,
 	}, nil
 }
 
 func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
-	log.Trace("Reorg: tracing starts", "from", block.Number(), "hash", common.HashHex(block.Hash()))
+	log.Trace("Reorg: tracing starts", "from", block.Number(), "hash", block.Hash().Hex())
 	var blocks []*types.Block
 	for {
 		thisBlock, err := idx.client.BlockByHash(ctx, block.ParentHash())

@@ -124,7 +124,7 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 		to = common.AddressHex(*tx.To())
 	}
 	return &pb.TransactionQueryResponse{Tx: &pb.Transaction{
-		Hash: common.HashHex(tx.Hash()),
+		Hash: tx.Hash().Hex(),
 		// TODO: Need block number to get signer
 		// From:     common.BytesToHex(transaction.From),
 		To:       to,
@@ -260,7 +260,7 @@ func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error)
 	binary.BigEndian.PutUint64(nonce, block.Nonce())
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   common.HashHex(block.Hash()),
+			Hash:   block.Hash().Hex(),
 			Number: block.Number().Int64(),
 			Nonce:  nonce,
 		},

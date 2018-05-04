@@ -182,7 +182,7 @@ var _ = Describe("Manager Test", func() {
 					Nonce:   900,
 					Balance: "901",
 					Storage: map[string]string{
-						common.HashHex(key): common.HashHex(value),
+						key.Hex(): value.Hex(),
 					},
 				},
 			}
