@@ -60,7 +60,7 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockQueryRequest) 
 	hashBytes := common.HexToBytes(req.Hash)
 	header, err := s.manager.FindBlockByHash(hashBytes)
 	if err != nil {
-		return nil, err
+		return nil, wrapBlockNotFoundError(err)
 	}
 
 	response := &pb.BlockQueryResponse{
@@ -92,7 +92,7 @@ func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockQueryRequest
 		header, err = s.manager.FindBlockByNumber(req.Number)
 	}
 	if err != nil {
-		return nil, err
+		return nil, wrapBlockNotFoundError(err)
 	}
 
 	response := &pb.BlockQueryResponse{
@@ -136,7 +136,7 @@ func (s *server) buildTransactionsForBlock(blockHash []byte, resp *pb.BlockQuery
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
 	transaction, err := s.manager.FindTransaction(common.HexToBytes(req.Hash))
 	if err != nil {
-		return nil, err
+		return nil, wrapTransactionNotFoundError(err)
 	}
 	return &pb.TransactionQueryResponse{Tx: &pb.Transaction{
 		Hash:     common.BytesToHex(transaction.Hash),

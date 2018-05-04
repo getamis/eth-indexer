@@ -4,12 +4,16 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"google.golang.org/grpc"
-
 	"github.com/maichain/eth-indexer/service/pb"
+	"google.golang.org/grpc"
 )
 
 func NewProxy(targetEndpoint string, opts ...grpc.DialOption) *grpcProxy {
+	// FIXME: this is a workaround since we have customized error handler in mapi
+	// an individual proxy package is needed
+	// see more: https://maicoin.atlassian.net/browse/ES-79
+	runtime.HTTPError = handleHTTPError
+
 	return &grpcProxy{
 		endpoint:    targetEndpoint,
 		grpcOptions: opts,

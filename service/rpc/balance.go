@@ -38,7 +38,7 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 	res, err := s.getBalance(ctx, req.BlockNumber, req.Address, req.Token)
 	if err != nil {
 		logger.Error("Failed to get balance", "err", err)
-		return nil, NewInternalServerError(err)
+		return nil, ErrInternal
 	}
 	return res, nil
 }
@@ -54,7 +54,7 @@ func (s *server) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceR
 	header, err := s.manager.FindLatestBlock()
 	if err != nil {
 		log.Error("Failed to get latest header", "err", err)
-		return nil, NewInternalServerError(err)
+		return nil, ErrInternal
 	}
 
 	// Get target block
@@ -67,7 +67,7 @@ func (s *server) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceR
 	res, err := s.getBalance(ctx, target, req.Address, req.Token)
 	if err != nil {
 		logger.Error("Failed to get balance", "err", err)
-		return nil, NewInternalServerError(err)
+		return nil, ErrInternal
 	}
 	return res, nil
 }

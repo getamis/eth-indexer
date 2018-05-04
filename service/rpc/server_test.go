@@ -27,6 +27,8 @@ import (
 	"github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func makeHeader(number int64, hashHex string) *model.Header {
@@ -142,6 +144,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.NotFound))
 			})
 		})
 
@@ -151,6 +156,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.Internal))
 			})
 
 			It("returns whatever it has got", func() {
@@ -175,6 +183,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetBlockByNumber(ctx, req)
 				Expect(err).Should(BeEquivalentTo(ErrInvalidBlockNumber))
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.InvalidArgument))
 			})
 		})
 
@@ -201,6 +212,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetBlockByNumber(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.NotFound))
 			})
 		})
 
@@ -210,6 +224,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetBlockByNumber(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.Internal))
 			})
 
 			It("returns whatever it has got", func() {
@@ -245,6 +262,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.NotFound))
 			})
 		})
 
@@ -254,6 +274,9 @@ var _ = Describe("Server Test", func() {
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
 				Expect(res).Should(BeNil())
+
+				s, _ := status.FromError(err)
+				Expect(s.Code()).Should(Equal(codes.Internal))
 			})
 		})
 	})
