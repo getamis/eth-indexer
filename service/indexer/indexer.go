@@ -188,6 +188,12 @@ func (idx *indexer) sync(ctx context.Context, from *model.Header, to *types.Head
 			}
 		}
 
+		err = idx.insertTd(block)
+		if err != nil {
+			log.Error("Failed to insert TD for block", "number", i, "hash", block.Hash().Hex(), "err", err)
+			return from, stateBlock, err
+		}
+
 		stateBlock, err = idx.addBlockData(ctx, block, stateBlock)
 		if err != nil {
 			log.Error("Failed to insert block locally", "number", i, "err", err)
@@ -198,9 +204,38 @@ func (idx *indexer) sync(ctx context.Context, from *model.Header, to *types.Head
 	return from, stateBlock, nil
 }
 
+func (idx *indexer) insertTd(block *types.Block) error {
+	blockNumber := block.Number().Int64()
+	prevTd, err := idx.manager.GetTd(block.ParentHash().Bytes())
+	if err != nil {
+		if common.NotFoundError(err) {
+			log.Warn("TD not recorded for block", "number", blockNumber-1, "hash", block.ParentHash().Hex())
+			return nil
+		}
+		log.Error("Failed to get td for block", "number", blockNumber-1, "hash", block.ParentHash().Hex())
+		return err
+	}
+
+	td, ok := new(big.Int).SetString(prevTd.Td, 10)
+	if !ok || td.Int64() <= 0 {
+		log.Error("Failed to parse td for block", "block", blockNumber-1, "td", prevTd.Td, "hash", block.ParentHash().Hex())
+		return errors.New("failed to parse TD " + prevTd.Td)
+	}
+
+	td = td.Add(td, block.Difficulty())
+	err = idx.manager.InsertTd(block, td)
+	if err != nil && !common.DuplicateError(err) {
+		log.Error("Failed to insert td for block", "block", blockNumber, "td", td, "hash", block.Hash().Hex())
+		return err
+	}
+	return nil
+}
+
 func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromStateBlock *model.StateBlock) (*model.StateBlock, error) {
 	blockNumber := block.Number().Int64()
 	logger := log.New("number", blockNumber)
+
+	// Query transaction receipts for this block
 	var receipts []*types.Receipt
 	for _, tx := range block.Transactions() {
 		logger := logger.New("tx", tx.Hash())
@@ -290,6 +325,11 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 	}
 	for i := len(blocks) - 1; i >= 0; i-- {
 		block = blocks[i]
+		err = idx.insertTd(block)
+		if err != nil {
+			log.Error("Failed to insert TD for block", "number", i, "hash", block.Hash().Hex(), "err", err)
+			return err
+		}
 		stateBlock, err = idx.addBlockData(ctx, block, stateBlock)
 		if err != nil {
 			log.Error("reorg: failed to insert block data", "number", i, "err", err)

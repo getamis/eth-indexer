@@ -15,6 +15,8 @@
 package store
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
@@ -30,6 +32,8 @@ import (
 
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
+	// InsertTd writes the total difficulty for a block
+	InsertTd(block *types.Block, td *big.Int) error
 	// InsertBlock inserts blocks and receipts in db if the block doesn't exist
 	InsertBlock(block *types.Block, receipts []*types.Receipt) error
 	// UpdateState updates states for the given blocks
@@ -40,6 +44,8 @@ type Manager interface {
 	LatestHeader() (*model.Header, error)
 	// GetHeaderByNumber returns the header of the given block number
 	GetHeaderByNumber(number int64) (*model.Header, error)
+	// GetTd returns the TD of the given block hash
+	GetTd(hash []byte) (*model.TotalDifficulty, error)
 	// LatestStateBlock returns a latest state block from db
 	LatestStateBlock() (*model.StateBlock, error)
 }
@@ -65,6 +71,11 @@ func NewManager(db *gorm.DB) (Manager, error) {
 	}, nil
 }
 
+func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
+	headerStore := header.NewWithDB(m.db)
+	return headerStore.InsertTd(common.TotalDifficulty(block, td))
+}
+
 func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (err error) {
 	dbtx := m.db.Begin()
 	headerStore := header.NewWithDB(dbtx)
@@ -75,7 +86,6 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 		err = finalizeTransaction(dbtx, err)
 	}()
 
-	// TODO: how to ensure all data are inserted?
 	err = headerStore.Insert(common.Header(block))
 	if err != nil {
 		return err
@@ -110,6 +120,10 @@ func (m *manager) LatestHeader() (*model.Header, error) {
 func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	hs := header.NewWithDB(m.db)
 	return hs.FindBlockByNumber(number)
+}
+
+func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
+	return header.NewWithDB(m.db).FindTd(hash)
 }
 
 func (m *manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {

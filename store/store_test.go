@@ -47,7 +47,6 @@ var _ = Describe("Manager Test", func() {
 		db.Table(block_header.TableName).Delete(&model.Header{})
 		db.Table(transaction.TableName).Delete(&model.Transaction{})
 		db.Table(transaction_receipt.TableName).Delete(&model.Receipt{})
-		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
 		db.Table(account.NameAccounts).Delete(&model.Account{})
 		db.Table(account.NameERC20).Delete(&model.ERC20{})
 		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
@@ -73,6 +72,24 @@ var _ = Describe("Manager Test", func() {
 			By("insert the same block again, should be ok")
 			err = manager.InsertBlock(block, nil)
 			Expect(err).Should(Succeed())
+		})
+
+		It("saves TD", func() {
+			manager := NewManager(db)
+			header := &types.Header{
+				Number: big.NewInt(100),
+			}
+			block := types.NewBlock(header, nil, []*types.Header{
+				header,
+			}, []*types.Receipt{
+				types.NewReceipt([]byte{}, false, 0),
+			})
+
+			err := manager.InsertTd(block, new(big.Int).SetInt64(123456789))
+			Expect(err).Should(Succeed())
+
+			err = manager.InsertTd(block, new(big.Int).SetInt64(123456789))
+			Expect(common.DuplicateError(err)).Should(BeTrue())
 		})
 
 		It("failed due to wrong signer", func() {
@@ -121,6 +138,38 @@ var _ = Describe("Manager Test", func() {
 
 			header, err = manager.GetHeaderByNumber(199)
 			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
+	Context("GetTd()", func() {
+		It("gets the block TD", func() {
+			manager := NewManager(db)
+			block1 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+			})
+			block2 := types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(99),
+			})
+			err := manager.InsertTd(block1, new(big.Int).SetInt64(123456789))
+			Expect(err).Should(Succeed())
+			err = manager.InsertTd(block2, new(big.Int).SetInt64(987654321))
+			Expect(err).Should(Succeed())
+
+			td, err := manager.GetTd(block1.Hash().Bytes())
+			Expect(err).Should(Succeed())
+			Expect(td).Should(Equal(&model.TotalDifficulty{
+				Block: block1.Number().Int64(),
+				Hash:  block1.Hash().Bytes(),
+				Td:    "123456789",
+			}))
+
+			td, err = manager.GetTd(block2.Hash().Bytes())
+			Expect(err).Should(Succeed())
+			Expect(td).Should(Equal(&model.TotalDifficulty{
+				Block: block2.Number().Int64(),
+				Hash:  block2.Hash().Bytes(),
+				Td:    "987654321",
+			}))
 		})
 	})
 

@@ -37,7 +37,6 @@ type Header struct {
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
-	Td string
 }
 
 // Transaction represents a transaction
@@ -64,6 +63,13 @@ type Receipt struct {
 	ContractAddress   []byte
 	GasUsed           int64
 	BlockNumber       int64
+}
+
+// StateBlock represents the state is at the given block
+type TotalDifficulty struct {
+	Block int64
+	Hash  []byte
+	Td    string
 }
 
 // StateBlock represents the state is at the given block

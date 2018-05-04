@@ -16,6 +16,7 @@ package common
 
 import (
 	"encoding/binary"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -54,6 +55,15 @@ func HexToBytes(hex string) []byte {
 // StringToHex returns a hex representation (lower-case string without '0x') of a string
 func StringToHex(data string) string {
 	return BytesToHex([]byte(data))
+}
+
+// TotalDifficulty creates a db struct for an ethereum block
+func TotalDifficulty(b *types.Block, td *big.Int) *model.TotalDifficulty {
+	return &model.TotalDifficulty{
+		Block: b.Number().Int64(),
+		Hash:  b.Hash().Bytes(),
+		Td:    td.String(),
+	}
 }
 
 // Header converts ethereum block to db block
