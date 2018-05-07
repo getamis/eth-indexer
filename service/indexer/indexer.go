@@ -296,7 +296,23 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 		}
 	}
 	log.Trace("Reorg: tracing stops", "at", block.Number(), "hash", block.Hash().Hex())
-	idx.manager.DeleteDataFromBlock(block.Number().Int64())
+	branchBlock := block
+
+	// Eagerly insert TD for other indexer instances
+	for i := len(blocks) - 1; i >= 0; i-- {
+		block = blocks[i]
+		err := idx.insertTd(block)
+		if err != nil {
+			log.Error("Failed to insert TD for block", "number", block.Number(), "hash", block.Hash().Hex(), "err", err)
+			return err
+		}
+	}
+
+	err := idx.manager.DeleteStateFromBlock(branchBlock.Number().Int64())
+	if err != nil {
+		log.Error("Failed to delete state from block", "number", "err", err)
+		return err
+	}
 
 	// Get local state from db
 	_, stateBlock, err := idx.getLocalState()
@@ -305,17 +321,58 @@ func (idx *indexer) reorg(ctx context.Context, block *types.Block) error {
 	}
 	for i := len(blocks) - 1; i >= 0; i-- {
 		block = blocks[i]
-		err = idx.insertTd(block)
+		log.Trace("Reorg: atomically update block", "number", block.Number(), "hash", block.Hash().Hex())
+		stateBlock, err = idx.atomicUpdateBlock(ctx, block, stateBlock)
 		if err != nil {
-			log.Error("Failed to insert TD for block", "number", i, "hash", block.Hash().Hex(), "err", err)
-			return err
-		}
-		stateBlock, err = idx.addBlockData(ctx, block, stateBlock)
-		if err != nil {
-			log.Error("reorg: failed to insert block data", "number", i, "err", err)
+			log.Error("reorg: failed to update block data", "number", i, "err", err)
 			return err
 		}
 	}
 	log.Trace("Reorg: done", "at", block.Number(), "hash", block.Hash().Hex())
 	return nil
+}
+
+func (idx *indexer) atomicUpdateBlock(ctx context.Context, block *types.Block, fromStateBlock *model.StateBlock) (stateBlock *model.StateBlock, err error) {
+	blockNumber := block.Number().Int64()
+	// Query transaction receipts for this block
+	var receipts []*types.Receipt
+	for _, tx := range block.Transactions() {
+		r, err := idx.client.TransactionReceipt(ctx, tx.Hash())
+		if err != nil {
+			log.Error("Failed to get receipt from ethereum", "number", blockNumber, "tx", tx.Hash(), "err", err)
+			return fromStateBlock, err
+		}
+		receipts = append(receipts, r)
+	}
+
+	// Get modified accounts
+	// Noted: we skip dump block or get modified state error because the state db may not exist
+	var dump *state.Dump
+	isGenesis := blockNumber == 0
+	if isGenesis {
+		dump, err = idx.client.DumpBlock(ctx, 0)
+		if err != nil {
+			log.Warn("Failed to get state from ethereum, ignore it", "number", blockNumber, "err", err)
+		}
+	} else {
+		// This API is only supported on our customized geth.
+		dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, uint64(fromStateBlock.Number), block.Number().Uint64())
+		if err != nil {
+			log.Warn("Failed to get modified accounts from ethereum, ignore it", "from", fromStateBlock.Number, "to", blockNumber, "err", err)
+		}
+	}
+
+	// Update block data
+	err = idx.manager.UpdateBlock(block, receipts, dump)
+	if err != nil {
+		log.Error("Failed to update block", "number", blockNumber, "err", err)
+		return fromStateBlock, err
+	}
+	log.Trace("Updated block", "number", blockNumber, "hash", block.Hash().Hex(), "txs", len(block.Transactions()))
+	if dump != nil {
+		log.Trace("Updated state", "number", blockNumber, "hash", block.Hash().Hex(), "accounts", len(dump.Accounts))
+		stateBlock = &model.StateBlock{Number: blockNumber}
+		return
+	}
+	return fromStateBlock, nil
 }

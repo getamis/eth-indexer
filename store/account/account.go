@@ -37,6 +37,7 @@ type Store interface {
 	// ERC 20 storage
 	InsertERC20Storage(storage *model.ERC20Storage) error
 	FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error)
+	DeleteERC20Storage(address common.Address, fromBlock int64) error
 
 	// Accounts
 	InsertAccount(account *model.Account) error
@@ -126,6 +127,12 @@ func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockN
 	}.TableName()).Where("BINARY key_hash = ? AND block_number <= ?", key.Bytes(), blockNr).Order("block_number DESC").Limit(1).Find(result).Error
 	result.Address = address.Bytes()
 	return
+}
+
+func (t *store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
+	return t.db.Table(model.ERC20Storage{
+		Address: address.Bytes(),
+	}.TableName()).Delete(model.ERC20Storage{}, "number >= ?", fromBlock).Error
 }
 
 func (t *store) FindStateBlock(blockNr int64) (result *model.StateBlock, err error) {

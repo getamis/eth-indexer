@@ -8,7 +8,6 @@ import (
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/mapi/base/test"
-	"github.com/maichain/mapi/types/reflect"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -70,15 +69,15 @@ var _ = Describe("Block Header Database Test", func() {
 
 		result, err := store.FindBlockByHash(data1.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
+		Expect(*result).Should(Equal(*data1))
 
 		result, err = store.FindBlockByHash(data2.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*result, *data2)).Should(BeTrue())
+		Expect(*result).Should(Equal(*data2))
 
 		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*lastResult, *data2)).Should(BeTrue())
+		Expect(*lastResult).Should(Equal(*data2))
 	})
 
 	It("should get header by number", func() {
@@ -92,11 +91,11 @@ var _ = Describe("Block Header Database Test", func() {
 
 		result, err := store.FindBlockByNumber(data1.Number)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
+		Expect(*result).Should(Equal(*data1))
 
 		result, err = store.FindBlockByNumber(data2.Number)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*result, *data2)).Should(BeTrue())
+		Expect(*result).Should(Equal(*data2))
 	})
 
 	It("should insert one new record in database", func() {
@@ -122,16 +121,17 @@ var _ = Describe("Block Header Database Test", func() {
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.DeleteFromBlock(1000301)
+		err := store.Delete(1000301)
 		Expect(err).Should(Succeed())
 
 		result, err := store.FindBlockByNumber(data1.Number)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*result, *data1)).Should(BeTrue())
+		Expect(*result).Should(Equal(*data1))
 		_, err = store.FindBlockByNumber(data2.Number)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
 		_, err = store.FindBlockByNumber(data3.Number)
-		Expect(common.NotFoundError(err)).Should(BeTrue())
+		Expect(err).Should(Succeed())
+		result, err = store.FindBlockByNumber(data3.Number)
 	})
 
 	It("should get the last header", func() {
@@ -147,7 +147,7 @@ var _ = Describe("Block Header Database Test", func() {
 
 		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*lastResult, *data3)).Should(BeTrue())
+		Expect(*lastResult).Should(Equal(*data3))
 	})
 })
 

@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/jinzhu/gorm"
@@ -74,7 +73,7 @@ var _ = Describe("Transaction Database Test", func() {
 		Expect(err).Should(Succeed())
 	})
 
-	It("deletes transactions from a block number", func() {
+	It("deletes transactions at a block number", func() {
 		store := NewWithDB(db)
 		blockHex1 := "0x88bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
 		blockHex2 := "0x99bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"
@@ -82,23 +81,27 @@ var _ = Describe("Transaction Database Test", func() {
 		By("insert three new transactions")
 		data1 := makeTx(32100, blockHex1, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeTx(42100, blockHex2, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data3 := makeTx(52100, blockHex3, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data := []*model.Transaction{data1, data2, data3}
+		data3 := makeTx(42100, blockHex2, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data4 := makeTx(52100, blockHex3, "0x88bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data := []*model.Transaction{data1, data2, data3, data4}
 		for _, tx := range data {
 			err := store.Insert(tx)
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.DeleteFromBlock(42100)
+		err := store.Delete(42100)
 		Expect(err).Should(Succeed())
 
 		tx, err := store.FindTransaction(data1.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*tx, *data1)).Should(BeTrue())
+		Expect(*tx).Should(Equal(*data1))
 		tx, err = store.FindTransaction(data2.Hash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
 		tx, err = store.FindTransaction(data3.Hash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
+		tx, err = store.FindTransaction(data4.Hash)
+		Expect(err).Should(Succeed())
+		Expect(*tx).Should(Equal(*data4))
 	})
 
 	It("should get transaction by hash", func() {
@@ -117,20 +120,20 @@ var _ = Describe("Transaction Database Test", func() {
 
 		transaction, err := store.FindTransaction(data1.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*transaction, *data1)).Should(BeTrue())
+		Expect(*transaction).Should(Equal(*data1))
 
 		transaction, err = store.FindTransaction(data2.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*transaction, *data2)).Should(BeTrue())
+		Expect(*transaction).Should(Equal(*data2))
 
 		transaction, err = store.FindTransaction(data3.Hash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*transaction, *data3)).Should(BeTrue())
+		Expect(*transaction).Should(Equal(*data3))
 
 		By("find an non-existent transaction")
 		transaction, err = store.FindTransaction(data2.BlockHash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		Expect(reflect.DeepEqual(*transaction, model.Transaction{})).Should(BeTrue())
+		Expect(*transaction).Should(Equal(model.Transaction{}))
 	})
 
 	It("should get transaction by block hash", func() {
@@ -150,8 +153,8 @@ var _ = Describe("Transaction Database Test", func() {
 		transactions, err := store.FindTransactionsByBlockHash(data1.BlockHash)
 		Expect(err).Should(Succeed())
 		Expect(2).Should(Equal(len(transactions)))
-		Expect(reflect.DeepEqual(*transactions[0], *data1)).Should(BeTrue())
-		Expect(reflect.DeepEqual(*transactions[1], *data2)).Should(BeTrue())
+		Expect(*transactions[0]).Should(Equal(*data1))
+		Expect(*transactions[1]).Should(Equal(*data2))
 	})
 })
 

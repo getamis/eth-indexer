@@ -123,7 +123,7 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
-	Context("DeleteAccountsFromBlock()", func() {
+	Context("DeleteAccounts()", func() {
 		It("deletes account states from a block number", func() {
 			store := NewWithDB(db)
 
@@ -244,6 +244,63 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
+	Context("DeleteERC20Storage()", func() {
+		It("deletes the right storage", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			addr := gethCommon.HexToAddress(hexAddr)
+			data := makeERC20(hexAddr)
+			err := store.InsertERC20(data)
+			Expect(err).Should(Succeed())
+
+			storage1 := &model.ERC20Storage{
+				Address:     addr.Bytes(),
+				BlockNumber: 101,
+				Key:         gethCommon.HexToHash("01").Bytes(),
+				Value:       gethCommon.HexToHash("02").Bytes(),
+			}
+			err = store.InsertERC20Storage(storage1)
+			Expect(err).Should(Succeed())
+
+			storage2 := &model.ERC20Storage{
+				Address:     addr.Bytes(),
+				BlockNumber: 106,
+				Key:         gethCommon.HexToHash("01").Bytes(),
+				Value:       gethCommon.HexToHash("03").Bytes(),
+			}
+			err = store.InsertERC20Storage(storage2)
+			Expect(err).Should(Succeed())
+
+			storage3 := &model.ERC20Storage{
+				Address:     addr.Bytes(),
+				BlockNumber: 110,
+				Key:         gethCommon.HexToHash("01").Bytes(),
+				Value:       gethCommon.HexToHash("04").Bytes(),
+			}
+			err = store.InsertERC20Storage(storage3)
+			Expect(err).Should(Succeed())
+
+			for _, storage := range []*model.ERC20Storage{storage1, storage2, storage3} {
+				s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
+				Expect(err).Should(Succeed())
+				Expect(s).Should(Equal(storage))
+			}
+
+			err = store.DeleteERC20Storage(addr, int64(105))
+			Expect(err).Should(Succeed())
+
+			s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage1.Key), storage1.BlockNumber)
+			Expect(err).Should(Succeed())
+			Expect(s).Should(Equal(storage1))
+			for _, storage := range []*model.ERC20Storage{storage2, storage3} {
+				_, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
+				Expect(common.NotFoundError(err)).Should(BeTrue())
+			}
+		})
+	})
+
 	Context("InsertStateBlock()", func() {
 		It("inserts one new record", func() {
 			store := NewWithDB(db)
@@ -298,7 +355,7 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
-	Context("DeleteStateBlocksFromBlock()", func() {
+	Context("DeleteStateBlocks()", func() {
 		It("delete state blocks from a block number", func() {
 			store := NewWithDB(db)
 

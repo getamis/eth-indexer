@@ -716,7 +716,12 @@ var _ = Describe("Indexer Test", func() {
 					mockStoreManager.On("GetTd", newBlocks[i].ParentHash().Bytes()).Return(&model.TotalDifficulty{
 						i - 1, newBlocks[i].ParentHash().Bytes(), strconv.Itoa(int(i))}, nil).Once()
 					mockStoreManager.On("InsertTd", newBlocks[i], big.NewInt(i+5)).Return(nil).Once()
-					mockStoreManager.On("InsertBlock", newBlocks[i], []*types.Receipt{receipt}).Return(nil).Once()
+					if i <= 17 {
+						mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, mock.Anything).Return(nil).Once()
+					} else {
+						mockStoreManager.On("InsertBlock", newBlocks[i], []*types.Receipt{receipt}).Return(nil).Once()
+					}
+
 				}
 			}
 
@@ -729,7 +734,6 @@ var _ = Describe("Indexer Test", func() {
 					Hash:   blocks[i].Hash().Bytes(),
 				}, nil).Once()
 			}
-			mockStoreManager.On("DeleteDataFromBlock", int64(15)).Return(nil).Once()
 
 			// state diff 14->15/14->16/16->17 will be called twice
 			for i := int64(11); i <= 19; i++ {
@@ -742,7 +746,6 @@ var _ = Describe("Indexer Test", func() {
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
 						mockStoreManager.On("UpdateState", blocks[i], emptyDirtyStorage).Return(nil).Once()
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
-						mockStoreManager.On("UpdateState", newBlocks[i], emptyDirtyStorage).Return(nil).Once()
 					} else {
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
 						mockStoreManager.On("UpdateState", newBlocks[i], emptyDirtyStorage).Return(nil).Once()
@@ -755,6 +758,7 @@ var _ = Describe("Indexer Test", func() {
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Times(freq)
 				}
 			}
+			mockStoreManager.On("DeleteStateFromBlock", int64(15)).Return(nil).Once()
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(7)
 			mockEthClient.On("TransactionReceipt", mock.Anything, newTx.Hash()).Return(receipt, nil).Times(5)
 

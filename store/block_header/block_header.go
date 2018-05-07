@@ -13,7 +13,7 @@ const (
 type Store interface {
 	InsertTd(data *model.TotalDifficulty) error
 	Insert(data *model.Header) error
-	DeleteFromBlock(blockNumber int64) (err error)
+	Delete(blockNumber int64) (err error)
 	FindTd(hash []byte) (result *model.TotalDifficulty, err error)
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
@@ -40,8 +40,8 @@ func (t *store) Insert(data *model.Header) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) DeleteFromBlock(blockNumber int64) error {
-	return t.db.Delete(model.Header{}, "number >= ?", blockNumber).Error
+func (t *store) Delete(blockNumber int64) error {
+	return t.db.Delete(model.Header{}, "number = ?", blockNumber).Error
 }
 
 func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {

@@ -13,8 +13,8 @@ type Manager struct {
 	mock.Mock
 }
 
-// DeleteDataFromBlock provides a mock function with given fields: blockNumber
-func (_m *Manager) DeleteDataFromBlock(blockNumber int64) error {
+// DeleteStateFromBlock provides a mock function with given fields: blockNumber
+func (_m *Manager) DeleteStateFromBlock(blockNumber int64) error {
 	ret := _m.Called(blockNumber)
 
 	var r0 error
@@ -145,6 +145,20 @@ func (_m *Manager) LatestStateBlock() (*model.StateBlock, error) {
 	}
 
 	return r0, r1
+}
+
+// UpdateBlock provides a mock function with given fields: block, receipts, accounts
+func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error {
+	ret := _m.Called(block, receipts, accounts)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, map[string]state.DumpDirtyAccount) error); ok {
+		r0 = rf(block, receipts, accounts)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // UpdateState provides a mock function with given fields: block, accounts

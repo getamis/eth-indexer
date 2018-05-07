@@ -75,7 +75,9 @@ var _ = Describe("Manager Test", func() {
 		})
 
 		It("saves TD", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			header := &types.Header{
 				Number: big.NewInt(100),
 			}
@@ -85,7 +87,7 @@ var _ = Describe("Manager Test", func() {
 				types.NewReceipt([]byte{}, false, 0),
 			})
 
-			err := manager.InsertTd(block, new(big.Int).SetInt64(123456789))
+			err = manager.InsertTd(block, new(big.Int).SetInt64(123456789))
 			Expect(err).Should(Succeed())
 
 			err = manager.InsertTd(block, new(big.Int).SetInt64(123456789))
@@ -143,14 +145,16 @@ var _ = Describe("Manager Test", func() {
 
 	Context("GetTd()", func() {
 		It("gets the block TD", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
 			})
 			block2 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(99),
 			})
-			err := manager.InsertTd(block1, new(big.Int).SetInt64(123456789))
+			err = manager.InsertTd(block1, new(big.Int).SetInt64(123456789))
 			Expect(err).Should(Succeed())
 			err = manager.InsertTd(block2, new(big.Int).SetInt64(987654321))
 			Expect(err).Should(Succeed())
@@ -285,20 +289,50 @@ var _ = Describe("Manager Test", func() {
 				err = manager.UpdateState(block, nil)
 				Expect(err).Should(Succeed())
 			}
-			manager.DeleteDataFromBlock(111)
-
-			block, err := manager.LatestStateBlock()
+			state, err := manager.LatestStateBlock()
 			Expect(err).Should(Succeed())
-			Expect(block.Number).Should(Equal(int64(110)))
+			Expect(state.Number).Should(Equal(int64(119)))
 
-			header, err := manager.LatestHeader()
+			manager.DeleteStateFromBlock(int64(110))
+			state, err = manager.LatestStateBlock()
 			Expect(err).Should(Succeed())
-			Expect(header.Number).Should(Equal(int64(110)))
+			Expect(state.Number).Should(Equal(int64(109)))
+		})
+	})
 
-			for i := int64(111); i < 120; i++ {
-				header, err = manager.GetHeaderByNumber(i)
-				Expect(common.NotFoundError(err)).Should(BeTrue())
-			}
+	Context("UpdateBlock()", func() {
+		It("changes data for a block number", func() {
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
+			blockNum := int64(654321)
+			block := types.NewBlock(
+				&types.Header{
+					Number: big.NewInt(blockNum),
+					Root:   gethCommon.StringToHash("1234567890"),
+				}, []*types.Transaction{}, nil, []*types.Receipt{})
+
+			newBlock := types.NewBlock(
+				&types.Header{
+					Number: big.NewInt(blockNum),
+					Root:   gethCommon.StringToHash("9876543210"),
+				}, []*types.Transaction{}, nil, []*types.Receipt{})
+
+			Expect(block.Hash()).ShouldNot(Equal(newBlock.Hash()))
+
+			err = manager.InsertBlock(block, nil)
+			Expect(err).Should(Succeed())
+
+			hdr, err := manager.GetHeaderByNumber(blockNum)
+			Expect(err).Should(Succeed())
+			Expect(hdr.Hash).Should(Equal(block.Hash().Bytes()))
+
+			err = manager.UpdateBlock(newBlock, nil, nil)
+			Expect(err).Should(Succeed())
+
+			hdr, err = manager.GetHeaderByNumber(blockNum)
+			Expect(err).Should(Succeed())
+			Expect(hdr.Hash).Should(Equal(newBlock.Hash().Bytes()))
 		})
 	})
 })

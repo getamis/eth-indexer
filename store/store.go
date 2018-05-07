@@ -17,6 +17,8 @@ package store
 import (
 	"math/big"
 
+	"bytes"
+	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
@@ -38,8 +40,10 @@ type Manager interface {
 	InsertBlock(block *types.Block, receipts []*types.Receipt) error
 	// UpdateState updates states for the given blocks
 	UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) error
+	// UpdateBlock update data from this block
+	UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error
 	// DeleteDataFromBlock deletes all data from this block and higher
-	DeleteDataFromBlock(blockNumber int64) error
+	DeleteStateFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
 	LatestHeader() (*model.Header, error)
 	// GetHeaderByNumber returns the header of the given block number
@@ -78,13 +82,109 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 
 func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (err error) {
 	dbtx := m.db.Begin()
-	headerStore := header.NewWithDB(dbtx)
-	txStore := transaction.NewWithDB(dbtx)
-	receiptStore := receipt.NewWithDB(dbtx)
 
 	defer func() {
 		err = finalizeTransaction(dbtx, err)
 	}()
+
+	err = m.insertBlock(dbtx, block, receipts)
+	return
+}
+
+func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) (err error) {
+	headerStore := header.NewWithDB(m.db)
+	blockNumber := block.Number().Int64()
+	// Best effort to check if we already have the data
+	hdr, err := headerStore.FindBlockByNumber(blockNumber)
+	if err == nil && bytes.Equal(hdr.Hash, block.Hash().Bytes()) {
+		return
+	}
+	err = nil
+
+	dbTx := m.db.Begin()
+	defer func() {
+		err = finalizeTransaction(dbTx, err)
+	}()
+
+	err = m.deleteBlock(dbTx, blockNumber)
+	if err != nil {
+		return
+	}
+
+	err = m.insertBlock(dbTx, block, receipts)
+	if err != nil {
+		return
+	}
+
+	err = m.updateState(dbTx, block, accounts)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (m *manager) LatestHeader() (*model.Header, error) {
+	hs := header.NewWithDB(m.db)
+	return hs.FindLatestBlock()
+}
+
+func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
+	hs := header.NewWithDB(m.db)
+	return hs.FindBlockByNumber(number)
+}
+
+func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
+	return header.NewWithDB(m.db).FindTd(hash)
+}
+
+func (m *manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
+	dbtx := m.db.Begin()
+	defer func() {
+		err = finalizeTransaction(dbtx, err)
+	}()
+	err = m.updateState(dbtx, block, accounts)
+	return
+}
+
+func (m *manager) DeleteStateFromBlock(blockNumber int64) (err error) {
+	dbTx := m.db.Begin()
+	defer func(dbTx *gorm.DB) {
+		if err != nil {
+			dbTx.Rollback()
+			return
+		}
+		err = dbTx.Commit().Error
+	}(dbTx)
+
+	accountStore := account.NewWithDB(dbTx)
+	err = accountStore.DeleteAccounts(blockNumber)
+	if err != nil {
+		return
+	}
+
+	for hexAddr, _ := range m.erc20List {
+		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), blockNumber)
+		if err != nil {
+			return
+		}
+	}
+
+	err = accountStore.DeleteStateBlocks(blockNumber)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (m *manager) LatestStateBlock() (*model.StateBlock, error) {
+	return account.NewWithDB(m.db).LastStateBlock()
+}
+
+// insertBlock inserts block inside a DB transaction
+func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt) (err error) {
+	headerStore := header.NewWithDB(dbTx)
+	txStore := transaction.NewWithDB(dbTx)
+	receiptStore := receipt.NewWithDB(dbTx)
 
 	err = headerStore.Insert(common.Header(block))
 	if err != nil {
@@ -112,26 +212,9 @@ func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (er
 	return nil
 }
 
-func (m *manager) LatestHeader() (*model.Header, error) {
-	hs := header.NewWithDB(m.db)
-	return hs.FindLatestBlock()
-}
-
-func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
-	hs := header.NewWithDB(m.db)
-	return hs.FindBlockByNumber(number)
-}
-
-func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
-	return header.NewWithDB(m.db).FindTd(hash)
-}
-
-func (m *manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
-	dbtx := m.db.Begin()
-	accountStore := account.NewWithDB(dbtx)
-	defer func() {
-		err = finalizeTransaction(dbtx, err)
-	}()
+// updateState updates states inside a DB transaction
+func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
+	accountStore := account.NewWithDB(dbTx)
 
 	// Insert state block
 	err = accountStore.InsertStateBlock(&model.StateBlock{
@@ -167,46 +250,25 @@ func (m *manager) UpdateState(block *types.Block, accounts map[string]state.Dump
 	return
 }
 
-func (m *manager) DeleteDataFromBlock(blockNumber int64) (err error) {
-	dbTx := m.db.Begin()
-	accountStore := account.NewWithDB(dbTx)
+// deleteBlock deletes block data inside a DB transaction
+func (m *manager) deleteBlock(dbTx *gorm.DB, blockNumber int64) (err error) {
 	headerStore := header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
 
-	defer func(dbTx *gorm.DB) {
-		if err != nil {
-			dbTx.Rollback()
-			return
-		}
-		err = dbTx.Commit().Error
-	}(dbTx)
-
-	err = headerStore.DeleteFromBlock(blockNumber)
+	err = headerStore.Delete(blockNumber)
 	if err != nil {
 		return
 	}
-	err = txStore.DeleteFromBlock(blockNumber)
+	err = txStore.Delete(blockNumber)
 	if err != nil {
 		return
 	}
-	err = receiptStore.DeleteFromBlock(blockNumber)
-	if err != nil {
-		return
-	}
-	err = accountStore.DeleteAccounts(blockNumber)
-	if err != nil {
-		return
-	}
-	err = accountStore.DeleteStateBlocks(blockNumber)
+	err = receiptStore.Delete(blockNumber)
 	if err != nil {
 		return
 	}
 	return
-}
-
-func (m *manager) LatestStateBlock() (*model.StateBlock, error) {
-	return account.NewWithDB(m.db).LastStateBlock()
 }
 
 // finalizeTransaction finalizes the db transaction and ignores duplicate key error
