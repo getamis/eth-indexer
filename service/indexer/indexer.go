@@ -19,8 +19,6 @@ import (
 
 	"bytes"
 	"errors"
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
@@ -46,23 +44,41 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Get local state from db
-	header, stateBlock, err := idx.getLocalState()
-	if err != nil {
-		return err
+	return idx.syncTo(childCtx, targetBlock, -1,true)
+}
+
+func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int64, fromLocalState bool) (err error) {
+	var header *model.Header
+	var stateBlock *model.StateBlock
+	if fromLocalState {
+		// Get local state from db
+		header, stateBlock, err = idx.getLocalState()
+		if err != nil {
+			return
+		}
+	} else {
+		header = &model.Header{Number: targetBlock - 1}
+		stateBlock = &model.StateBlock{Number: targetBlock - 1}
+	}
+
+	// Set from block number
+	if header.Number < fromBlock-1 {
+		header = &model.Header{
+			Number: fromBlock - 1,
+		}
+		stateBlock = &model.StateBlock{
+			Number: header.Number - 1,
+		}
 	}
 
 	if targetBlock <= header.Number {
-		log.Error("Local block number is ahead of target block", "from", header.Number, "target", targetBlock)
-		return errors.New(fmt.Sprintf("targetBlock should be greater than %d", header.Number))
+		// TODO: check if header is on the canonical chain
+		// We don't know the block hash so cannot look up its TD locally
+		log.Info("Local block number is ahead of target block. discard", "local", header.Number, "target", targetBlock)
+		return
 	}
 
-	_, _, err = idx.sync(childCtx, header, &types.Header{Number: big.NewInt(targetBlock)}, stateBlock)
-	if err != nil {
-		log.Error("Failed to sync from ethereum", "from", header.Number, "target", targetBlock, "err", err)
-		return err
-	}
-	return nil
+	return idx.sync(ctx, header, targetBlock, stateBlock)
 }
 
 // Listen listens the blocks from given blocks
@@ -70,42 +86,18 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	var lastSync *model.Header
-	var stateBlock *model.StateBlock
-	if syncMissingBlocks {
-		// Get local state from db
-		header, localState, err := idx.getLocalState()
-		if err != nil {
-			return err
-		}
-		// Set from block number
-		if header.Number < fromBlock-1 {
-			header = &model.Header{
-				Number: fromBlock - 1,
-			}
-			localState = &model.StateBlock{
-				Number: header.Number - 1,
-			}
-		}
-
-		// Get latest blocks from ethereum
-		latestBlock, err := idx.client.BlockByNumber(childCtx, nil)
-		if err != nil {
-			log.Error("Failed to get latest header from ethereum", "err", err)
-			return err
-		}
-		stateBlock = localState
-
-		// Sync missing blocks from ethereum
-		lastSync, stateBlock, err = idx.sync(childCtx, header, latestBlock.Header(), stateBlock)
-		if err != nil {
-			log.Error("Failed to sync to latest blocks from ethereum", "from", header.Number, "err", err)
-			return err
-		}
+	latestBlock, err := idx.client.BlockByNumber(childCtx, nil)
+	if err != nil {
+		log.Error("Failed to get latest header from ethereum", "err", err)
+		return err
+	}
+	err = idx.syncTo(childCtx, latestBlock.Number().Int64(), fromBlock, syncMissingBlocks)
+	if err != nil {
+		return err
 	}
 
 	// Listen new channel events
-	_, err := idx.client.SubscribeNewHead(childCtx, ch)
+	_, err = idx.client.SubscribeNewHead(childCtx, ch)
 	if err != nil {
 		log.Error("Failed to subscribe event for new header from ethereum", "err", err)
 		return err
@@ -115,16 +107,9 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 		select {
 		case head := <-ch:
 			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
-			if lastSync == nil {
-				lastSync = &model.Header{
-					Number: head.Number.Int64() - 1,
-					Hash:   head.ParentHash.Bytes(),
-				}
-				stateBlock = &model.StateBlock{Number: lastSync.Number}
-			}
-			lastSync, stateBlock, err = idx.sync(childCtx, lastSync, head, stateBlock)
+			err = idx.syncTo(childCtx, head.Number.Int64(), -1,true)
 			if err != nil {
-				log.Error("Failed to sync to blocks from ethereum", "from", lastSync.Number, "fromHash", common.BytesToHex(lastSync.Hash), "to", head.Number.Int64(), "fromState", stateBlock.Number, "err", err)
+				log.Error("Failed to sync to header from ethereum", "number", head.Number, "err", err)
 				return err
 			}
 		case <-childCtx.Done():
@@ -167,41 +152,36 @@ func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.Sta
 }
 
 // sync syncs the blocks and header into database
-func (idx *indexer) sync(ctx context.Context, from *model.Header, to *types.Header, stateBlock *model.StateBlock) (*model.Header, *model.StateBlock, error) {
-	if to.Number.Int64() <= from.Number {
-		log.Debug("Discarding older header", "number", to.Number)
-		return from, stateBlock, nil
-	}
-
+func (idx *indexer) sync(ctx context.Context, from *model.Header, to int64, stateBlock *model.StateBlock) error {
 	// Update existing blocks from ethereum to db
-	for i := from.Number + 1; i <= to.Number.Int64(); i++ {
+	for i := from.Number + 1; i <= to; i++ {
 		block, err := idx.client.BlockByNumber(ctx, big.NewInt(i))
 		if err != nil {
 			log.Error("Failed to get block from ethereum", "number", i, "err", err)
-			return from, stateBlock, err
+			return err
 		}
 
-		if !bytes.Equal(block.ParentHash().Bytes(), from.Hash) {
+		if len(from.Hash) > 0 && !bytes.Equal(block.ParentHash().Bytes(), from.Hash) {
 			if err = idx.reorg(ctx, block); err != nil {
 				log.Error("Failed to reorg", "number", i, "hash", block.Hash().Hex(), "err", err)
-				return from, stateBlock, err
+				return err
 			}
 		}
 
 		err = idx.insertTd(block)
 		if err != nil {
 			log.Error("Failed to insert TD for block", "number", i, "hash", block.Hash().Hex(), "err", err)
-			return from, stateBlock, err
+			return err
 		}
 
 		stateBlock, err = idx.addBlockData(ctx, block, stateBlock)
 		if err != nil {
 			log.Error("Failed to insert block locally", "number", i, "err", err)
-			return from, stateBlock, err
+			return err
 		}
 		from = common.Header(block)
 	}
-	return from, stateBlock, nil
+	return nil
 }
 
 func (idx *indexer) insertTd(block *types.Block) error {
