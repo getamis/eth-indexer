@@ -44,6 +44,9 @@ services:
       - rpc
       - --db.host
       - ws-database
+      - --eth
+      - --eth.host
+      - 10.1.113.178
     ports:
       - 5487:5487
     restart: always
