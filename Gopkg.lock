@@ -97,7 +97,6 @@
     "accounts",
     "accounts/abi",
     "accounts/abi/bind",
-    "accounts/abi/bind/backends",
     "accounts/keystore",
     "common",
     "common/bitutil",
@@ -297,6 +296,7 @@
   packages = [
     ".",
     "config",
+    "extensions/table",
     "internal/codelocation",
     "internal/containernode",
     "internal/failer",
@@ -626,6 +626,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "39965ea29e59f2896b2a5fd742366bf6b1eb2433986e8efd99fcfbb6dfc8ed0c"
+  inputs-digest = "db51c9b2ece80b36a39ad6df70c9420f1cd63a8262c90d28ed8974177f3596b6"
   solver-name = "gps-cdcl"
   solver-version = 1
