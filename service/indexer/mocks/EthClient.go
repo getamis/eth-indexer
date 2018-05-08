@@ -15,6 +15,29 @@ type EthClient struct {
 	mock.Mock
 }
 
+// BalanceAt provides a mock function with given fields: ctx, account, blockNumber
+func (_m *EthClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	ret := _m.Called(ctx, account, blockNumber)
+
+	var r0 *big.Int
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, *big.Int) *big.Int); ok {
+		r0 = rf(ctx, account, blockNumber)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, *big.Int) error); ok {
+		r1 = rf(ctx, account, blockNumber)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // BlockByHash provides a mock function with given fields: ctx, hash
 func (_m *EthClient) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
 	ret := _m.Called(ctx, hash)
@@ -54,6 +77,29 @@ func (_m *EthClient) BlockByNumber(ctx context.Context, number *big.Int) (*types
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, *big.Int) error); ok {
 		r1 = rf(ctx, number)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CallContract provides a mock function with given fields: ctx, msg, blockNumber
+func (_m *EthClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	ret := _m.Called(ctx, msg, blockNumber)
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func(context.Context, ethereum.CallMsg, *big.Int) []byte); ok {
+		r0 = rf(ctx, msg, blockNumber)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ethereum.CallMsg, *big.Int) error); ok {
+		r1 = rf(ctx, msg, blockNumber)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -133,6 +179,36 @@ func (_m *EthClient) SubscribeNewHead(ctx context.Context, ch chan<- *types.Head
 	}
 
 	return r0, r1
+}
+
+// TransactionByHash provides a mock function with given fields: ctx, hash
+func (_m *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 *types.Transaction
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) *types.Transaction); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Transaction)
+		}
+	}
+
+	var r1 bool
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) bool); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, common.Hash) error); ok {
+		r2 = rf(ctx, hash)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // TransactionReceipt provides a mock function with given fields: ctx, txHash
