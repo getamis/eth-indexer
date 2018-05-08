@@ -22,11 +22,16 @@ import (
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/jinzhu/gorm"
+	"github.com/maichain/eth-indexer/service/indexer"
 )
 
 const (
 	defaultDialTimeout = 5 * time.Second
 )
+
+func NewEthConn(url string) (indexer.EthClient, error) {
+	return indexer.NewClient(url)
+}
 
 func MustNewDatabase() *gorm.DB {
 	db, err := gormFactory.New(dbDriver,

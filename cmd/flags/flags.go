@@ -22,6 +22,7 @@ const (
 	Port = "port"
 
 	// flag names for ethereum service
+	EthFlag         = "eth"
 	EthProtocolFlag = "eth.protocol"
 	EthHostFlag     = "eth.host"
 	EthPortFlag     = "eth.port"

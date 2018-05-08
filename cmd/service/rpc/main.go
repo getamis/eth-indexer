@@ -32,6 +32,12 @@ var (
 	host string
 	port int
 
+	// flags for ethereum service
+	eth         bool
+	ethProtocol string
+	ethHost     string
+	ethPort     int
+
 	dbDriver   string
 	dbHost     string
 	dbPort     int
@@ -52,12 +58,26 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		db := MustNewDatabase()
-		defer db.Close()
+		// eth-client
+		var s api.Server
+		if eth {
+			ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+			if err != nil {
+				log.Error("Failed to new a eth client", "err", err)
+				return err
+			}
+			defer ethClient.Close()
 
-		s := api.NewServer(
-			rpc.New(store.NewServiceManager(db)),
-		)
+			s = api.NewServer(
+				rpc.NewRelay(ethClient),
+			)
+		} else {
+			db := MustNewDatabase()
+			defer db.Close()
+			s = api.NewServer(
+				rpc.New(store.NewServiceManager(db)),
+			)
+		}
 
 		if err := s.Serve(l); err != grpc.ErrServerStopped {
 			log.Crit("Server stopped unexpectedly", "err", err)
@@ -88,4 +108,10 @@ func init() {
 	ServerCmd.Flags().StringVar(&dbName, flags.DbNameFlag, "eth-db", "The database name")
 	ServerCmd.Flags().StringVar(&dbUser, flags.DbUserFlag, "root", "The database username to login")
 	ServerCmd.Flags().StringVar(&dbPassword, flags.DbPasswordFlag, "my-secret-pw", "The database password to login")
+
+	// eth-client flags
+	ServerCmd.Flags().BoolVar(&eth, flags.EthFlag, false, "Enable Ethereum relay")
+	ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocolFlag, "ws", "The eth-client protocol")
+	ServerCmd.Flags().StringVar(&ethHost, flags.EthHostFlag, "127.0.0.1", "The eth-client host")
+	ServerCmd.Flags().IntVar(&ethPort, flags.EthPortFlag, 8546, "The eth-client port")
 }
