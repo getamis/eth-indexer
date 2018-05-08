@@ -13,7 +13,8 @@
 		GetBalanceRequest
 		GetOffsetBalanceRequest
 		GetBalanceResponse
-		BlockQueryRequest
+		BlockNumberQueryRequest
+		BlockHashQueryRequest
 		BlockQueryResponse
 		Block
 		TransactionQueryRequest

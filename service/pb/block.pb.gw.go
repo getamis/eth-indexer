@@ -28,12 +28,8 @@ var _ status.Status
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-var (
-	filter_BlockService_GetBlockByHash_0 = &utilities.DoubleArray{Encoding: map[string]int{"hash": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_BlockService_GetBlockByHash_0(ctx context.Context, marshaler runtime.Marshaler, client BlockServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq BlockQueryRequest
+	var protoReq BlockHashQueryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -54,21 +50,13 @@ func request_BlockService_GetBlockByHash_0(ctx context.Context, marshaler runtim
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "hash", err)
 	}
 
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_BlockService_GetBlockByHash_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
 	msg, err := client.GetBlockByHash(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-var (
-	filter_BlockService_GetBlockByNumber_0 = &utilities.DoubleArray{Encoding: map[string]int{"number": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
-)
-
 func request_BlockService_GetBlockByNumber_0(ctx context.Context, marshaler runtime.Marshaler, client BlockServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq BlockQueryRequest
+	var protoReq BlockNumberQueryRequest
 	var metadata runtime.ServerMetadata
 
 	var (
@@ -87,10 +75,6 @@ func request_BlockService_GetBlockByNumber_0(ctx context.Context, marshaler runt
 
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "number", err)
-	}
-
-	if err := runtime.PopulateQueryParameters(&protoReq, req.URL.Query(), filter_BlockService_GetBlockByNumber_0); err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.GetBlockByNumber(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
