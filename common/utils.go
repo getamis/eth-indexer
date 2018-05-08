@@ -43,6 +43,11 @@ func HashHex(hash common.Hash) string {
 	return Hex(hash.Hex())
 }
 
+// AddressHex returns an address hex and lower-case string without '0x'
+func AddressHex(address common.Address) string {
+	return Hex(address.Hex())
+}
+
 // BytesToHex returns a hex representation (lower-case string without '0x') of a byte array
 func BytesToHex(data []byte) string {
 	return Hex(hexutil.Encode(data))
