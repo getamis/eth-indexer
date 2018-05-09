@@ -95,7 +95,7 @@ func (s *relayServer) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQ
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
 		if err == ethereum.NotFound {
-			return nil, ErrTransactionNotFound
+			return nil, ErrBlockNotFound
 		}
 		return nil, ErrInternal
 	}
@@ -113,6 +113,9 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 	tx, _, err := s.client.TransactionByHash(ctx, ethCommon.HexToHash(req.Hash))
 	if err != nil {
 		logger.Error("Failed to get transaction from ethereum", "err", err)
+		if err == ethereum.NotFound {
+			return nil, ErrTransactionNotFound
+		}
 		return nil, ErrInternal
 	}
 
@@ -135,30 +138,44 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 
 func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
 	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
-	var balance *big.Int
-	var err error
 	address := ethCommon.HexToAddress(req.Address)
 	if req.Token == ethToken {
 		// Get Ether
-		balance, err = s.client.BalanceAt(ctx, address, new(big.Int).SetInt64(req.BlockNumber))
+		balance, err := s.client.BalanceAt(ctx, address, new(big.Int).SetInt64(req.BlockNumber))
+		if err != nil {
+			logger.Error("Failed to get balance from ethereum", "err", err)
+			return nil, ErrInternal
+		}
+
+		return &pb.GetBalanceResponse{
+			Amount:      balance.String(),
+			BlockNumber: req.BlockNumber,
+		}, nil
 	} else {
 		var blockNumber *big.Int
 		if req.BlockNumber >= 0 {
 			blockNumber = new(big.Int).SetInt64(req.BlockNumber)
 		}
 		// Get ERC20 token
-		balance, err = s.balanceOf(ctx, blockNumber, ethCommon.HexToAddress(req.Token), address)
-	}
+		balance, err := s.balanceOf(ctx, blockNumber, ethCommon.HexToAddress(req.Token), address)
+		if err != nil {
+			logger.Error("Failed to get balance from ethereum", "err", err)
+			return nil, ErrInternal
+		}
 
-	if err != nil {
-		logger.Error("Failed to get balance from ethereum", "err", err)
-		return nil, ErrInternal
-	}
+		decimal, err := s.decimals(ctx, blockNumber, ethCommon.HexToAddress(req.Token))
+		if err != nil {
+			logger.Error("Failed to get decimals from ethereum", "err", err)
+			return nil, ErrInternal
+		}
 
-	return &pb.GetBalanceResponse{
-		Amount:      balance.String(),
-		BlockNumber: req.BlockNumber,
-	}, nil
+		decimalInt := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(*decimal)), nil)
+		result := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(decimalInt))
+		return &pb.GetBalanceResponse{
+			Amount:      result.String(),
+			BlockNumber: req.BlockNumber,
+		}, nil
+	}
 }
 
 func (s *relayServer) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceRequest) (*pb.GetBalanceResponse, error) {
@@ -184,7 +201,7 @@ func (s *relayServer) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBal
 	})
 }
 
-// balanceOfMessage returns the balance of message
+// balanceOf returns the ERC20 balance of the address
 func (s *relayServer) balanceOf(ctx context.Context, blockNumber *big.Int, contractAddress ethCommon.Address, address ethCommon.Address) (*big.Int, error) {
 	method := "balanceOf"
 	input, err := s.erc20ABI.Pack(method, address)
@@ -208,6 +225,34 @@ func (s *relayServer) balanceOf(ctx context.Context, blockNumber *big.Int, contr
 		return nil, err
 	}
 	return *result, err
+}
+
+// TODO: need to handle if the ERC20 doesn't define this function.
+// It's not a must function in ERC20.
+// decimals returns the number of decimals in ERC20.
+func (s *relayServer) decimals(ctx context.Context, blockNumber *big.Int, contractAddress ethCommon.Address) (*uint8, error) {
+	method := "decimals"
+	input, err := s.erc20ABI.Pack(method)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := ethereum.CallMsg{
+		To:   &contractAddress,
+		Data: input,
+	}
+
+	output, err := s.client.CallContract(ctx, msg, blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	result := new(uint8)
+	err = s.erc20ABI.Unpack(result, method, output)
+	if err != nil {
+		return nil, err
+	}
+	return result, err
 }
 
 func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error) {
