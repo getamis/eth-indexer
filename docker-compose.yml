@@ -46,7 +46,7 @@ services:
       - ws-database
       - --eth
       - --eth.host
-      - 10.1.113.178
+      - ${ETH_HOST}
     ports:
       - 5487:5487
     restart: always
@@ -73,7 +73,7 @@ services:
       - --db.host
       - ws-database
       - --eth.host
-      - 10.1.113.178
+      - ${ETH_HOST}
     restart: on-failure
     depends_on:
       - ws-database
