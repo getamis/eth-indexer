@@ -91,6 +91,7 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
+  branch = "feature/get_modified_accounts"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -98,12 +99,15 @@
     "accounts/abi",
     "accounts/abi/bind",
     "accounts/keystore",
+    "accounts/usbwallet",
+    "accounts/usbwallet/internal/trezor",
     "common",
     "common/bitutil",
     "common/hexutil",
     "common/math",
     "common/mclock",
     "consensus",
+    "consensus/clique",
     "consensus/ethash",
     "consensus/misc",
     "core",
@@ -115,22 +119,40 @@
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
+    "crypto/ecies",
     "crypto/randentropy",
     "crypto/secp256k1",
     "crypto/sha3",
+    "eth",
+    "eth/downloader",
+    "eth/fetcher",
     "eth/filters",
+    "eth/gasprice",
+    "eth/tracers",
+    "eth/tracers/internal/tracers",
     "ethclient",
     "ethdb",
     "event",
+    "internal/debug",
+    "internal/ethapi",
     "log",
+    "log/term",
     "metrics",
+    "metrics/exp",
+    "miner",
+    "node",
+    "p2p",
+    "p2p/discover",
+    "p2p/discv5",
+    "p2p/nat",
+    "p2p/netutil",
     "params",
     "rlp",
     "rpc",
     "trie"
   ]
-  revision = "329ac18ef617d0238f71637bffe78f028b0f13f7"
-  version = "v1.8.3"
+  revision = "ddef8a795a87bda0375f4e9327a3bfea1a5ea698"
+  source = "github.com/getamis/go-ethereum"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -248,10 +270,30 @@
   revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/huin/goupnp"
+  packages = [
+    ".",
+    "dcps/internetgateway1",
+    "dcps/internetgateway2",
+    "httpu",
+    "scpd",
+    "soap",
+    "ssdp"
+  ]
+  revision = "1395d1447324cbea88d249fbfcfd70ea878fdfca"
+
+[[projects]]
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  name = "github.com/jackpal/go-nat-pmp"
+  packages = ["."]
+  revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/jinzhu/gorm"
@@ -264,6 +306,12 @@
   name = "github.com/jinzhu/inflection"
   packages = ["."]
   revision = "04140366298a54a039076d798123ffa108fff46c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/karalabe/hid"
+  packages = ["."]
+  revision = "2b4488a37358b7283de4f9622553e85ebbe73125"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -284,6 +332,18 @@
     "types/reflect"
   ]
   revision = "3344bc4a3ba2acd21874353c9c88b496e2963983"
+
+[[projects]]
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -362,6 +422,12 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/prometheus/prometheus"
+  packages = ["util/flock"]
+  revision = "85f23d82a045d103ea7f3c89a91fba4a93e6367a"
+  version = "v2.1.0"
 
 [[projects]]
   branch = "master"
@@ -605,6 +671,12 @@
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
 
 [[projects]]
+  branch = "v3"
+  name = "gopkg.in/olebedev/go-duktape.v3"
+  packages = ["."]
+  revision = "abf0ba0be5d5d36b1f9266463cc320b9a5ab224e"
+
+[[projects]]
   name = "gopkg.in/redis.v5"
   packages = [
     ".",
@@ -618,6 +690,12 @@
   version = "v5.2.9"
 
 [[projects]]
+  name = "gopkg.in/urfave/cli.v1"
+  packages = ["."]
+  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
+  version = "v1.20.0"
+
+[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
@@ -626,6 +704,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "db51c9b2ece80b36a39ad6df70c9420f1cd63a8262c90d28ed8974177f3596b6"
+  inputs-digest = "4cf6d59ad47762fe6524841c7d713edbfae9578e594e1c8514a7085f3a9cf990"
   solver-name = "gps-cdcl"
   solver-version = 1

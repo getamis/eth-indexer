@@ -169,8 +169,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// All checks passed, create a codec that reads direct from the request body
 	// untilEOF and writes the response to w and order the server to process a
 	// single request.
-	body := io.LimitReader(r.Body, maxRequestContentLength)
-	codec := NewJSONCodec(&httpReadWriteNopCloser{body, w})
+	codec := NewJSONCodec(&httpReadWriteNopCloser{r.Body, w})
 	defer codec.Close()
 
 	w.Header().Set("content-type", contentType)

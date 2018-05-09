@@ -81,9 +81,12 @@ type StateDB struct {
 	nextRevisionId int
 
 	lock sync.Mutex
+
+	// dirtyStorage marks the dirty storage
+	dirtyStorage map[common.Address]map[common.Hash]common.Hash
 }
 
-// Create a new state from a given trie.
+// Create a new state from a given trie
 func New(root common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
 	if err != nil {
@@ -110,7 +113,7 @@ func (self *StateDB) Error() error {
 	return self.dbErr
 }
 
-// Reset clears out all ephemeral state objects from the state db, but keeps
+// Reset clears out all emphemeral state objects from the state db, but keeps
 // the underlying state trie to avoid reloading data for the next operations.
 func (self *StateDB) Reset(root common.Hash) error {
 	tr, err := self.db.OpenTrie(root)
@@ -126,6 +129,7 @@ func (self *StateDB) Reset(root common.Hash) error {
 	self.logs = make(map[common.Hash][]*types.Log)
 	self.logSize = 0
 	self.preimages = make(map[common.Hash][]byte)
+	self.dirtyStorage = make(map[common.Address]map[common.Hash]common.Hash)
 	self.clearJournalAndRefund()
 	return nil
 }
@@ -271,12 +275,35 @@ func (self *StateDB) HasSuicided(addr common.Address) bool {
  * SETTERS
  */
 
+// StartDirtyStorage starts to record the dirty storage
+func (self *StateDB) StartDirtyStorage() {
+	self.dirtyStorage = make(map[common.Address]map[common.Hash]common.Hash)
+}
+
+// StopDirtyStorage stops to record the dirty storage
+func (self *StateDB) StopDirtyStorage() {
+	self.dirtyStorage = nil
+}
+
+// MarkDirtyStorage marks the dirty storages
+func (self *StateDB) MarkDirtyStorage(addr common.Address) bool {
+	if self.dirtyStorage == nil {
+		return false
+	}
+
+	if self.dirtyStorage[addr] == nil {
+		self.dirtyStorage[addr] = make(map[common.Hash]common.Hash)
+	}
+	return true
+}
+
 // AddBalance adds amount to the account associated with addr
 func (self *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.AddBalance(amount)
 	}
+	self.MarkDirtyStorage(addr)
 }
 
 // SubBalance subtracts amount from the account associated with addr
@@ -285,6 +312,7 @@ func (self *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	if stateObject != nil {
 		stateObject.SubBalance(amount)
 	}
+	self.MarkDirtyStorage(addr)
 }
 
 func (self *StateDB) SetBalance(addr common.Address, amount *big.Int) {
@@ -292,6 +320,7 @@ func (self *StateDB) SetBalance(addr common.Address, amount *big.Int) {
 	if stateObject != nil {
 		stateObject.SetBalance(amount)
 	}
+	self.MarkDirtyStorage(addr)
 }
 
 func (self *StateDB) SetNonce(addr common.Address, nonce uint64) {
@@ -299,6 +328,7 @@ func (self *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	if stateObject != nil {
 		stateObject.SetNonce(nonce)
 	}
+	self.MarkDirtyStorage(addr)
 }
 
 func (self *StateDB) SetCode(addr common.Address, code []byte) {
@@ -306,12 +336,16 @@ func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	if stateObject != nil {
 		stateObject.SetCode(crypto.Keccak256Hash(code), code)
 	}
+	self.MarkDirtyStorage(addr)
 }
 
 func (self *StateDB) SetState(addr common.Address, key common.Hash, value common.Hash) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetState(self.db, key, value)
+	}
+	if self.MarkDirtyStorage(addr) {
+		self.dirtyStorage[addr][key] = value
 	}
 }
 
@@ -332,7 +366,7 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 	})
 	stateObject.markSuicided()
 	stateObject.data.Balance = new(big.Int)
-
+	self.MarkDirtyStorage(addr)
 	return true
 }
 

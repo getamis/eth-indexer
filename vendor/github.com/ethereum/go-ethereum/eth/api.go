@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/params"
@@ -402,7 +403,12 @@ func storageRangeAt(st state.Trie, start []byte, maxResult int) (StorageRangeRes
 	return result, nil
 }
 
-// GetModifiedAccountsByumber returns all accounts that have changed between the
+// GetTotalDifficulty returns the total difficulty of the specified block.
+func (api *PrivateDebugAPI) GetTotalDifficulty(blockHash common.Hash) *big.Int {
+	return api.eth.blockchain.GetTdByHash(blockHash)
+}
+
+// GetModifiedAccountsByNumber returns all accounts that have changed between the
 // two blocks specified. A change is defined as a difference in nonce, balance,
 // code hash, or storage hash.
 //
@@ -428,6 +434,53 @@ func (api *PrivateDebugAPI) GetModifiedAccountsByNumber(startNum uint64, endNum 
 		}
 	}
 	return api.getModifiedAccounts(startBlock, endBlock)
+}
+
+// GetModifiedAccountStatesByNumber returns all account states that have changed between the
+// two blocks specified. A change is defined as a difference in nonce, balance, and storage.
+// Note that the function only returns the diff storage.
+//
+// With one parameter, returns the list of accounts modified in the specified block.
+func (api *PrivateDebugAPI) GetModifiedAccountStatesByNumber(startNum uint64, endNum *uint64) (map[string]state.DumpDirtyAccount, error) {
+	return GetDirtyStorage(api.config, api.eth.BlockChain(), startNum, endNum)
+}
+
+func GetDirtyStorage(config *params.ChainConfig, blockchain *core.BlockChain, startNum uint64, endNum *uint64) (map[string]state.DumpDirtyAccount, error) {
+	// Get start blocks
+	var startBlock *types.Block
+	startBlock = blockchain.GetBlockByNumber(startNum)
+	if startBlock == nil {
+		return nil, fmt.Errorf("start block %x not found", startNum)
+	}
+
+	stateDB, err := blockchain.StateAt(startBlock.Root())
+	if err != nil {
+		return nil, err
+	}
+
+	stateDB.StartDirtyStorage()
+	defer stateDB.StopDirtyStorage()
+
+	processor := core.NewStateProcessor(config, blockchain, blockchain.Engine())
+	parent := startBlock
+	for i := startNum + 1; i <= *endNum; i++ {
+		block := blockchain.GetBlockByNumber(i)
+		if block == nil {
+			return nil, fmt.Errorf("block %x not found", i)
+		}
+
+		receipts, _, usedGas, err := processor.Process(block, stateDB, vm.Config{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply block %x", i)
+		}
+
+		err = blockchain.Validator().ValidateState(block, parent, stateDB, receipts, usedGas)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply block %x", i)
+		}
+		parent = block
+	}
+	return stateDB.DumpDirtyStorage(), nil
 }
 
 // GetModifiedAccountsByHash returns all accounts that have changed between the
