@@ -20,6 +20,7 @@ db:
 
 # sync related config
 sync:
+  fromBlock: 0  # block number to sync from
   targetBlock: 0  # block number to sync to
   getMissingBlocks: "true"
   # if false, will skip the initial sync and start listening right away to

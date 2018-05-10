@@ -38,4 +38,5 @@ const (
 	// flags for syncing
 	SyncTargetBlockFlag      = "sync.targetBlock"
 	SyncGetMissingBlocksFlag = "sync.getMissingBlocks"
+	SyncFromBlockFlag        = "sync.fromBlock"
 )
