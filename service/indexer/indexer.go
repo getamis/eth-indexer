@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
@@ -64,7 +65,8 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 	return nil
 }
 
-func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, syncMissingBlocks bool) error {
+// Listen listens the blocks from given blocks
+func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64, syncMissingBlocks bool) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -75,6 +77,15 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, syncMissi
 		header, localState, err := idx.getLocalState()
 		if err != nil {
 			return err
+		}
+		// Set from block number
+		if header.Number < fromBlock-1 {
+			header = &model.Header{
+				Number: fromBlock - 1,
+			}
+			localState = &model.StateBlock{
+				Number: header.Number - 1,
+			}
 		}
 
 		// Get latest blocks from ethereum
@@ -189,11 +200,13 @@ func (idx *indexer) sync(ctx context.Context, from int64, fromHash []byte, to in
 
 func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromStateBlock int64) (int64, error) {
 	blockNumber := block.Number().Int64()
+	logger := log.New("number", blockNumber)
 	var receipts []*types.Receipt
 	for _, tx := range block.Transactions() {
+		logger := logger.New("tx", tx.Hash())
 		r, err := idx.client.TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
-			log.Error("Failed to get receipt from ethereum", "number", blockNumber, "tx", tx.Hash(), "err", err)
+			logger.Error("Failed to get receipt from ethereum", "err", err)
 			return fromStateBlock, err
 		}
 		receipts = append(receipts, r)
@@ -201,20 +214,27 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 
 	err := idx.manager.InsertBlock(block, receipts)
 	if err != nil {
-		log.Error("Failed to insert block", "number", blockNumber, "err", err)
+		logger.Error("Failed to insert block", "err", err)
 		return fromStateBlock, err
 	}
-	log.Trace("Inserted block", "number", blockNumber, "hash", common.HashHex(block.Hash()), "txs", len(block.Transactions()))
+	logger.Trace("Inserted block", "hash", common.HashHex(block.Hash()), "txs", len(block.Transactions()))
 
 	// Get modified accounts
 	// Noted: we skip dump block or get modified state error because the state db may not exist
-	var dump *state.Dump
+	dump := make(map[string]state.DumpDirtyAccount)
 	isGenesis := blockNumber == 0
 	if isGenesis {
-		dump, err = idx.client.DumpBlock(ctx, 0)
+		d, err := idx.client.DumpBlock(ctx, 0)
 		if err != nil {
 			log.Warn("Failed to get state from ethereum, ignore it", "number", blockNumber, "err", err)
 			return fromStateBlock, nil
+		}
+		for addr, acc := range d.Accounts {
+			dump[addr] = state.DumpDirtyAccount{
+				Balance: acc.Balance,
+				Nonce:   acc.Nonce,
+				Storage: acc.Storage,
+			}
 		}
 	} else {
 		// This API is only supported on our customized geth.
@@ -224,6 +244,7 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 			return fromStateBlock, nil
 		}
 	}
+	logger.Trace("Start to update state", "hash", common.HashHex(block.Hash()), "accounts", len(dump))
 
 	// Update state db
 	err = idx.manager.UpdateState(block, dump)
@@ -231,7 +252,7 @@ func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, fromSt
 		log.Error("Failed to update state to database", "number", blockNumber, "err", err)
 		return fromStateBlock, err
 	}
-	log.Trace("Inserted state", "number", blockNumber, "hash", common.HashHex(block.Hash()), "accounts", len(dump.Accounts))
+	log.Trace("Inserted state", "number", blockNumber, "hash", common.HashHex(block.Hash()), "accounts", len(dump))
 
 	return blockNumber, nil
 }

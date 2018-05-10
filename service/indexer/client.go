@@ -36,9 +36,10 @@ type EthClient interface {
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 	DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error)
-	ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (*state.Dump, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (map[string]state.DumpDirtyAccount, error)
+	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	Close()
 }
 
@@ -64,9 +65,9 @@ func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, err
 	return r, err
 }
 
-func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (*state.Dump, error) {
-	r := &state.Dump{}
-	err := c.rpc.CallContext(ctx, r, "debug_getModifiedAccountStatesByNumber", startNum, endNum)
+func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (map[string]state.DumpDirtyAccount, error) {
+	r := make(map[string]state.DumpDirtyAccount)
+	err := c.rpc.CallContext(ctx, &r, "debug_getModifiedAccountStatesByNumber", startNum, endNum)
 	return r, err
 }
 

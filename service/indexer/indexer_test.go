@@ -16,7 +16,6 @@ package indexer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"strconv"
 	"testing"
@@ -35,9 +34,10 @@ import (
 
 var _ = Describe("Indexer Test", func() {
 	var (
-		mockEthClient    *indexerMocks.EthClient
-		mockStoreManager *storeMocks.Manager
-		idx              *indexer
+		mockEthClient     *indexerMocks.EthClient
+		mockStoreManager  *storeMocks.Manager
+		idx               *indexer
+		emptyDirtyStorage map[string]state.DumpDirtyAccount
 	)
 	BeforeEach(func() {
 		mockStoreManager = new(storeMocks.Manager)
@@ -84,11 +84,8 @@ var _ = Describe("Indexer Test", func() {
 
 				// Sometimes we cannot get account states successfully
 				if i%2 == 0 {
-					dump := &state.Dump{
-						Root: fmt.Sprintf("%x", block.Root()),
-					}
-					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-					mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+					mockStoreManager.On("UpdateState", block, emptyDirtyStorage).Return(nil).Once()
 				} else {
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
 				}
@@ -139,11 +136,8 @@ var _ = Describe("Indexer Test", func() {
 
 				// Sometimes we cannot get account states successfully
 				if i%2 == 0 {
-					dump := &state.Dump{
-						Root: fmt.Sprintf("%x", block.Root()),
-					}
-					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-					mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+					mockStoreManager.On("UpdateState", block, emptyDirtyStorage).Return(nil).Once()
 				} else {
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
 				}
@@ -161,7 +155,7 @@ var _ = Describe("Indexer Test", func() {
 				cancel()
 			}()
 
-			err := idx.Listen(ctx, ch, false)
+			err := idx.Listen(ctx, ch, -1, false)
 			Expect(err).Should(Equal(context.Canceled))
 		})
 	})
@@ -205,11 +199,8 @@ var _ = Describe("Indexer Test", func() {
 
 				// Sometimes we cannot get account states successfully
 				if i%2 == 0 {
-					dump := &state.Dump{
-						Root: fmt.Sprintf("%x", block.Root()),
-					}
-					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-					mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+					mockStoreManager.On("UpdateState", block, emptyDirtyStorage).Return(nil).Once()
 				} else {
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
 				}
@@ -230,7 +221,7 @@ var _ = Describe("Indexer Test", func() {
 				cancel()
 			}()
 
-			err := idx.Listen(ctx, ch, true)
+			err := idx.Listen(ctx, ch, -1, true)
 			Expect(err).Should(Equal(context.Canceled))
 		})
 
@@ -269,11 +260,8 @@ var _ = Describe("Indexer Test", func() {
 
 					// Sometimes we cannot get account states successfully
 					if i%2 == 0 {
-						dump := &state.Dump{
-							Root: fmt.Sprintf("%x", block.Root()),
-						}
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-						mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", block, emptyDirtyStorage).Return(nil).Once()
 					} else {
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
 					}
@@ -293,7 +281,7 @@ var _ = Describe("Indexer Test", func() {
 					cancel()
 				}()
 
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(context.Canceled))
 			})
 		})
@@ -330,11 +318,8 @@ var _ = Describe("Indexer Test", func() {
 
 					// Sometimes we cannot get account states successfully
 					if i%2 == 0 {
-						dump := &state.Dump{
-							Root: fmt.Sprintf("%x", block.Root()),
-						}
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-						mockStoreManager.On("UpdateState", block, dump).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", block, emptyDirtyStorage).Return(nil).Once()
 					} else {
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, unknownErr).Once()
 					}
@@ -348,7 +333,7 @@ var _ = Describe("Indexer Test", func() {
 				recvCh = ch
 				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, unknownErr).Once()
 
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
@@ -383,7 +368,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Once()
 				mockStoreManager.On("InsertBlock", block, []*types.Receipt{receipt}).Return(unknownErr).Once()
 
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
@@ -417,7 +402,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(11)).Return(block, nil).Once()
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(nil, unknownErr).Once()
 
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
@@ -436,7 +421,7 @@ var _ = Describe("Indexer Test", func() {
 				), nil).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(11)).Return(nil, unknownErr).Once()
 
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
@@ -449,7 +434,7 @@ var _ = Describe("Indexer Test", func() {
 				}, nil).Once()
 				var num *big.Int
 				mockEthClient.On("BlockByNumber", mock.Anything, num).Return(nil, unknownErr).Once()
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
@@ -458,13 +443,13 @@ var _ = Describe("Indexer Test", func() {
 					Number: 10,
 				}, nil).Once()
 				mockStoreManager.On("LatestStateBlock").Return(nil, unknownErr).Once()
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 
 			It("failed to get latest header", func() {
 				mockStoreManager.On("LatestHeader").Return(nil, unknownErr).Once()
-				err := idx.Listen(ctx, ch, true)
+				err := idx.Listen(ctx, ch, -1, true)
 				Expect(err).Should(Equal(unknownErr))
 			})
 		})
@@ -566,28 +551,16 @@ var _ = Describe("Indexer Test", func() {
 				// Sometimes we cannot get account states successfully
 				if i%2 == 0 {
 					if i < 14 {
-						dump := &state.Dump{
-							Root: fmt.Sprintf("%x", blocks[i].Root()),
-						}
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-						mockStoreManager.On("UpdateState", blocks[i], dump).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", blocks[i], emptyDirtyStorage).Return(nil).Once()
 					} else if i >= 15 && i <= 17 {
-						dump := &state.Dump{
-							Root: fmt.Sprintf("%x", blocks[i].Root()),
-						}
-						newDump := &state.Dump{
-							Root: fmt.Sprintf("%x", newBlocks[i].Root()),
-						}
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(dump, nil).Once()
-						mockStoreManager.On("UpdateState", blocks[i], dump).Return(nil).Once()
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(newDump, nil).Once()
-						mockStoreManager.On("UpdateState", newBlocks[i], newDump).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", blocks[i], emptyDirtyStorage).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", newBlocks[i], emptyDirtyStorage).Return(nil).Once()
 					} else {
-						newDump := &state.Dump{
-							Root: fmt.Sprintf("%x", newBlocks[i].Root()),
-						}
-						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(newDump, nil).Once()
-						mockStoreManager.On("UpdateState", newBlocks[i], newDump).Return(nil).Once()
+						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-2), uint64(i)).Return(nil, nil).Once()
+						mockStoreManager.On("UpdateState", newBlocks[i], emptyDirtyStorage).Return(nil).Once()
 					}
 				} else {
 					freq := 1
@@ -611,7 +584,7 @@ var _ = Describe("Indexer Test", func() {
 				cancel()
 			}()
 
-			err := idx.Listen(ctx, ch, true)
+			err := idx.Listen(ctx, ch, -1, true)
 			Expect(err).Should(Equal(context.Canceled))
 		})
 	})
