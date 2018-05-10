@@ -21,29 +21,33 @@ import (
 )
 
 const (
-	NameStateBlocks  = "state_blocks"
-	NameContractCode = "contract_code"
-	NameContracts    = "contracts"
-	NameAccounts     = "accounts"
+	NameStateBlocks = "state_blocks"
+	NameERC20       = "erc20"
+	NameAccounts    = "accounts"
 )
 
 //go:generate mockery -name Store
 
 type Store interface {
-	InsertContractCode(code *model.ContractCode) error
-	InsertContract(contract *model.Contract) error
-	InsertAccount(account *model.Account) error
-	InsertStateBlock(block *model.StateBlock) error
-	LastStateBlock() (result *model.StateBlock, err error)
-	DeleteContractCodes(fromBlock int64) error
-	DeleteContracts(fromBlock int64) error
-	DeleteAccounts(fromBlock int64) error
-	DeleteStateBlocks(fromBlock int64) error
+	// ERC 20
+	InsertERC20(code *model.ERC20) error
+	FindERC20(address common.Address) (result *model.ERC20, err error)
+	ListERC20() ([]model.ERC20, error)
 
+	// ERC 20 storage
+	InsertERC20Storage(storage *model.ERC20Storage) error
+	FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error)
+
+	// Accounts
+	InsertAccount(account *model.Account) error
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
-	FindContract(address common.Address, blockNr ...int64) (result *model.Contract, err error)
-	FindContractCode(address common.Address) (result *model.ContractCode, err error)
+	DeleteAccounts(fromBlock int64) error
+
+	// State block
+	InsertStateBlock(block *model.StateBlock) error
 	FindStateBlock(blockNr int64) (result *model.StateBlock, err error)
+	DeleteStateBlocks(fromBlock int64) error
+	LastStateBlock() (result *model.StateBlock, err error)
 }
 
 type store struct {
@@ -56,12 +60,19 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) InsertContractCode(code *model.ContractCode) error {
-	return t.db.Table(NameContractCode).Create(code).Error
+func (t *store) InsertERC20(code *model.ERC20) error {
+	// Insert contract code
+	if err := t.db.Table(NameERC20).Create(code).Error; err != nil {
+		return err
+	}
+	// Create a table for this contract
+	return t.db.CreateTable(model.ERC20Storage{
+		Address: code.Address,
+	}).Error
 }
 
-func (t *store) InsertContract(contract *model.Contract) error {
-	return t.db.Table(NameContracts).Create(contract).Error
+func (t *store) InsertERC20Storage(storage *model.ERC20Storage) error {
+	return t.db.Table(storage.TableName()).Create(storage).Error
 }
 
 func (t *store) InsertAccount(account *model.Account) error {
@@ -76,14 +87,6 @@ func (t *store) LastStateBlock() (result *model.StateBlock, err error) {
 	result = &model.StateBlock{}
 	err = t.db.Table(NameStateBlocks).Order("number DESC").Limit(1).Find(result).Error
 	return
-}
-
-func (t *store) DeleteContractCodes(fromBlock int64) error {
-	return t.db.Table(NameContractCode).Delete(model.ContractCode{}, "block_number >= ?", fromBlock).Error
-}
-
-func (t *store) DeleteContracts(fromBlock int64) error {
-	return t.db.Table(NameContracts).Delete(model.Contract{}, "block_number >= ?", fromBlock).Error
 }
 
 func (t *store) DeleteAccounts(fromBlock int64) error {
@@ -104,19 +107,24 @@ func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *m
 	return
 }
 
-func (t *store) FindContract(address common.Address, blockNr ...int64) (result *model.Contract, err error) {
-	result = &model.Contract{}
-	if len(blockNr) == 0 {
-		err = t.db.Table(NameContracts).Where("BINARY address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
-	} else {
-		err = t.db.Table(NameContracts).Where("BINARY address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
-	}
+func (t *store) FindERC20(address common.Address) (result *model.ERC20, err error) {
+	result = &model.ERC20{}
+	err = t.db.Table(NameERC20).Where("BINARY address = ?", address.Bytes()).Limit(1).Find(result).Error
 	return
 }
 
-func (t *store) FindContractCode(address common.Address) (result *model.ContractCode, err error) {
-	result = &model.ContractCode{}
-	err = t.db.Table(NameContractCode).Where("BINARY address = ?", address.Bytes()).Limit(1).Find(result).Error
+func (t *store) ListERC20() (results []model.ERC20, err error) {
+	results = []model.ERC20{}
+	err = t.db.Table(NameERC20).Find(&results).Error
+	return
+}
+
+func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error) {
+	result = &model.ERC20Storage{}
+	err = t.db.Table(model.ERC20Storage{
+		Address: address.Bytes(),
+	}.TableName()).Where("BINARY key_hash = ? AND block_number <= ?", key.Bytes(), blockNr).Order("block_number DESC").Limit(1).Find(result).Error
+	result.Address = address.Bytes()
 	return
 }
 
