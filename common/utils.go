@@ -57,6 +57,14 @@ func StringToHex(data string) string {
 	return BytesToHex([]byte(data))
 }
 
+func ParseTd(ltd *model.TotalDifficulty) (*big.Int, error) {
+	td, ok := new(big.Int).SetString(ltd.Td, 10)
+	if !ok || td.Int64() <= 0 {
+		return nil, ErrInvalidTD
+	}
+	return td, nil
+}
+
 // TotalDifficulty creates a db struct for an ethereum block
 func TotalDifficulty(b *types.Block, td *big.Int) *model.TotalDifficulty {
 	return &model.TotalDifficulty{

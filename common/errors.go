@@ -30,6 +30,8 @@ var (
 	ErrWrongSigner = errors.New("wrong signer")
 	// ErrInconsistentRoot returns if the block and dump states have different root
 	ErrInconsistentRoot = errors.New("inconsistent root")
+	// ErrInvalidTD is returned when a block has invalid TD
+	ErrInvalidTD = errors.New("invalid TD")
 )
 
 // DuplicateError checks whether it's a duplicate key error
