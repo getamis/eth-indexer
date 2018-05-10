@@ -73,7 +73,7 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockHashQueryReque
 
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   common.BytesToHex(header.Hash),
+			Hash:   common.BytesTo0xHex(header.Hash),
 			Number: header.Number,
 			Nonce:  header.Nonce},
 	}
@@ -100,7 +100,7 @@ func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQueryR
 
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   common.BytesToHex(header.Hash),
+			Hash:   common.BytesTo0xHex(header.Hash),
 			Number: header.Number,
 			Nonce:  header.Nonce},
 	}
@@ -118,16 +118,19 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 	if err != nil {
 		return nil, wrapTransactionNotFoundError(err)
 	}
-	return &pb.TransactionQueryResponse{Tx: &pb.Transaction{
-		Hash:     common.BytesToHex(transaction.Hash),
-		From:     common.BytesToHex(transaction.From),
-		To:       common.BytesToHex(transaction.To),
+	result := &pb.TransactionQueryResponse{Tx: &pb.Transaction{
+		Hash:     common.BytesTo0xHex(transaction.Hash),
+		From:     common.BytesTo0xHex(transaction.From),
 		Nonce:    transaction.Nonce,
 		GasPrice: transaction.GasPrice,
 		GasLimit: transaction.GasLimit,
 		Amount:   transaction.Amount,
 		Payload:  transaction.Payload,
-	}}, nil
+	}}
+	if len(transaction.To) > 0 {
+		result.Tx.To = common.BytesTo0xHex(transaction.To)
+	}
+	return result, nil
 }
 
 func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
@@ -192,8 +195,8 @@ func (s *server) buildTransactionsForBlock(blockHash []byte, resp *pb.BlockQuery
 	}
 	for _, transaction := range transactions {
 		tx := &pb.Transaction{
-			Hash:     common.BytesToHex(transaction.Hash),
-			From:     common.BytesToHex(transaction.From),
+			Hash:     common.BytesTo0xHex(transaction.Hash),
+			From:     common.BytesTo0xHex(transaction.From),
 			Nonce:    transaction.Nonce,
 			GasPrice: transaction.GasPrice,
 			GasLimit: transaction.GasLimit,
@@ -201,7 +204,7 @@ func (s *server) buildTransactionsForBlock(blockHash []byte, resp *pb.BlockQuery
 			Payload:  transaction.Payload,
 		}
 		if transaction.To != nil {
-			tx.To = common.BytesToHex(transaction.To)
+			tx.To = common.BytesTo0xHex(transaction.To)
 		}
 		resp.Txs = append(resp.Txs, tx)
 	}

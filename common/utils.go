@@ -47,6 +47,11 @@ func BytesToHex(data []byte) string {
 	return Hex(hexutil.Encode(data))
 }
 
+// BytesTo0xHex returns a hex representation (with '0x') of a byte array
+func BytesTo0xHex(data []byte) string {
+	return strings.ToLower(hexutil.Encode(data))
+}
+
 // HexToBytes returns byte array of a hex string (with or without '0x')
 func HexToBytes(hex string) []byte {
 	return common.FromHex(hex)
