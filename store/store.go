@@ -33,7 +33,7 @@ type Manager interface {
 	// InsertBlock inserts blocks and receipts in db if the block doesn't exist
 	InsertBlock(block *types.Block, receipts []*types.Receipt) error
 	// UpdateState updates states for the given blocks
-	UpdateState(block *types.Block, dump *state.Dump) error
+	UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) error
 	// DeleteDataFromBlock deletes all data from this block and higher
 	DeleteDataFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
@@ -45,12 +45,24 @@ type Manager interface {
 }
 
 type manager struct {
-	db *gorm.DB
+	db        *gorm.DB
+	erc20List map[string]struct{}
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB) Manager {
-	return &manager{db: db}
+func NewManager(db *gorm.DB) (Manager, error) {
+	list, err := account.NewWithDB(db).ListERC20()
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	erc20List := make(map[string]struct{})
+	for _, e := range list {
+		erc20List[common.BytesToHex(e.Address)] = struct{}{}
+	}
+	return &manager{
+		db:        db,
+		erc20List: erc20List,
+	}, nil
 }
 
 func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (err error) {
@@ -100,12 +112,7 @@ func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	return hs.FindBlockByNumber(number)
 }
 
-func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) {
-	// Ensure the state root is the same
-	if common.HashHex(block.Root()) != dump.Root {
-		return common.ErrInconsistentRoot
-	}
-
+func (m *manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
 	dbtx := m.db.Begin()
 	accountStore := account.NewWithDB(dbtx)
 	defer func() {
@@ -121,18 +128,25 @@ func (m *manager) UpdateState(block *types.Block, dump *state.Dump) (err error) 
 	}
 
 	// Insert modified accounts
-	for addr, account := range dump.Accounts {
-		isContract := account.Code != ""
+	for addr, account := range accounts {
+		err = insertAccount(accountStore, block.Number().Int64(), addr, account)
+		if err != nil {
+			return
+		}
 
-		if isContract {
-			err = insertContract(accountStore, block.Number().Int64(), addr, account)
-			if err != nil {
-				return
-			}
-		} else {
-			err = insertAccount(accountStore, block.Number().Int64(), addr, account)
-			if err != nil {
-				return
+		// If it's in our erc20 list, update it's storage
+		if _, ok := m.erc20List[addr]; len(account.Storage) > 0 && ok {
+			for key, value := range account.Storage {
+				s := &model.ERC20Storage{
+					BlockNumber: block.Number().Int64(),
+					Address:     common.HexToBytes(addr),
+					Key:         common.HexToBytes(key),
+					Value:       common.HexToBytes(value),
+				}
+				err = accountStore.InsertERC20Storage(s)
+				if err != nil {
+					return
+				}
 			}
 		}
 	}
@@ -170,14 +184,6 @@ func (m *manager) DeleteDataFromBlock(blockNumber int64) (err error) {
 	if err != nil {
 		return
 	}
-	err = accountStore.DeleteContracts(blockNumber)
-	if err != nil {
-		return
-	}
-	err = accountStore.DeleteContractCodes(blockNumber)
-	if err != nil {
-		return
-	}
 	err = accountStore.DeleteStateBlocks(blockNumber)
 	if err != nil {
 		return
@@ -194,7 +200,7 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	if err != nil {
 		dbtx.Rollback()
 		// If it's a duplicate key error, ignore it
-		if common.DuplicateError(err) {
+		if IsSQLError(err, ErrCodeDuplicateKey) {
 			err = nil
 		}
 		return err
@@ -202,24 +208,7 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	return dbtx.Commit().Error
 }
 
-func insertContract(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
-	code, data, err := common.Contract(blockNumber, addr, account)
-	if err != nil {
-		return err
-	}
-
-	// Insert contract code
-	err = accountStore.InsertContractCode(code)
-	// Ignore duplicate error
-	if err != nil && !common.DuplicateError(err) {
-		return err
-	}
-
-	// Insert contract state
-	return accountStore.InsertContract(data)
-}
-
-func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DumpAccount) error {
+func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DumpDirtyAccount) error {
 	return accountStore.InsertAccount(&model.Account{
 		BlockNumber: blockNumber,
 		Address:     common.HexToBytes(addr),
