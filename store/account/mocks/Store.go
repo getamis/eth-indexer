@@ -24,13 +24,13 @@ func (_m *Store) DeleteAccounts(fromBlock int64) error {
 	return r0
 }
 
-// DeleteStateBlocks provides a mock function with given fields: fromBlock
-func (_m *Store) DeleteStateBlocks(fromBlock int64) error {
-	ret := _m.Called(fromBlock)
+// DeleteERC20Storage provides a mock function with given fields: address, fromBlock
+func (_m *Store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
+	ret := _m.Called(address, fromBlock)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(fromBlock)
+	if rf, ok := ret.Get(0).(func(common.Address, int64) error); ok {
+		r0 = rf(address, fromBlock)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -114,29 +114,6 @@ func (_m *Store) FindERC20Storage(address common.Address, key common.Hash, block
 	return r0, r1
 }
 
-// FindStateBlock provides a mock function with given fields: blockNr
-func (_m *Store) FindStateBlock(blockNr int64) (*model.StateBlock, error) {
-	ret := _m.Called(blockNr)
-
-	var r0 *model.StateBlock
-	if rf, ok := ret.Get(0).(func(int64) *model.StateBlock); ok {
-		r0 = rf(blockNr)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.StateBlock)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(blockNr)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // InsertAccount provides a mock function with given fields: _a0
 func (_m *Store) InsertAccount(_a0 *model.Account) error {
 	ret := _m.Called(_a0)
@@ -177,43 +154,6 @@ func (_m *Store) InsertERC20Storage(storage *model.ERC20Storage) error {
 	}
 
 	return r0
-}
-
-// InsertStateBlock provides a mock function with given fields: block
-func (_m *Store) InsertStateBlock(block *model.StateBlock) error {
-	ret := _m.Called(block)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.StateBlock) error); ok {
-		r0 = rf(block)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// LastStateBlock provides a mock function with given fields:
-func (_m *Store) LastStateBlock() (*model.StateBlock, error) {
-	ret := _m.Called()
-
-	var r0 *model.StateBlock
-	if rf, ok := ret.Get(0).(func() *model.StateBlock); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.StateBlock)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
 
 // ListERC20 provides a mock function with given fields:

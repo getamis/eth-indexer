@@ -72,11 +72,6 @@ type TotalDifficulty struct {
 	Td    string
 }
 
-// StateBlock represents the state is at the given block
-type StateBlock struct {
-	Number int64
-}
-
 // Account represents the state of externally owned accounts in Ethereum at given block
 type Account struct {
 	BlockNumber int64

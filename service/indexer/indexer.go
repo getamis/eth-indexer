@@ -49,7 +49,7 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 
 func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int64) (err error) {
 	// Get local state from db
-	header, stateBlock, err := idx.getLocalState()
+	header, err := idx.getLocalState()
 	if err != nil {
 		return
 	}
@@ -58,9 +58,6 @@ func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int
 	if header.Number < fromBlock-1 {
 		header = &model.Header{
 			Number: fromBlock - 1,
-		}
-		stateBlock = &model.StateBlock{
-			Number: header.Number - 1,
 		}
 	}
 
@@ -77,14 +74,14 @@ func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int
 			return err
 		}
 
-		_, _, err = idx.reorgMaybe(ctx, block, prevHdr, true)
+		_, err = idx.reorgMaybe(ctx, block, prevHdr, true)
 		if err != nil {
 			return err
 		}
 
 		return nil
 	}
-	return idx.sync(ctx, header, targetBlock, stateBlock)
+	return idx.sync(ctx, header, targetBlock)
 }
 
 func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
@@ -123,7 +120,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	}
 }
 
-func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.StateBlock, err error) {
+func (idx *indexer) getLocalState() (header *model.Header, err error) {
 	// Get latest header from db
 	header, err = idx.manager.LatestHeader()
 	if err != nil {
@@ -138,26 +135,11 @@ func (idx *indexer) getLocalState() (header *model.Header, stateBlock *model.Sta
 			return
 		}
 	}
-
-	// Get latest state block from db
-	stateBlock, err = idx.manager.LatestStateBlock()
-	if err != nil {
-		if common.NotFoundError(err) {
-			log.Info("The state db is empty")
-			stateBlock = &model.StateBlock{
-				Number: 0,
-			}
-			err = nil
-		} else {
-			log.Error("Failed to get latest state block from db", "err", err)
-			return
-		}
-	}
 	return
 }
 
 // sync syncs the blocks and header into database
-func (idx *indexer) sync(ctx context.Context, from *model.Header, to int64, fromStateBlock *model.StateBlock) error {
+func (idx *indexer) sync(ctx context.Context, from *model.Header, to int64) error {
 	var prevTd *big.Int
 	// Update existing blocks from ethereum to db
 	for i := from.Number + 1; i <= to; i++ {
@@ -167,17 +149,14 @@ func (idx *indexer) sync(ctx context.Context, from *model.Header, to int64, from
 			return err
 		}
 
-		td, stateBlock, err := idx.reorgMaybe(ctx, block, from, false)
+		td, err := idx.reorgMaybe(ctx, block, from, false)
 		if err != nil {
 			return err
 		}
 		if td != nil {
 			prevTd = td
 		}
-		if stateBlock != nil {
-			fromStateBlock = stateBlock
-		}
-		prevTd, fromStateBlock, err = idx.addBlockData(ctx, block, prevTd, fromStateBlock)
+		prevTd, err = idx.addBlockData(ctx, block, from, prevTd)
 		if err != nil {
 			return err
 		}
@@ -215,45 +194,22 @@ func (idx *indexer) insertTd(block *types.Block, prevTd *big.Int) (*big.Int, err
 }
 
 // addBlockData inserts TD, header, transactions, receipts and optionally state for block.
-func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, prevTd *big.Int, fromStateBlock *model.StateBlock) (*big.Int, *model.StateBlock, error) {
-	logger := log.New("number", block.Number())
+func (idx *indexer) addBlockData(ctx context.Context, block *types.Block, from *model.Header, prevTd *big.Int) (*big.Int, error) {
 	td, err := idx.insertTd(block, prevTd)
 	if err != nil {
-		return nil, fromStateBlock, err
+		return nil, err
 	}
-
-	// Query transaction receipts for this block
-	receipts, err := idx.getReceipts(ctx, block)
+	err = idx.atomicUpdateBlock(ctx, block)
 	if err != nil {
-		return nil, fromStateBlock, err
+		return nil, err
 	}
-
-	err = idx.manager.InsertBlock(block, receipts)
-	if err != nil {
-		logger.Error("Failed to insert block","err", err)
-		return nil, fromStateBlock, err
-	}
-	logger.Trace("Inserted block", "hash", block.Hash().Hex(), "txs", len(block.Transactions()))
-
-	// Get modified accounts. Errors can be ignored. We will just get the state diff next time
-	dump := idx.getStateDump(ctx, block, fromStateBlock)
-	if dump != nil {
-		// Update state db
-		err = idx.manager.UpdateState(block, *dump)
-		if err != nil {
-			logger.Error("Failed to update state to database","err", err)
-			return nil, fromStateBlock, err
-		}
-		logger.Trace("Inserted state", "hash", block.Hash().Hex(), "accounts", len(*dump))
-		return td, &model.StateBlock{Number: block.Number().Int64()}, nil
-	}
-	return td, fromStateBlock, nil
+	return td, nil
 }
 
 // reorgMaybe checks targetBlock's parent hash is consistent with local db. if not, reorg and returns the highest TD inserted.
-func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, prevHdr *model.Header, oldBlock bool) (*big.Int, *model.StateBlock, error) {
-	if len(prevHdr.Hash) == 0 || bytes.Equal(targetBlock.ParentHash().Bytes(), prevHdr.Hash) {
-		return nil, nil, nil
+func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, prevHdr *model.Header, oldBlock bool) (*big.Int, error) {
+	if bytes.Equal(targetBlock.ParentHash().Bytes(), prevHdr.Hash) {
+		return nil, nil
 	}
 
 	log.Trace("Reorg: tracing starts", "from", targetBlock.Number(), "hash", targetBlock.Hash().Hex())
@@ -268,7 +224,7 @@ func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, pr
 		thisBlock, err := idx.client.BlockByHash(ctx, block.ParentHash())
 		if err != nil || thisBlock == nil {
 			log.Error("Reorg: failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
-			return nil, nil, err
+			return nil, err
 		}
 		block = thisBlock
 		blocks = append(blocks, block)
@@ -276,7 +232,7 @@ func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, pr
 		dbHeader, err := idx.manager.GetHeaderByNumber(block.Number().Int64() - 1)
 		if err != nil {
 			log.Error("Reorg: failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
-			return nil, nil, err
+			return nil, err
 		}
 
 		if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
@@ -294,7 +250,7 @@ func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, pr
 		block = blocks[i]
 		td, err := idx.insertTd(block, prevTd)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		tds[block.Number().Int64()] = td
 		prevTd = td
@@ -306,15 +262,15 @@ func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, pr
 	ltd, err := idx.manager.GetTd(dbBranchHdr.Hash)
 	if err != nil {
 		log.Error("Reorg: failed to get TD from DB", "number", dbBranchHdr.Number, "hash", common.BytesToHex(dbBranchHdr.Hash))
-		return nil, nil, err
+		return nil, err
 	}
 	localTd, ok := new(big.Int).SetString(ltd.Td, 10)
 	if !ok {
 		log.Error("Reorg: failed to parse TD for block", "number", dbBranchHdr.Number, "TD", ltd.Td, "hash", common.BytesToHex(dbBranchHdr.Hash))
-		return nil, nil, errors.New("failed to parse TD " + ltd.Td)
+		return nil, errors.New("failed to parse TD " + ltd.Td)
 	}
 	if localTd.Cmp(newTd) >= 0 {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// Now atomically update the reorg'ed blocks
@@ -322,80 +278,64 @@ func (idx *indexer) reorgMaybe(ctx context.Context, targetBlock *types.Block, pr
 	err = idx.manager.DeleteStateFromBlock(branchBlock.Number().Int64())
 	if err != nil {
 		log.Error("Failed to delete state from block", "number", "err", err)
-		return nil, nil, err
+		return nil, err
 	}
 
-	// Get local state from db
-	_, stateBlock, err := idx.getLocalState()
-	if err != nil {
-		return nil, nil, err
-	}
 	for i := len(blocks) - 1; i >= 0; i-- {
 		block = blocks[i]
-		stateBlock, err = idx.atomicUpdateBlock(ctx, block, stateBlock)
+		err = idx.atomicUpdateBlock(ctx, block)
 		if err != nil {
 			log.Error("Reorg: failed to atomically update block data", "number", i, "err", err)
-			return nil, nil, err
+			return nil, err
 		}
 		log.Trace("Reorg: atomically updated block", "number", block.Number(), "hash", block.Hash().Hex())
 	}
 	log.Trace("Reorg: done", "at", block.Number(), "hash", block.Hash().Hex())
 	if oldBlock {
-		return tds[targetBlock.Number().Int64()], stateBlock, nil
+		return tds[targetBlock.Number().Int64()], nil
 	} else {
-		return tds[targetBlock.Number().Int64()-1], stateBlock, nil
+		return tds[targetBlock.Number().Int64()-1], nil
 	}
 }
 
 // atomicUpdateBlock updates the block data (header, transactions, receipts, and optionally state) atomically.
-func (idx *indexer) atomicUpdateBlock(ctx context.Context, block *types.Block, fromStateBlock *model.StateBlock) (stateBlock *model.StateBlock, err error) {
-	blockNumber := block.Number().Int64()
-	receipts, err := idx.getReceipts(ctx, block)
+func (idx *indexer) atomicUpdateBlock(ctx context.Context, block *types.Block) error {
+	receipts, dump, err := idx.getBlockData(ctx, block)
 	if err != nil {
-		return fromStateBlock, err
+		return err
 	}
-	dump := idx.getStateDump(ctx, block, fromStateBlock)
 
 	err = idx.manager.UpdateBlock(block, receipts, *dump)
 	if err != nil {
-		log.Error("Failed to update block", "number", blockNumber, "err", err)
-		return fromStateBlock, err
+		log.Error("Failed to update block", "number", block.Number(), "err", err)
+		return err
 	}
-	log.Trace("Updated block", "number", blockNumber, "hash", block.Hash().Hex(), "txs", len(block.Transactions()))
-	if dump != nil {
-		log.Trace("Updated state", "number", blockNumber, "hash", block.Hash().Hex(), "accounts", len(*dump))
-		return &model.StateBlock{Number: blockNumber}, nil
-	}
-	return fromStateBlock, nil
+	log.Trace("Updated block", "number", block.Number(), "hash", block.Hash().Hex(), "txs", len(block.Transactions()))
+	return nil
 }
 
-// getReceipts returns the receipts generated in the given block.
-func (idx *indexer) getReceipts(ctx context.Context, block *types.Block) ([]*types.Receipt, error) {
+// getBlockData returns the receipts generated in the given block, and state diff since last block
+func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *map[string]state.DumpDirtyAccount, error) {
+	blockNumber := block.Number().Int64()
+	logger := log.New("number", blockNumber)
 	var receipts []*types.Receipt
 	for _, tx := range block.Transactions() {
 		r, err := idx.client.TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
-			log.Error("Failed to get receipt from ethereum", "number", block.Number(), "tx", tx.Hash(), "err", err)
-			return nil, err
+			logger.Error("Failed to get receipt from ethereum", "tx", tx.Hash(), "err", err)
+			return nil, nil, err
 		}
 		receipts = append(receipts, r)
 	}
-	return receipts, nil
-}
 
-// getStateDump returns state diff between fromStateBlock to block. It's not an error if we failed to get state dump.
-// We will just get it next time we can,
-func (idx *indexer) getStateDump(ctx context.Context, block *types.Block, fromStateBlock *model.StateBlock) *map[string]state.DumpDirtyAccount {
-	var err error
-	blockNumber := block.Number().Int64()
-	// Noted: we skip dump block or get modified state error because the state db may not exist
 	dump := make(map[string]state.DumpDirtyAccount)
+	var err error
 	isGenesis := blockNumber == 0
 	if isGenesis {
 		d, err := idx.client.DumpBlock(ctx, 0)
 		if err != nil {
-			log.Warn("Failed to get state from ethereum, ignore it", "number", blockNumber, "err", err)
-			return nil
+			logger.Error("Failed to get state from ethereum","err", err)
+			return nil, nil, err
 		}
 		for addr, acc := range d.Accounts {
 			dump[addr] = state.DumpDirtyAccount{
@@ -406,11 +346,12 @@ func (idx *indexer) getStateDump(ctx context.Context, block *types.Block, fromSt
 		}
 	} else {
 		// This API is only supported on our customized geth.
-		dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, uint64(fromStateBlock.Number), block.Number().Uint64())
+		dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, block.NumberU64()-1, block.Number().Uint64())
 		if err != nil {
-			log.Warn("Failed to get modified accounts from ethereum, ignore it", "from", fromStateBlock.Number, "to", blockNumber, "err", err)
-			return nil
+			logger.Error("Failed to get modified accounts from ethereum", "err", err)
+			return nil, nil, err
 		}
 	}
-	return &dump
+
+	return receipts, &dump, nil
 }

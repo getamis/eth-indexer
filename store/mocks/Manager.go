@@ -73,20 +73,6 @@ func (_m *Manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	return r0, r1
 }
 
-// InsertBlock provides a mock function with given fields: block, receipts
-func (_m *Manager) InsertBlock(block *types.Block, receipts []*types.Receipt) error {
-	ret := _m.Called(block, receipts)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt) error); ok {
-		r0 = rf(block, receipts)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // InsertTd provides a mock function with given fields: block, td
 func (_m *Manager) InsertTd(block *types.Block, td *big.Int) error {
 	ret := _m.Called(block, td)
@@ -124,6 +110,7 @@ func (_m *Manager) LatestHeader() (*model.Header, error) {
 	return r0, r1
 }
 
+<<<<<<< HEAD
 // LatestStateBlock provides a mock function with given fields:
 func (_m *Manager) LatestStateBlock() (*model.StateBlock, error) {
 	ret := _m.Called()
@@ -150,6 +137,11 @@ func (_m *Manager) LatestStateBlock() (*model.StateBlock, error) {
 // UpdateBlock provides a mock function with given fields: block, receipts, accounts
 func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error {
 	ret := _m.Called(block, receipts, accounts)
+=======
+// UpdateBlock provides a mock function with given fields: block, receipts, dump
+func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.Dump) error {
+	ret := _m.Called(block, receipts, dump)
+>>>>>>> 22d6256... common, migration, model, service, store: remove StateBlock and insert block data atomically
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, map[string]state.DumpDirtyAccount) error); ok {
@@ -160,6 +152,7 @@ func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, ac
 
 	return r0
 }
+<<<<<<< HEAD
 
 // UpdateState provides a mock function with given fields: block, accounts
 func (_m *Manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) error {
@@ -174,3 +167,5 @@ func (_m *Manager) UpdateState(block *types.Block, accounts map[string]state.Dum
 
 	return r0
 }
+=======
+>>>>>>> 22d6256... common, migration, model, service, store: remove StateBlock and insert block data atomically

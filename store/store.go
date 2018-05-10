@@ -36,10 +36,6 @@ import (
 type Manager interface {
 	// InsertTd writes the total difficulty for a block
 	InsertTd(block *types.Block, td *big.Int) error
-	// InsertBlock inserts blocks and receipts in db if the block doesn't exist
-	InsertBlock(block *types.Block, receipts []*types.Receipt) error
-	// UpdateState updates states for the given blocks
-	UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) error
 	// UpdateBlock update data from this block
 	UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error
 	// DeleteDataFromBlock deletes all data from this block and higher
@@ -50,8 +46,6 @@ type Manager interface {
 	GetHeaderByNumber(number int64) (*model.Header, error)
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
-	// LatestStateBlock returns a latest state block from db
-	LatestStateBlock() (*model.StateBlock, error)
 }
 
 type manager struct {
@@ -78,17 +72,6 @@ func NewManager(db *gorm.DB) (Manager, error) {
 func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	headerStore := header.NewWithDB(m.db)
 	return headerStore.InsertTd(common.TotalDifficulty(block, td))
-}
-
-func (m *manager) InsertBlock(block *types.Block, receipts []*types.Receipt) (err error) {
-	dbtx := m.db.Begin()
-
-	defer func() {
-		err = finalizeTransaction(dbtx, err)
-	}()
-
-	err = m.insertBlock(dbtx, block, receipts)
-	return
 }
 
 func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) (err error) {
@@ -137,15 +120,6 @@ func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	return header.NewWithDB(m.db).FindTd(hash)
 }
 
-func (m *manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
-	dbtx := m.db.Begin()
-	defer func() {
-		err = finalizeTransaction(dbtx, err)
-	}()
-	err = m.updateState(dbtx, block, accounts)
-	return
-}
-
 func (m *manager) DeleteStateFromBlock(blockNumber int64) (err error) {
 	dbTx := m.db.Begin()
 	defer func(dbTx *gorm.DB) {
@@ -168,16 +142,7 @@ func (m *manager) DeleteStateFromBlock(blockNumber int64) (err error) {
 			return
 		}
 	}
-
-	err = accountStore.DeleteStateBlocks(blockNumber)
-	if err != nil {
-		return
-	}
 	return
-}
-
-func (m *manager) LatestStateBlock() (*model.StateBlock, error) {
-	return account.NewWithDB(m.db).LastStateBlock()
 }
 
 // insertBlock inserts block inside a DB transaction
@@ -215,14 +180,6 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 // updateState updates states inside a DB transaction
 func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
 	accountStore := account.NewWithDB(dbTx)
-
-	// Insert state block
-	err = accountStore.InsertStateBlock(&model.StateBlock{
-		Number: block.Number().Int64(),
-	})
-	if err != nil {
-		return
-	}
 
 	// Insert modified accounts
 	for addr, account := range accounts {

@@ -57,12 +57,6 @@ ActiveRecord::Schema.define(version: 20180504063325) do
   add_index "erc20", ["address"], name: "index_erc20_on_address", unique: true, using: :btree
   add_index "erc20", ["block_number"], name: "index_erc20_on_block_number", using: :btree
 
-  create_table "state_blocks", force: :cascade do |t|
-    t.integer "number", limit: 8, null: false
-  end
-
-  add_index "state_blocks", ["number"], name: "index_state_blocks_on_number", unique: true, using: :btree
-
   create_table "transaction_receipts", force: :cascade do |t|
     t.binary  "root",                limit: 32
     t.integer "status",              limit: 1

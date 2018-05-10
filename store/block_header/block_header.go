@@ -10,6 +10,8 @@ const (
 	TableNameTd = "total_difficulty"
 )
 
+//go:generate mockery -name Store
+
 type Store interface {
 	InsertTd(data *model.TotalDifficulty) error
 	Insert(data *model.Header) error
