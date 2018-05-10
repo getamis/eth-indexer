@@ -51,7 +51,6 @@ var (
 
 	// flags for syncing
 	targetBlock      int64
-	syncMissingBlock bool
 	fromBlock        int64
 )
 
@@ -108,7 +107,7 @@ var ServerCmd = &cobra.Command{
 			err = indexer.SyncToTarget(ctx, targetBlock)
 		} else {
 			ch := make(chan *types.Header)
-			err = indexer.Listen(ctx, ch, fromBlock, syncMissingBlock)
+			err = indexer.Listen(ctx, ch, fromBlock)
 		}
 
 		// Ignore if listener is stopped by signal
@@ -145,7 +144,6 @@ func init() {
 
 	// Syncing related flags
 	ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
-	ServerCmd.Flags().BoolVar(&syncMissingBlock, flags.SyncGetMissingBlocksFlag, true, "Whether to get state for the current block")
 	ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlockFlag, 0, "The init block number to sync to initially")
 }
 
@@ -181,5 +179,4 @@ func loadFlagToVar(vp *viper.Viper) {
 
 	// flags for syncing
 	targetBlock = vp.GetInt64(flags.SyncTargetBlockFlag)
-	syncMissingBlock = vp.GetBool(flags.SyncGetMissingBlocksFlag)
 }

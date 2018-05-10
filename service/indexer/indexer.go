@@ -44,21 +44,14 @@ func (idx *indexer) SyncToTarget(ctx context.Context, targetBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	return idx.syncTo(childCtx, targetBlock, -1,true)
+	return idx.syncTo(childCtx, targetBlock, -1)
 }
 
-func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int64, fromLocalState bool) (err error) {
-	var header *model.Header
-	var stateBlock *model.StateBlock
-	if fromLocalState {
-		// Get local state from db
-		header, stateBlock, err = idx.getLocalState()
-		if err != nil {
-			return
-		}
-	} else {
-		header = &model.Header{Number: targetBlock - 1}
-		stateBlock = &model.StateBlock{Number: targetBlock - 1}
+func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int64) (err error) {
+	// Get local state from db
+	header, stateBlock, err := idx.getLocalState()
+	if err != nil {
+		return
 	}
 
 	// Set from block number
@@ -94,8 +87,7 @@ func (idx *indexer) syncTo(ctx context.Context, targetBlock int64, fromBlock int
 	return idx.sync(ctx, header, targetBlock, stateBlock)
 }
 
-// Listen listens the blocks from given blocks
-func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64, syncMissingBlocks bool) error {
+func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -104,7 +96,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 		log.Error("Failed to get latest header from ethereum", "err", err)
 		return err
 	}
-	err = idx.syncTo(childCtx, latestBlock.Number().Int64(), fromBlock, syncMissingBlocks)
+	err = idx.syncTo(childCtx, latestBlock.Number().Int64(), fromBlock)
 	if err != nil {
 		return err
 	}
@@ -120,7 +112,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 		select {
 		case head := <-ch:
 			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
-			err = idx.syncTo(childCtx, head.Number.Int64(), -1,true)
+			err = idx.syncTo(childCtx, head.Number.Int64(), -1)
 			if err != nil {
 				log.Error("Failed to sync to header from ethereum", "number", head.Number, "err", err)
 				return err
