@@ -20,25 +20,28 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/store/account/mocks"
-
+	acctMock "github.com/maichain/eth-indexer/store/account/mocks"
+	hdrMock "github.com/maichain/eth-indexer/store/block_header/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("DB Eth Balance Test", func() {
-	var mockAccountStore *mocks.Store
+	var mockAccountStore *acctMock.Store
+	var mockHdrStore *hdrMock.Store
 	var manager *serviceManager
 	var addr common.Address
 	blockNumber := int64(10)
-	stateBlock := &model.StateBlock{
+	header := &model.Header{
 		Number: 100,
 	}
 
 	BeforeEach(func() {
-		mockAccountStore = new(mocks.Store)
+		mockAccountStore = new(acctMock.Store)
+		mockHdrStore = new(hdrMock.Store)
 		manager = &serviceManager{
-			accountStore: mockAccountStore,
+			accountStore:     mockAccountStore,
+			blockHeaderStore: mockHdrStore,
 		}
 		addr = common.HexToAddress(getFakeAddress())
 	})
@@ -54,42 +57,42 @@ var _ = Describe("DB Eth Balance Test", func() {
 		}
 		accountBalance, _ := new(big.Int).SetString(account.Balance, 10)
 		It("latest block", func() {
-			mockAccountStore.On("LastStateBlock").Return(stateBlock, nil).Once()
-			mockAccountStore.On("FindAccount", addr, stateBlock.Number).Return(account, nil).Once()
+			mockHdrStore.On("FindLatestBlock").Return(header, nil).Once()
+			mockAccountStore.On("FindAccount", addr, header.Number).Return(account, nil).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, -1)
 			Expect(err).Should(BeNil())
 			Expect(expBalance).Should(Equal(accountBalance))
-			Expect(expNumber.Int64()).Should(Equal(stateBlock.Number))
+			Expect(expNumber.Int64()).Should(Equal(header.Number))
 		})
 		It("certain block", func() {
-			mockAccountStore.On("FindStateBlock", blockNumber).Return(stateBlock, nil).Once()
-			mockAccountStore.On("FindAccount", addr, stateBlock.Number).Return(account, nil).Once()
+			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
+			mockAccountStore.On("FindAccount", addr, header.Number).Return(account, nil).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(BeNil())
 			Expect(expBalance).Should(Equal(accountBalance))
-			Expect(expNumber.Int64()).Should(Equal(stateBlock.Number))
+			Expect(expNumber.Int64()).Should(Equal(header.Number))
 		})
 	})
 
 	Context("with invalid parameters", func() {
 		unknownErr := errors.New("unknown error")
 		It("failed to find state block", func() {
-			mockAccountStore.On("FindStateBlock", blockNumber).Return(nil, unknownErr).Once()
+			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(nil, unknownErr).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(Equal(unknownErr))
 			Expect(expBalance).Should(BeNil())
 			Expect(expNumber).Should(BeNil())
 		})
 		It("failed to find latest state block", func() {
-			mockAccountStore.On("LastStateBlock").Return(nil, unknownErr).Once()
+			mockHdrStore.On("FindLatestBlock").Return(nil, unknownErr).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, -1)
 			Expect(err).Should(Equal(unknownErr))
 			Expect(expBalance).Should(BeNil())
 			Expect(expNumber).Should(BeNil())
 		})
 		It("failed to find account", func() {
-			mockAccountStore.On("FindStateBlock", blockNumber).Return(stateBlock, nil).Once()
-			mockAccountStore.On("FindAccount", addr, stateBlock.Number).Return(nil, unknownErr).Once()
+			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
+			mockAccountStore.On("FindAccount", addr, header.Number).Return(nil, unknownErr).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(Equal(unknownErr))
 			Expect(expBalance).Should(BeNil())

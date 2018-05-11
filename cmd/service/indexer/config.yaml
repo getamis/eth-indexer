@@ -22,7 +22,3 @@ db:
 sync:
   fromBlock: 0  # block number to sync from
   targetBlock: 0  # block number to sync to
-  getMissingBlocks: "true"
-  # if false, will skip the initial sync and start listening right away to
-  # - take advantage of geth's internal caching of the state db
-  # - reduce local data size

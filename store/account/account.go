@@ -37,17 +37,12 @@ type Store interface {
 	// ERC 20 storage
 	InsertERC20Storage(storage *model.ERC20Storage) error
 	FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error)
+	DeleteERC20Storage(address common.Address, fromBlock int64) error
 
 	// Accounts
 	InsertAccount(account *model.Account) error
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
 	DeleteAccounts(fromBlock int64) error
-
-	// State block
-	InsertStateBlock(block *model.StateBlock) error
-	FindStateBlock(blockNr int64) (result *model.StateBlock, err error)
-	DeleteStateBlocks(fromBlock int64) error
-	LastStateBlock() (result *model.StateBlock, err error)
 }
 
 type store struct {
@@ -79,22 +74,8 @@ func (t *store) InsertAccount(account *model.Account) error {
 	return t.db.Table(NameAccounts).Create(account).Error
 }
 
-func (t *store) InsertStateBlock(block *model.StateBlock) error {
-	return t.db.Table(NameStateBlocks).Create(block).Error
-}
-
-func (t *store) LastStateBlock() (result *model.StateBlock, err error) {
-	result = &model.StateBlock{}
-	err = t.db.Table(NameStateBlocks).Order("number DESC").Limit(1).Find(result).Error
-	return
-}
-
 func (t *store) DeleteAccounts(fromBlock int64) error {
 	return t.db.Table(NameAccounts).Delete(model.Account{}, "block_number >= ?", fromBlock).Error
-}
-
-func (t *store) DeleteStateBlocks(fromBlock int64) error {
-	return t.db.Table(NameStateBlocks).Delete(model.StateBlock{}, "number >= ?", fromBlock).Error
 }
 
 func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error) {
@@ -128,8 +109,8 @@ func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockN
 	return
 }
 
-func (t *store) FindStateBlock(blockNr int64) (result *model.StateBlock, err error) {
-	result = &model.StateBlock{}
-	err = t.db.Table(NameStateBlocks).Where("number <= ?", blockNr).Order("number DESC").Limit(1).Find(result).Error
-	return
+func (t *store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
+	return t.db.Table(model.ERC20Storage{
+		Address: address.Bytes(),
+	}.TableName()).Delete(model.ERC20Storage{}, "block_number >= ?", fromBlock).Error
 }

@@ -14,7 +14,9 @@
 
 package model
 
-import "github.com/ethereum/go-ethereum/common/hexutil"
+import (
+	"github.com/ethereum/go-ethereum/common/hexutil"
+)
 
 // Header represents the header of a block
 type Header struct {
@@ -37,7 +39,6 @@ type Header struct {
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
-	Td string
 }
 
 // Transaction represents a transaction
@@ -67,8 +68,10 @@ type Receipt struct {
 }
 
 // StateBlock represents the state is at the given block
-type StateBlock struct {
-	Number int64
+type TotalDifficulty struct {
+	Block int64
+	Hash  []byte
+	Td    string
 }
 
 // Account represents the state of externally owned accounts in Ethereum at given block

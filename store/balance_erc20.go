@@ -149,22 +149,21 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 		return nil, nil, err
 	}
 
-	// Find state block
-	var stateBlock *model.StateBlock
+	// Find header
+	var hdr *model.Header
 	if common.IsLatestBlock(blockNr) {
-		stateBlock, err = srv.LastStateBlock()
+		hdr, err = srv.FindLatestBlock()
 	} else {
-		stateBlock, err = srv.FindStateBlock(blockNr)
+		hdr, err = srv.FindBlockByNumber(blockNr)
 	}
-	// State block should not have not found error
 	if err != nil {
-		logger.Error("Failed to find state block", "err", err)
+		logger.Error("Failed to find header for block", "err", err)
 		return nil, nil, err
 	}
-	blockNumber := big.NewInt(stateBlock.Number)
+	blockNumber := big.NewInt(hdr.Number)
 
 	// Find contract account
-	account, err := srv.FindAccount(contractAddress, stateBlock.Number)
+	account, err := srv.FindAccount(contractAddress, hdr.Number)
 	if err != nil {
 		logger.Error("Failed to find contract", "err", err)
 		return nil, nil, err
