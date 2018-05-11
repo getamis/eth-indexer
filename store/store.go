@@ -200,7 +200,7 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	if err != nil {
 		dbtx.Rollback()
 		// If it's a duplicate key error, ignore it
-		if IsSQLError(err, ErrCodeDuplicateKey) {
+		if common.DuplicateError(err) {
 			err = nil
 		}
 		return err

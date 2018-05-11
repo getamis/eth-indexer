@@ -45,14 +45,17 @@ ActiveRecord::Schema.define(version: 20180504063325) do
   add_index "block_headers", ["hash"], name: "index_block_headers_on_hash", unique: true, using: :btree
   add_index "block_headers", ["number"], name: "index_block_headers_on_number", unique: true, using: :btree
 
-  create_table "erc20_code", force: :cascade do |t|
+  create_table "erc20", force: :cascade do |t|
     t.binary  "address",      limit: 20,       null: false
     t.integer "block_number", limit: 8,        null: false
     t.binary  "code",         limit: 16777215, null: false
+    t.string  "name",         limit: 8
+    t.string  "total_supply", limit: 32
+    t.integer "decimals",     limit: 8
   end
 
-  add_index "erc20_code", ["address"], name: "index_erc20_code_on_address", unique: true, using: :btree
-  add_index "erc20_code", ["block_number"], name: "index_erc20_code_on_block_number", using: :btree
+  add_index "erc20", ["address"], name: "index_erc20_on_address", unique: true, using: :btree
+  add_index "erc20", ["block_number"], name: "index_erc20_on_block_number", using: :btree
 
   create_table "state_blocks", force: :cascade do |t|
     t.integer "number", limit: 8, null: false

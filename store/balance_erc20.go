@@ -129,7 +129,7 @@ func (db *contractDB) GetState(addr ethCommon.Address, key ethCommon.Hash) ethCo
 	if db.mustBeSelf(addr) {
 		s, err := db.accountStore.FindERC20Storage(addr, key, db.blockNumber)
 		if err != nil {
-			// Ignore not found error
+			// not found error means there is no storage at this block number
 			if err != gorm.ErrRecordNotFound {
 				db.err = err
 			}

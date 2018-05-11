@@ -81,6 +81,7 @@ type Account struct {
 
 // ERC20 represents the ERC20 contract
 type ERC20 struct {
+	BlockNumber int64
 	Address     []byte
 	Code        []byte
 	TotalSupply string
@@ -103,5 +104,5 @@ func (s ERC20Storage) TableName() string {
 
 // ERC20ContractTableName returns its contract table
 func ERC20ContractTableName(address []byte) string {
-	return "rec20_" + hexutil.Encode(address)
+	return "erc20_" + hexutil.Encode(address)
 }
