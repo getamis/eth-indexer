@@ -14,7 +14,9 @@
 
 package model
 
-import "github.com/ethereum/go-ethereum/common/hexutil"
+import (
+	"github.com/ethereum/go-ethereum/common/hexutil"
+)
 
 // Header represents the header of a block
 type Header struct {

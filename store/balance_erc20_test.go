@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/jinzhu/gorm"
+	indexerCommon "github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/contracts"
 	"github.com/maichain/eth-indexer/contracts/backends"
 	"github.com/maichain/eth-indexer/model"
@@ -268,7 +269,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 			unknownErr := errors.New("unknown error")
 			It("failed to execute state db", func() {
 				mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
-				mockAccountStore.On("FindStateBlock", blockNumber).Return(header, nil).Once()
+				mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
 				mockAccountStore.On("FindAccount", contractAddr, header.Number).Return(db.account, nil).Once()
 				mockAccountStore.On("FindERC20Storage", mock.AnythingOfType("common.Address"), mock.AnythingOfType("common.Hash"), mock.AnythingOfType("int64")).Return(nil, unknownErr).Once()
 				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
@@ -315,13 +316,13 @@ var _ = Describe("DB ERC 20 Test", func() {
 func mockFindREC20Storage(mockAccountStore *accountMock.Store, storages map[string]*model.ERC20Storage) {
 	mockAccountStore.On("FindERC20Storage", mock.AnythingOfType("common.Address"), mock.AnythingOfType("common.Hash"), mock.AnythingOfType("int64")).Return(
 		func(address common.Address, key common.Hash, blockNr int64) *model.ERC20Storage {
-			v, ok := storages[key.Hex()]
+			v, ok := storages[indexerCommon.HashHex(key)]
 			if ok {
 				return v
 			}
 			return nil
 		}, func(address common.Address, key common.Hash, blockNr int64) error {
-			_, ok := storages[key.Hex()]
+			_, ok := storages[indexerCommon.HashHex(key)]
 			if ok {
 				return nil
 			}

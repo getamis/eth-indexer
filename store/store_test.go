@@ -100,7 +100,6 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(Succeed())
 		})
 
-
 		It("changes data for a block number", func() {
 			manager, err := NewManager(db)
 			Expect(err).Should(BeNil())
@@ -150,7 +149,7 @@ var _ = Describe("Manager Test", func() {
 				types.NewReceipt([]byte{}, false, 0),
 			})
 
-			err = manager.UpdateBlock(block, nil,nil)
+			err = manager.UpdateBlock(block, nil, nil)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
@@ -251,9 +250,9 @@ var _ = Describe("Manager Test", func() {
 			block2 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(99),
 			})
-			err = manager.UpdateBlock(block1, nil,nil)
+			err = manager.UpdateBlock(block1, nil, nil)
 			Expect(err).Should(Succeed())
-			err = manager.UpdateBlock(block2, nil,nil)
+			err = manager.UpdateBlock(block2, nil, nil)
 			Expect(err).Should(Succeed())
 
 			header, err := manager.LatestHeader()

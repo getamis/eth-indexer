@@ -15,9 +15,9 @@
 package store
 
 import (
+	"bytes"
 	"math/big"
 
-	"bytes"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -136,7 +136,7 @@ func (m *manager) DeleteStateFromBlock(blockNumber int64) (err error) {
 		return
 	}
 
-	for hexAddr, _ := range m.erc20List {
+	for hexAddr := range m.erc20List {
 		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), blockNumber)
 		if err != nil {
 			return

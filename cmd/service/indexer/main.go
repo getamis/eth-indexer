@@ -50,8 +50,8 @@ var (
 	dbPassword string
 
 	// flags for syncing
-	targetBlock      int64
-	fromBlock        int64
+	targetBlock int64
+	fromBlock   int64
 )
 
 // RootCmd represents the base command when called without any subcommands

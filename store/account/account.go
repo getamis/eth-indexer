@@ -112,5 +112,5 @@ func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockN
 func (t *store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
 	return t.db.Table(model.ERC20Storage{
 		Address: address.Bytes(),
-	}.TableName()).Delete(model.ERC20Storage{}, "number >= ?", fromBlock).Error
+	}.TableName()).Delete(model.ERC20Storage{}, "block_number >= ?", fromBlock).Error
 }

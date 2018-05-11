@@ -18,7 +18,6 @@ import (
 	"math/big"
 
 	"bytes"
-	"errors"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
@@ -155,13 +154,13 @@ func (idx *indexer) insertTd(block *types.Block, prevTd *big.Int) (*big.Int, err
 	if prevTd == nil {
 		ltd, err := idx.manager.GetTd(block.ParentHash().Bytes())
 		if err != nil {
-			log.Error("Failed to get TD for block", "number", blockNumber-1, "hash", block.ParentHash().Hex())
+			log.Error("Failed to get TD for block", "number", blockNumber-1, "hash", block.ParentHash().Hex(), "err", err)
 			return nil, err
 		}
-		td, ok := new(big.Int).SetString(ltd.Td, 10)
-		if !ok || td.Int64() <= 0 {
-			log.Error("Failed to parse TD for block", "number", blockNumber-1, "TD", ltd.Td, "hash", block.ParentHash().Hex())
-			return nil, errors.New("failed to parse TD " + ltd.Td)
+		td, err := common.ParseTd(ltd)
+		if err != nil {
+			log.Error("Failed to parse TD", "number", ltd.Block, "TD", ltd.Td, "hash", common.BytesToHex(ltd.Hash))
+			return nil, err
 		}
 		prevTd = td
 	}
@@ -170,7 +169,7 @@ func (idx *indexer) insertTd(block *types.Block, prevTd *big.Int) (*big.Int, err
 	td = td.Add(td, block.Difficulty())
 	err := idx.manager.InsertTd(block, td)
 	if err != nil && !common.DuplicateError(err) {
-		log.Error("Failed to insert td for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex(), "TD", td)
+		log.Error("Failed to insert td for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex(), "TD", td, "err", err)
 		return nil, err
 	}
 	log.Trace("Inserted TD for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex())
@@ -332,7 +331,7 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	if isGenesis {
 		d, err := idx.client.DumpBlock(ctx, 0)
 		if err != nil {
-			logger.Error("Failed to get state from ethereum","err", err)
+			logger.Error("Failed to get state from ethereum", "err", err)
 			return nil, nil, err
 		}
 		for addr, acc := range d.Accounts {

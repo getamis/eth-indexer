@@ -260,7 +260,7 @@ func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error)
 	binary.BigEndian.PutUint64(nonce, block.Nonce())
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   block.Hash().Hex(),
+			Hash:   common.BytesTo0xHex(block.Hash().Bytes()),
 			Number: block.Number().Int64(),
 			Nonce:  nonce,
 		},

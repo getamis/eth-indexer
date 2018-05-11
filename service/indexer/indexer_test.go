@@ -30,7 +30,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"fmt"
 )
 
 var _ = Describe("Indexer Test", func() {
@@ -172,7 +171,6 @@ var _ = Describe("Indexer Test", func() {
 			It("discards the old block", func() {
 				ctx, cancel := context.WithCancel(context.Background())
 
-				fmt.Println("in test discards the old block")
 				// local state has block 10,
 				// initial sync blocks 11-15 from ethereum
 				// receive block 13 from header channel and discards it
@@ -371,12 +369,9 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(11)).Return(block, nil).Once()
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Once()
-				dump := &state.Dump{
-					Root: fmt.Sprintf("%x", block.Root()),
-				}
-				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(10), uint64(11)).Return(dump, nil).Once()
+				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(10), uint64(11)).Return(nil, nil).Once()
 				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(nil).Once()
-				mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, dump).Return(unknownErr).Once()
+				mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, emptyDirtyStorage).Return(unknownErr).Once()
 
 				err := idx.Listen(ctx, ch, -1)
 				Expect(err).Should(Equal(unknownErr))
@@ -616,11 +611,8 @@ var _ = Describe("Indexer Test", func() {
 			}
 			// state diff for the new blocks
 			for i := int64(15); i <= 19; i++ {
-				newDump := &state.Dump{
-					Root: fmt.Sprintf("%x", newBlocks[i].Root()),
-				}
-				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(newDump, nil).Once()
-				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, newDump).Return(nil).Once()
+				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, nil).Once()
+				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, emptyDirtyStorage).Return(nil).Once()
 			}
 			mockStoreManager.On("DeleteStateFromBlock", int64(15)).Return(nil).Once()
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(7)
@@ -733,19 +725,13 @@ var _ = Describe("Indexer Test", func() {
 			// expectations for querying state diff
 			// state diff for the old blocks
 			for i := int64(11); i <= 17; i++ {
-				dump := &state.Dump{
-					Root: fmt.Sprintf("%x", blocks[i].Root()),
-				}
-				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(dump, nil).Once()
-				mockStoreManager.On("UpdateBlock", blocks[i], []*types.Receipt{receipt}, dump).Return(nil).Once()
+				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, nil).Once()
+				mockStoreManager.On("UpdateBlock", blocks[i], []*types.Receipt{receipt}, emptyDirtyStorage).Return(nil).Once()
 			}
 			// state diff for the new blocks
 			for i := int64(15); i <= 16; i++ {
-				newDump := &state.Dump{
-					Root: fmt.Sprintf("%x", newBlocks[i].Root()),
-				}
-				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(newDump, nil).Once()
-				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, newDump).Return(nil).Once()
+				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i-1), uint64(i)).Return(nil, nil).Once()
+				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, emptyDirtyStorage).Return(nil).Once()
 			}
 			mockStoreManager.On("DeleteStateFromBlock", int64(15)).Return(nil).Once()
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(7)

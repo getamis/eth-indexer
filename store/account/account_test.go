@@ -295,8 +295,9 @@ var _ = Describe("Account Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(s).Should(Equal(storage1))
 			for _, storage := range []*model.ERC20Storage{storage2, storage3} {
-				_, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
-				Expect(common.NotFoundError(err)).Should(BeTrue())
+				s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
+				Expect(err).Should(Succeed())
+				Expect(s).Should(Equal(storage1))
 			}
 		})
 	})
