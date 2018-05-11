@@ -114,7 +114,7 @@ func (c *Compiler) Compile() (string, []error) {
 }
 
 // next returns the next token and increments the
-// position.
+// posititon.
 func (c *Compiler) next() token {
 	token := c.tokens[c.pos]
 	c.pos++

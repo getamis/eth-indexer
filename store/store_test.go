@@ -1,7 +1,6 @@
 package store
 
 import (
-	"fmt"
 	"math/big"
 	"os"
 	"testing"
@@ -50,14 +49,15 @@ var _ = Describe("Manager Test", func() {
 		db.Table(transaction_receipt.TableName).Delete(&model.Receipt{})
 		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
 		db.Table(account.NameAccounts).Delete(&model.Account{})
-		db.Table(account.NameContracts).Delete(&model.Contract{})
-		db.Table(account.NameContractCode).Delete(&model.ContractCode{})
+		db.Table(account.NameERC20).Delete(&model.ERC20{})
 		db.Table(account.NameStateBlocks).Delete(&model.StateBlock{})
 	})
 
 	Context("InsertBlock()", func() {
 		It("should be ok", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			header := &types.Header{
 				Number: big.NewInt(10),
 			}
@@ -67,7 +67,7 @@ var _ = Describe("Manager Test", func() {
 				types.NewReceipt([]byte{}, false, 0),
 			})
 
-			err := manager.InsertBlock(block, nil)
+			err = manager.InsertBlock(block, nil)
 			Expect(err).Should(Succeed())
 
 			By("insert the same block again, should be ok")
@@ -76,7 +76,9 @@ var _ = Describe("Manager Test", func() {
 		})
 
 		It("failed due to wrong signer", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			header := &types.Header{
 				Number: big.NewInt(11),
 			}
@@ -88,21 +90,23 @@ var _ = Describe("Manager Test", func() {
 				types.NewReceipt([]byte{}, false, 0),
 			})
 
-			err := manager.InsertBlock(block, nil)
+			err = manager.InsertBlock(block, nil)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
 
 	Context("GetHeaderByNumber()", func() {
 		It("gets the right header", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
 			})
 			block2 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(99),
 			})
-			err := manager.InsertBlock(block1, nil)
+			err = manager.InsertBlock(block1, nil)
 			Expect(err).Should(Succeed())
 			err = manager.InsertBlock(block2, nil)
 			Expect(err).Should(Succeed())
@@ -122,14 +126,16 @@ var _ = Describe("Manager Test", func() {
 
 	Context("LatestHeader()", func() {
 		It("gets the latest header", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
 			})
 			block2 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(99),
 			})
-			err := manager.InsertBlock(block1, nil)
+			err = manager.InsertBlock(block1, nil)
 			Expect(err).Should(Succeed())
 			err = manager.InsertBlock(block2, nil)
 			Expect(err).Should(Succeed())
@@ -142,69 +148,70 @@ var _ = Describe("Manager Test", func() {
 
 	Context("UpdateState()", func() {
 		It("should be ok", func() {
-			manager := NewManager(db)
+			accountStore := account.NewWithDB(db)
+			erc20 := &model.ERC20{
+				Address:     gethCommon.HexToAddress("0x01").Bytes(),
+				Code:        common.HexToBytes("0x02"),
+				TotalSupply: "1000000",
+				Name:        "erc20",
+				Decimals:    18,
+			}
+			err := accountStore.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+			tmp := model.ERC20Storage{
+				Address: erc20.Address,
+			}
+			Expect(db.HasTable(tmp)).Should(BeTrue())
+
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
 				Root:   gethCommon.StringToHash("1234567890"),
 			})
 
-			dump := &state.Dump{
-				Root: fmt.Sprintf("%x", block1.Root()),
-				Accounts: map[string]state.DumpAccount{
-					// account
-					common.StringToHex("account"): {
-						Nonce:   100,
-						Balance: "101",
-					},
-					// contract
-					common.StringToHex("contract"): {
-						Nonce:    900,
-						Balance:  "901",
-						Code:     "code",
-						CodeHash: common.StringToHex("codeHash"),
-						Storage: map[string]string{
-							"key1": "storage1",
-							"key2": "storage2",
-						},
+			value := gethCommon.HexToHash("0x0a")
+			key := gethCommon.HexToHash("0x0b")
+			dump := map[string]state.DumpDirtyAccount{
+				"fffffffffff": {
+					Nonce:   100,
+					Balance: "101",
+				},
+				// contract
+				common.BytesToHex(erc20.Address): {
+					Nonce:   900,
+					Balance: "901",
+					Storage: map[string]string{
+						common.HashHex(key): common.HashHex(value),
 					},
 				},
 			}
-			err := manager.UpdateState(block1, dump)
+			err = manager.UpdateState(block1, dump)
 			Expect(err).Should(Succeed())
 
 			By("update the same state again, should be ok")
 			err = manager.UpdateState(block1, dump)
 			Expect(err).Should(Succeed())
-		})
 
-		It("failed due to wrong signer", func() {
-			manager := NewManager(db)
-			block1 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-				Root:   gethCommon.StringToHash("1234567890"),
-			})
-
-			dump := &state.Dump{
-				Root: "wrong root",
-			}
-			err := manager.UpdateState(block1, dump)
-			Expect(err).Should(Equal(common.ErrInconsistentRoot))
+			s, err := account.NewWithDB(db).FindERC20Storage(gethCommon.BytesToAddress(erc20.Address), key, block1.Number().Int64())
+			Expect(err).Should(Succeed())
+			Expect(s.Address).Should(Equal(erc20.Address))
+			Expect(s.Key).Should(Equal(key.Bytes()))
+			Expect(s.Value).Should(Equal(value.Bytes()))
 		})
 	})
 
 	Context("LatestStateBlock()", func() {
 		It("gets the latest state block", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			block1 := types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
 				Root:   gethCommon.StringToHash("1234567890"),
 			})
 
-			dump := &state.Dump{
-				Root: fmt.Sprintf("%x", block1.Root()),
-			}
-
-			err := manager.UpdateState(block1, dump)
+			err = manager.UpdateState(block1, nil)
 			Expect(err).Should(Succeed())
 
 			block, err := manager.LatestStateBlock()
@@ -215,7 +222,9 @@ var _ = Describe("Manager Test", func() {
 
 	Context("DeleteDataFromBlock()", func() {
 		It("deletes data from a block number", func() {
-			manager := NewManager(db)
+			manager, err := NewManager(db)
+			Expect(err).Should(BeNil())
+
 			for i := int64(100); i < 120; i++ {
 				block := types.NewBlockWithHeader(&types.Header{
 					Number: big.NewInt(i),
@@ -224,10 +233,7 @@ var _ = Describe("Manager Test", func() {
 				err := manager.InsertBlock(block, nil)
 				Expect(err).Should(Succeed())
 
-				dump := &state.Dump{
-					Root: fmt.Sprintf("%x", block.Root()),
-				}
-				err = manager.UpdateState(block, dump)
+				err = manager.UpdateState(block, nil)
 				Expect(err).Should(Succeed())
 			}
 			manager.DeleteDataFromBlock(111)

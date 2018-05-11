@@ -24,34 +24,6 @@ func (_m *Store) DeleteAccounts(fromBlock int64) error {
 	return r0
 }
 
-// DeleteContractCodes provides a mock function with given fields: fromBlock
-func (_m *Store) DeleteContractCodes(fromBlock int64) error {
-	ret := _m.Called(fromBlock)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(fromBlock)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// DeleteContracts provides a mock function with given fields: fromBlock
-func (_m *Store) DeleteContracts(fromBlock int64) error {
-	ret := _m.Called(fromBlock)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(fromBlock)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // DeleteStateBlocks provides a mock function with given fields: fromBlock
 func (_m *Store) DeleteStateBlocks(fromBlock int64) error {
 	ret := _m.Called(fromBlock)
@@ -96,29 +68,22 @@ func (_m *Store) FindAccount(address common.Address, blockNr ...int64) (*model.A
 	return r0, r1
 }
 
-// FindContract provides a mock function with given fields: address, blockNr
-func (_m *Store) FindContract(address common.Address, blockNr ...int64) (*model.Contract, error) {
-	_va := make([]interface{}, len(blockNr))
-	for _i := range blockNr {
-		_va[_i] = blockNr[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, address)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// FindERC20 provides a mock function with given fields: address
+func (_m *Store) FindERC20(address common.Address) (*model.ERC20, error) {
+	ret := _m.Called(address)
 
-	var r0 *model.Contract
-	if rf, ok := ret.Get(0).(func(common.Address, ...int64) *model.Contract); ok {
-		r0 = rf(address, blockNr...)
+	var r0 *model.ERC20
+	if rf, ok := ret.Get(0).(func(common.Address) *model.ERC20); ok {
+		r0 = rf(address)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.Contract)
+			r0 = ret.Get(0).(*model.ERC20)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, ...int64) error); ok {
-		r1 = rf(address, blockNr...)
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(address)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -126,22 +91,22 @@ func (_m *Store) FindContract(address common.Address, blockNr ...int64) (*model.
 	return r0, r1
 }
 
-// FindContractCode provides a mock function with given fields: address
-func (_m *Store) FindContractCode(address common.Address) (*model.ContractCode, error) {
-	ret := _m.Called(address)
+// FindERC20Storage provides a mock function with given fields: address, key, blockNr
+func (_m *Store) FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (*model.ERC20Storage, error) {
+	ret := _m.Called(address, key, blockNr)
 
-	var r0 *model.ContractCode
-	if rf, ok := ret.Get(0).(func(common.Address) *model.ContractCode); ok {
-		r0 = rf(address)
+	var r0 *model.ERC20Storage
+	if rf, ok := ret.Get(0).(func(common.Address, common.Hash, int64) *model.ERC20Storage); ok {
+		r0 = rf(address, key, blockNr)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.ContractCode)
+			r0 = ret.Get(0).(*model.ERC20Storage)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
-		r1 = rf(address)
+	if rf, ok := ret.Get(1).(func(common.Address, common.Hash, int64) error); ok {
+		r1 = rf(address, key, blockNr)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -186,13 +151,13 @@ func (_m *Store) InsertAccount(_a0 *model.Account) error {
 	return r0
 }
 
-// InsertContract provides a mock function with given fields: contract
-func (_m *Store) InsertContract(contract *model.Contract) error {
-	ret := _m.Called(contract)
+// InsertERC20 provides a mock function with given fields: code
+func (_m *Store) InsertERC20(code *model.ERC20) error {
+	ret := _m.Called(code)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Contract) error); ok {
-		r0 = rf(contract)
+	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
+		r0 = rf(code)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -200,13 +165,13 @@ func (_m *Store) InsertContract(contract *model.Contract) error {
 	return r0
 }
 
-// InsertContractCode provides a mock function with given fields: code
-func (_m *Store) InsertContractCode(code *model.ContractCode) error {
-	ret := _m.Called(code)
+// InsertERC20Storage provides a mock function with given fields: storage
+func (_m *Store) InsertERC20Storage(storage *model.ERC20Storage) error {
+	ret := _m.Called(storage)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.ContractCode) error); ok {
-		r0 = rf(code)
+	if rf, ok := ret.Get(0).(func(*model.ERC20Storage) error); ok {
+		r0 = rf(storage)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -238,6 +203,29 @@ func (_m *Store) LastStateBlock() (*model.StateBlock, error) {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.StateBlock)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListERC20 provides a mock function with given fields:
+func (_m *Store) ListERC20() ([]model.ERC20, error) {
+	ret := _m.Called()
+
+	var r0 []model.ERC20
+	if rf, ok := ret.Get(0).(func() []model.ERC20); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.ERC20)
 		}
 	}
 

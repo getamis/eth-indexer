@@ -14,6 +14,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/big"
@@ -22,11 +23,15 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
-	indexerCommon "github.com/maichain/eth-indexer/common"
+	"github.com/ethereum/go-ethereum/eth"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/maichain/eth-indexer/contracts"
 	"github.com/maichain/eth-indexer/contracts/backends"
 	"github.com/maichain/eth-indexer/model"
+	accountMocks "github.com/maichain/eth-indexer/store/account/mocks"
+	"github.com/stretchr/testify/mock"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,8 +42,9 @@ var _ = Describe("Call Test", func() {
 	var contract *contracts.MithrilToken
 	var contractAddr common.Address
 	var sim *backends.SimulatedBackend
-
+	var mockAccountStore *accountMocks.Store
 	BeforeEach(func() {
+		mockAccountStore = new(accountMocks.Store)
 		// pre-defined account
 		key, _ := crypto.GenerateKey()
 		auth = bind.NewKeyedTransactor(key)
@@ -55,19 +61,24 @@ var _ = Describe("Call Test", func() {
 		sim.Commit()
 	})
 
+	AfterEach(func() {
+		mockAccountStore.AssertExpectations(GinkgoT())
+	})
+
 	It("BalanceOf", func() {
 		By("init token supply")
 		tx, err := contract.Init(auth, big.NewInt(math.MaxInt64), auth.From, auth.From)
 		type account struct {
-			address common.Address
-			balance *big.Int
+			address      common.Address
+			balance      *big.Int
+			dirtyStateDB map[string]state.DumpDirtyAccount
 		}
 		Expect(tx).ShouldNot(BeNil())
 		Expect(err).Should(BeNil())
 		sim.Commit()
 
 		By("transfer token to accounts")
-		var accounts []*account
+		accounts := make(map[uint64]*account)
 		for i := 0; i < 100; i++ {
 			acc := &account{
 				address: common.HexToAddress(getFakeAddress()),
@@ -76,14 +87,13 @@ var _ = Describe("Call Test", func() {
 			tx, err := contract.Transfer(auth, acc.address, acc.balance)
 			Expect(tx).ShouldNot(BeNil())
 			Expect(err).Should(BeNil())
-			accounts = append(accounts, acc)
+			accounts[sim.Blockchain().CurrentBlock().NumberU64()] = acc
 			sim.Commit()
 		}
 
 		By("get current state db")
 		stateDB, err := sim.Blockchain().State()
 		Expect(stateDB).ShouldNot(BeNil())
-		Expect(err).Should(BeNil())
 
 		By("ensure all account token balance are expected")
 		for _, account := range accounts {
@@ -92,28 +102,50 @@ var _ = Describe("Call Test", func() {
 			Expect(account.balance).Should(Equal(result))
 		}
 
-		By("find the contract code and data")
-		dump := stateDB.RawDump()
-		var code *model.ContractCode
-		var data *model.Contract
-		for addrStr, account := range dump.Accounts {
-			if contractAddr == common.HexToAddress(addrStr) {
-				code, data, err = indexerCommon.Contract(sim.Blockchain().CurrentBlock().Number().Int64(), addrStr, account)
-				Expect(err).Should(BeNil())
-				break
-			}
+		By("get dirty storage")
+		for blockNumber, account := range accounts {
+			next := blockNumber + 1
+			account.dirtyStateDB, err = eth.GetDirtyStorage(params.AllEthashProtocolChanges, sim.Blockchain(), blockNumber, &next)
+			Expect(err).Should(BeNil())
+			accounts[blockNumber] = account
 		}
+
+		By("find the contract code")
+		code, err := sim.CodeAt(context.Background(), contractAddr, nil)
 		Expect(code).ShouldNot(BeNil())
-		Expect(data).ShouldNot(BeNil())
+		Expect(err).Should(BeNil())
+
+		contractCode := &model.ERC20{
+			Address: contractAddr.Bytes(),
+			Code:    code,
+		}
+
+		By("mock account store")
+		mockAccountStore.On("FindERC20Storage", mock.AnythingOfType("common.Address"), mock.AnythingOfType("common.Hash"), mock.AnythingOfType("int64")).Return(func(address common.Address, key common.Hash, blockNr int64) *model.ERC20Storage {
+			s, _ := accounts[uint64(blockNr)].dirtyStateDB[common.Bytes2Hex(address.Bytes())]
+			kayHash := common.Bytes2Hex(key.Bytes())
+			value, _ := s.Storage[kayHash]
+			return &model.ERC20Storage{
+				Address:     address.Bytes(),
+				BlockNumber: blockNr,
+				Key:         key.Bytes(),
+				Value:       common.Hex2Bytes(value),
+			}
+		}, nil)
 
 		By("ensure all account token balance are expected based on contract code and data")
-		db := &contractDB{
-			code:    code,
-			account: data,
-		}
-		for _, account := range accounts {
+		for blockNumber, account := range accounts {
+			db := &contractDB{
+				blockNumber:  int64(blockNumber),
+				code:         contractCode,
+				accountStore: mockAccountStore,
+				account: &model.Account{
+					Address: contractAddr.Bytes(),
+				},
+			}
 			result, err := BalanceOf(db, contractAddr, account.address)
 			Expect(err).Should(BeNil())
+			Expect(db.err).Should(BeNil())
 			Expect(account.balance).Should(Equal(result))
 		}
 	})

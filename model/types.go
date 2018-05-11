@@ -14,6 +14,8 @@
 
 package model
 
+import "github.com/ethereum/go-ethereum/common/hexutil"
+
 // Header represents the header of a block
 type Header struct {
 	Hash        []byte
@@ -77,20 +79,30 @@ type Account struct {
 	Nonce       int64
 }
 
-// ContractCode represents the contract code
-type ContractCode struct {
+// ERC20 represents the ERC20 contract
+type ERC20 struct {
 	BlockNumber int64
 	Address     []byte
-	Hash        []byte
-	Code        string
+	Code        []byte
+	TotalSupply string
+	Decimals    int
+	Name        string
 }
 
-// Contract represents the state of contract accounts in Ethereum at given block
-type Contract struct {
-	BlockNumber int64
-	Address     []byte
-	Balance     string
-	Nonce       int64
-	Root        []byte
-	Storage     []byte
+// ERC20Storage represents the contract storage
+type ERC20Storage struct {
+	Address     []byte `gorm:"-"`
+	BlockNumber int64  `gorm:"index;unique_index:idx_block_number_key_hash"`
+	Key         []byte `gorm:"column:key_hash;size:32;unique_index:idx_block_number_key_hash"`
+	Value       []byte `gorm:"size:32"`
+}
+
+// TableName retruns the table name of this erc20 contract
+func (s ERC20Storage) TableName() string {
+	return ERC20ContractTableName(s.Address)
+}
+
+// ERC20ContractTableName returns its contract table
+func ERC20ContractTableName(address []byte) string {
+	return "erc20_" + hexutil.Encode(address)
 }

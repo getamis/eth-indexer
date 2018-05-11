@@ -23,7 +23,6 @@ import (
 	"math"
 	"math/big"
 	mrand "math/rand"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -33,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/hashicorp/golang-lru"
+	"sync/atomic"
 )
 
 const (

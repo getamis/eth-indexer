@@ -26,7 +26,8 @@
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  version = "=1.8.3"
+  source = "github.com/getamis/go-ethereum"
+  branch = "feature/get_modified_accounts"
 
 [[constraint]]
   branch = "develop"
@@ -67,6 +68,12 @@
 
   [[prune.project]]
     name = "github.com/ethereum/go-ethereum"
+    non-go = false
+    unused-packages = false
+
+  # Used in etheretm project
+  [[prune.project]]
+    name = "github.com/karalabe/hid"
     non-go = false
     unused-packages = false
 

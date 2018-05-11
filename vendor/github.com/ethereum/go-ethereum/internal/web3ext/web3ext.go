@@ -385,6 +385,18 @@ web3._extend({
 			params: 2,
 			inputFormatter:[null, null],
 		}),
+		new web3._extend.Method({
+			name: 'getModifiedAccountStatesByNumber',
+			call: 'debug_getModifiedAccountStatesByNumber',
+			params: 2,
+			inputFormatter: [null, null],
+		}),
+		new web3._extend.Method({
+			name: 'getTotalDifficulty',
+			call: 'debug_getTotalDifficulty',
+			params: 1,
+			inputFormatter: [null],
+		}),
 	],
 	properties: []
 });

@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180501095922) do
+ActiveRecord::Schema.define(version: 20180504063325) do
 
   create_table "accounts", force: :cascade do |t|
     t.binary  "address",      limit: 20, null: false
@@ -45,27 +45,17 @@ ActiveRecord::Schema.define(version: 20180501095922) do
   add_index "block_headers", ["hash"], name: "index_block_headers_on_hash", unique: true, using: :btree
   add_index "block_headers", ["number"], name: "index_block_headers_on_number", unique: true, using: :btree
 
-  create_table "contract_code", force: :cascade do |t|
+  create_table "erc20", force: :cascade do |t|
     t.binary  "address",      limit: 20,       null: false
     t.integer "block_number", limit: 8,        null: false
-    t.binary  "hash",         limit: 32,       null: false
-    t.text    "code",         limit: 16777215, null: false
+    t.binary  "code",         limit: 16777215, null: false
+    t.string  "name",         limit: 8
+    t.string  "total_supply", limit: 32
+    t.integer "decimals",     limit: 8
   end
 
-  add_index "contract_code", ["address"], name: "index_contract_code_on_address", unique: true, using: :btree
-  add_index "contract_code", ["block_number"], name: "index_contract_code_on_block_number", using: :btree
-
-  create_table "contracts", force: :cascade do |t|
-    t.binary  "address",      limit: 20,       null: false
-    t.integer "block_number", limit: 8,        null: false
-    t.string  "balance",      limit: 32,       null: false
-    t.integer "nonce",        limit: 8,        null: false
-    t.binary  "root",         limit: 32,       null: false
-    t.binary  "storage",      limit: 16777215, null: false
-  end
-
-  add_index "contracts", ["address", "block_number"], name: "index_contracts_on_address_and_block_number", unique: true, using: :btree
-  add_index "contracts", ["address"], name: "index_contracts_on_address", using: :btree
+  add_index "erc20", ["address"], name: "index_erc20_on_address", unique: true, using: :btree
+  add_index "erc20", ["block_number"], name: "index_erc20_on_block_number", using: :btree
 
   create_table "state_blocks", force: :cascade do |t|
     t.integer "number", limit: 8, null: false

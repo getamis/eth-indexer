@@ -109,13 +109,13 @@ func (_m *Manager) LatestStateBlock() (*model.StateBlock, error) {
 	return r0, r1
 }
 
-// UpdateState provides a mock function with given fields: block, dump
-func (_m *Manager) UpdateState(block *types.Block, dump *state.Dump) error {
-	ret := _m.Called(block, dump)
+// UpdateState provides a mock function with given fields: block, accounts
+func (_m *Manager) UpdateState(block *types.Block, accounts map[string]state.DumpDirtyAccount) error {
+	ret := _m.Called(block, accounts)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, *state.Dump) error); ok {
-		r0 = rf(block, dump)
+	if rf, ok := ret.Get(0).(func(*types.Block, map[string]state.DumpDirtyAccount) error); ok {
+		r0 = rf(block, accounts)
 	} else {
 		r0 = ret.Error(0)
 	}

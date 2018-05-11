@@ -15,17 +15,17 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"math/big"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/sirius/log"
+	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
+	"github.com/maichain/eth-indexer/store/account"
 )
 
 var (
@@ -46,9 +46,11 @@ func (account *contractAccount) ForEachStorage(callback func(key, value ethCommo
 
 // Implement vm.StateDB. In current version, we only read the states in the given account (contract).
 type contractDB struct {
-	code    *model.ContractCode
-	account *model.Contract
-	err     error
+	blockNumber  int64
+	code         *model.ERC20
+	account      *model.Account
+	accountStore account.Store
+	err          error
 }
 
 func (contractDB) CreateAccount(addr ethCommon.Address)                                        {}
@@ -107,13 +109,13 @@ func (db *contractDB) GetNonce(addr ethCommon.Address) uint64 {
 }
 func (db *contractDB) GetCodeHash(addr ethCommon.Address) ethCommon.Hash {
 	if db.mustBeSelf(addr) {
-		return ethCommon.BytesToHash(db.code.Hash)
+		return crypto.Keccak256Hash(db.code.Code)
 	}
 	return ethCommon.Hash{}
 }
 func (db *contractDB) GetCode(addr ethCommon.Address) []byte {
 	if db.mustBeSelf(addr) {
-		return ethCommon.Hex2Bytes(db.code.Code)
+		return db.code.Code
 	}
 	return []byte{}
 }
@@ -123,31 +125,25 @@ func (db *contractDB) GetCodeSize(addr ethCommon.Address) int {
 	}
 	return 0
 }
-func (db *contractDB) GetState(addr ethCommon.Address, hash ethCommon.Hash) ethCommon.Hash {
+func (db *contractDB) GetState(addr ethCommon.Address, key ethCommon.Hash) ethCommon.Hash {
 	if db.mustBeSelf(addr) {
-		hashStr := ethCommon.Bytes2Hex(hash.Bytes())
-		storage := make(map[string]string)
-		err := json.Unmarshal(db.account.Storage, &storage)
+		s, err := db.accountStore.FindERC20Storage(addr, key, db.blockNumber)
 		if err != nil {
+			// not found error means there is no storage at this block number
+			if err != gorm.ErrRecordNotFound {
+				db.err = err
+			}
 			return ethCommon.Hash{}
 		}
-
-		s, ok := storage[hashStr]
-		if ok {
-			enc := ethCommon.Hex2Bytes(s)
-			if len(enc) > 0 {
-				_, content, _, _ := rlp.Split(enc)
-				return ethCommon.BytesToHash(content)
-			}
-		}
+		return ethCommon.BytesToHash(s.Value)
 	}
 	return ethCommon.Hash{}
 }
 
-func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address ethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
-	contractCode, err := srv.FindContractCode(contractAddress)
+	contractCode, err := srv.FindERC20(contractAddress)
 	if err != nil {
 		logger.Error("Failed to find contract code", "err", err)
 		return nil, nil, err
@@ -167,8 +163,8 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 	}
 	blockNumber := big.NewInt(stateBlock.Number)
 
-	// Find contract
-	contract, err := srv.FindContract(contractAddress, stateBlock.Number)
+	// Find contract account
+	account, err := srv.FindAccount(contractAddress, stateBlock.Number)
 	if err != nil {
 		logger.Error("Failed to find contract", "err", err)
 		return nil, nil, err
@@ -176,8 +172,10 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 
 	// Get balance from contract
 	db := &contractDB{
-		code:    contractCode,
-		account: contract,
+		blockNumber:  blockNumber.Int64(),
+		code:         contractCode,
+		account:      account,
+		accountStore: srv.accountStore,
 	}
 	balance, err := BalanceOf(db, contractAddress, address)
 	if err != nil {

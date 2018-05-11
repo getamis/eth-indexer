@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/store/account/mocks"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

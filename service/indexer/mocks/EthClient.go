@@ -112,6 +112,29 @@ func (_m *EthClient) Close() {
 	_m.Called()
 }
 
+// CodeAt provides a mock function with given fields: ctx, account, blockNumber
+func (_m *EthClient) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
+	ret := _m.Called(ctx, account, blockNumber)
+
+	var r0 []byte
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, *big.Int) []byte); ok {
+		r0 = rf(ctx, account, blockNumber)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, *big.Int) error); ok {
+		r1 = rf(ctx, account, blockNumber)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // DumpBlock provides a mock function with given fields: ctx, blockNr
 func (_m *EthClient) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
 	ret := _m.Called(ctx, blockNr)
@@ -136,15 +159,15 @@ func (_m *EthClient) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump,
 }
 
 // ModifiedAccountStatesByNumber provides a mock function with given fields: ctx, startNum, endNum
-func (_m *EthClient) ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (*state.Dump, error) {
+func (_m *EthClient) ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (map[string]state.DumpDirtyAccount, error) {
 	ret := _m.Called(ctx, startNum, endNum)
 
-	var r0 *state.Dump
-	if rf, ok := ret.Get(0).(func(context.Context, uint64, uint64) *state.Dump); ok {
+	var r0 map[string]state.DumpDirtyAccount
+	if rf, ok := ret.Get(0).(func(context.Context, uint64, uint64) map[string]state.DumpDirtyAccount); ok {
 		r0 = rf(ctx, startNum, endNum)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*state.Dump)
+			r0 = ret.Get(0).(map[string]state.DumpDirtyAccount)
 		}
 	}
 
