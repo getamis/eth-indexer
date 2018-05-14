@@ -436,51 +436,66 @@ func (api *PrivateDebugAPI) GetModifiedAccountsByNumber(startNum uint64, endNum 
 	return api.getModifiedAccounts(startBlock, endBlock)
 }
 
-// GetModifiedAccountStatesByNumber returns all account states that have changed between the
-// two blocks specified. A change is defined as a difference in nonce, balance, and storage.
-// Note that the function only returns the diff storage.
+// GetModifiedAccountStatesByNumber returns all account states that have changed for the given block.
+// A change is defined as a difference in nonce, balance, and storage. Note that the function only
+// returns the diff storage.
 //
 // With one parameter, returns the list of accounts modified in the specified block.
-func (api *PrivateDebugAPI) GetModifiedAccountStatesByNumber(startNum uint64, endNum *uint64) (map[string]state.DumpDirtyAccount, error) {
-	return GetDirtyStorage(api.config, api.eth.BlockChain(), startNum, endNum)
+func (api *PrivateDebugAPI) GetModifiedAccountStatesByNumber(num uint64) (*state.DirtyDump, error) {
+	return GetDirtyStorage(api.config, api.eth.BlockChain(), num)
 }
 
-func GetDirtyStorage(config *params.ChainConfig, blockchain *core.BlockChain, startNum uint64, endNum *uint64) (map[string]state.DumpDirtyAccount, error) {
+func GetDirtyStorage(config *params.ChainConfig, blockchain *core.BlockChain, num uint64) (dump *state.DirtyDump, err error) {
 	// Get start blocks
-	var startBlock *types.Block
-	startBlock = blockchain.GetBlockByNumber(startNum)
-	if startBlock == nil {
-		return nil, fmt.Errorf("start block %x not found", startNum)
+	block := blockchain.GetBlockByNumber(num)
+	if block == nil {
+		return nil, fmt.Errorf("block %x not found", num)
 	}
 
-	stateDB, err := blockchain.StateAt(startBlock.Root())
+	parentBlock := blockchain.GetBlockByHash(block.ParentHash())
+	if parentBlock == nil {
+		return nil, fmt.Errorf("parent block %x not found", block.ParentHash().Hex())
+	}
+
+	hash := block.Hash()
+	// If the dirty dump in db, return it directly
+	d, err := blockchain.GetDirtyDump(hash)
+	if err == nil {
+		return d, nil
+	}
+
+	// If not, calculate the dirty dump
+	stateDB, err := blockchain.StateAt(parentBlock.Root())
 	if err != nil {
 		return nil, err
 	}
 
 	stateDB.StartDirtyStorage()
-	defer stateDB.StopDirtyStorage()
+	defer func() {
+		stateDB.StopDirtyStorage()
+		// update db only if the diff is 1 and err == nil
+		if err == nil {
+			stateErr := blockchain.WriteDirtyDump(hash, dump)
+			if stateErr != nil {
+				log.Warn("Failed to write dirty dump", "err", stateErr, "root", dump.Root)
+			} else {
+				log.Debug("Write dirty dump successfully", "root", dump.Root)
+			}
+		}
+	}()
 
 	processor := core.NewStateProcessor(config, blockchain, blockchain.Engine())
-	parent := startBlock
-	for i := startNum + 1; i <= *endNum; i++ {
-		block := blockchain.GetBlockByNumber(i)
-		if block == nil {
-			return nil, fmt.Errorf("block %x not found", i)
-		}
 
-		receipts, _, usedGas, err := processor.Process(block, stateDB, vm.Config{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to apply block %x", i)
-		}
-
-		err = blockchain.Validator().ValidateState(block, parent, stateDB, receipts, usedGas)
-		if err != nil {
-			return nil, fmt.Errorf("failed to apply block %x", i)
-		}
-		parent = block
+	receipts, _, usedGas, err := processor.Process(block, stateDB, vm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply block %x", block.Number())
 	}
-	return stateDB.DumpDirtyStorage(), nil
+
+	err = blockchain.Validator().ValidateState(block, parentBlock, stateDB, receipts, usedGas)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply block %x", block.Number())
+	}
+	return stateDB.DumpDirty(), nil
 }
 
 // GetModifiedAccountsByHash returns all accounts that have changed between the

@@ -80,18 +80,26 @@ func (self *StateDB) Dump() []byte {
 	return json
 }
 
-type DumpDirtyAccount struct {
+type DirtyDump struct {
+	Root     string                      `json:"root"`
+	Accounts map[string]DirtyDumpAccount `json:"accounts"`
+}
+
+type DirtyDumpAccount struct {
 	Balance string            `json:"balance"`
 	Nonce   uint64            `json:"nonce"`
 	Storage map[string]string `json:"storage"`
 }
 
-// DumpDirtyStorage dumps the dirty storage diff
-func (self *StateDB) DumpDirtyStorage() map[string]DumpDirtyAccount {
-	dump := make(map[string]DumpDirtyAccount)
+// DumpDirty dumps the dirty storage diff
+func (self *StateDB) DumpDirty() *DirtyDump {
+	dump := &DirtyDump{
+		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+		Accounts: make(map[string]DirtyDumpAccount),
+	}
 
 	for addr, storage := range self.dirtyStorage {
-		account := DumpDirtyAccount{
+		account := DirtyDumpAccount{
 			Balance: self.GetBalance(addr).String(),
 			Nonce:   self.GetNonce(addr),
 			Storage: make(map[string]string),
@@ -99,7 +107,7 @@ func (self *StateDB) DumpDirtyStorage() map[string]DumpDirtyAccount {
 		for key, value := range storage {
 			account.Storage[common.Bytes2Hex(key.Bytes())] = common.Bytes2Hex(value.Bytes())
 		}
-		dump[common.Bytes2Hex(addr.Bytes())] = account
+		dump.Accounts[common.Bytes2Hex(addr.Bytes())] = account
 	}
 	return dump
 }
