@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package pb;
+
+import "google/api/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.goproto_registration) = true;
+
+message AddERC20Request {
+  string address = 1;
+  int64 block_number = 2;
+}
+
+message AddERC20Response {
+  string address = 1;
+  int64 block_number = 2;
+  string total_supply = 3;
+  int64 decimals = 4;
+  string name = 5;
+}
+
+service ERC20Service {
+  rpc AddERC20(AddERC20Request) returns (AddERC20Response) {
+    option (google.api.http) = {
+      post: "/v1/erc20"
+      body: "*"
+    };
+  }
+}

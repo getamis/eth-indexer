@@ -343,9 +343,9 @@ var _ = Describe("Manager Test", func() {
 		})
 	})
 
-	Context("GetSyncBlock()", func() {
+	Context("ForceInsertBlock()", func() {
 		Context("should be ok", func() {
-
+			// TODO: Add tests
 		})
 	})
 

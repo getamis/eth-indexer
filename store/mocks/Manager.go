@@ -27,6 +27,20 @@ func (_m *Manager) DeleteStateFromBlock(blockNumber int64) error {
 	return r0
 }
 
+// ForceInsertBlock provides a mock function with given fields: block, receipts, dump
+func (_m *Manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
+	ret := _m.Called(block, receipts, dump)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
+		r0 = rf(block, receipts, dump)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetHeaderByNumber provides a mock function with given fields: number
 func (_m *Manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	ret := _m.Called(number)
@@ -43,27 +57,6 @@ func (_m *Manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func(int64) error); ok {
 		r1 = rf(number)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetSyncBlock provides a mock function with given fields: target
-func (_m *Manager) GetSyncBlock(target int64) (int64, error) {
-	ret := _m.Called(target)
-
-	var r0 int64
-	if rf, ok := ret.Get(0).(func(int64) int64); ok {
-		r0 = rf(target)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(target)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -92,6 +85,20 @@ func (_m *Manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	}
 
 	return r0, r1
+}
+
+// InsertERC20 provides a mock function with given fields: code
+func (_m *Manager) InsertERC20(code *model.ERC20) error {
+	ret := _m.Called(code)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
+		r0 = rf(code)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // InsertTd provides a mock function with given fields: block, td

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package rpc
+package service
 
 import (
 	"github.com/maichain/eth-indexer/common"
@@ -30,7 +30,7 @@ var (
 	ErrInternal            = status.Error(codes.Internal, "internal server error")
 )
 
-func wrapTransactionNotFoundError(err error) error {
+func WrapTransactionNotFoundError(err error) error {
 	if common.NotFoundError(err) {
 		return ErrTransactionNotFound
 	}
@@ -38,7 +38,7 @@ func wrapTransactionNotFoundError(err error) error {
 	return ErrInternal
 }
 
-func wrapBlockNotFoundError(err error) error {
+func WrapBlockNotFoundError(err error) error {
 	if common.NotFoundError(err) {
 		return ErrBlockNotFound
 	}

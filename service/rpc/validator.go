@@ -18,6 +18,7 @@ import (
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
+	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/pb"
 )
 

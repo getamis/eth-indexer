@@ -26,6 +26,7 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/contracts"
+	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/mapi/api"

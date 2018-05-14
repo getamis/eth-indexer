@@ -26,6 +26,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
+	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"

@@ -34,10 +34,10 @@ import (
 
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
+	// InsertERC20 inserts the erc20 code
+	InsertERC20(code *model.ERC20) error
 	// InsertTd writes the total difficulty for a block
 	InsertTd(block *types.Block, td *big.Int) error
-	// UpdateBlock update data from this block
-	UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error
 	// DeleteDataFromBlock deletes all data from this block and higher
 	DeleteStateFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
@@ -46,8 +46,10 @@ type Manager interface {
 	GetHeaderByNumber(number int64) (*model.Header, error)
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
-	// GetSyncBlock returns the block number which we need to start to sync based on the ERC20 list
-	GetSyncBlock(target int64) (int64, error)
+	// UpdateBlock updates all block data if the block doesn't exist
+	UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error
+	// ForceInsertBlock inserts all block data even if some data already exist
+	ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error)
 }
 
 type manager struct {
@@ -105,7 +107,33 @@ func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dum
 	if dump == nil {
 		return
 	}
-	err = m.updateState(dbTx, block, dump)
+	err = m.updateState(dbTx, block, dump, true)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (m *manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error) {
+	dbTx := m.db.Begin()
+	defer func() {
+		if err != nil {
+			dbTx.Rollback()
+			return
+		}
+		err = dbTx.Commit().Error
+	}()
+
+	err = m.insertBlock(dbTx, block, receipts)
+	if err != nil && !common.DuplicateError(err) {
+		return
+	}
+
+	// No need to update states
+	if dump == nil {
+		return
+	}
+	err = m.updateState(dbTx, block, dump, false)
 	if err != nil {
 		return
 	}
@@ -184,7 +212,7 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 }
 
 // updateState updates states inside a DB transaction
-func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump) (err error) {
+func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump, ignoreDuplicateError bool) (err error) {
 	accountStore := account.NewWithDB(dbTx)
 
 	blockNumber := block.Number().Int64()
@@ -192,7 +220,7 @@ func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.Dir
 	modifiedERC20s := make(map[string]struct{})
 	for addr, account := range dump.Accounts {
 		err = insertAccount(accountStore, blockNumber, addr, account)
-		if err != nil {
+		if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
 			return
 		}
 
@@ -207,7 +235,7 @@ func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.Dir
 					Value:       common.HexToBytes(value),
 				}
 				err = accountStore.InsertERC20Storage(s)
-				if err != nil {
+				if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
 					return
 				}
 			}
@@ -231,7 +259,7 @@ func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.Dir
 			Address:     common.HexToBytes(addr),
 		}
 		err = accountStore.InsertERC20Storage(s)
-		if err != nil {
+		if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
 			return
 		}
 	}
@@ -259,26 +287,9 @@ func (m *manager) deleteBlock(dbTx *gorm.DB, blockNumber int64) (err error) {
 	return
 }
 
-func (m *manager) GetSyncBlock(target int64) (int64, error) {
+func (m *manager) InsertERC20(code *model.ERC20) error {
 	accountStore := account.NewWithDB(m.db)
-	nextBlock := target
-	for addr, erc20 := range m.erc20List {
-		result, err := accountStore.LastSyncERC20Storage(gethCommon.HexToAddress(addr), target)
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				if nextBlock > erc20.BlockNumber {
-					nextBlock = erc20.BlockNumber
-				}
-				continue
-			}
-			return 0, err
-		}
-
-		if nextBlock > result+1 {
-			nextBlock = result + 1
-		}
-	}
-	return nextBlock, nil
+	return accountStore.InsertERC20(code)
 }
 
 // finalizeTransaction finalizes the db transaction and ignores duplicate key error

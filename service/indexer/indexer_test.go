@@ -57,36 +57,21 @@ var _ = Describe("Indexer Test", func() {
 			blocks := make([]*types.Block, 20)
 			tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 			receipt := types.NewReceipt([]byte{}, false, 0)
-			block := types.NewBlock(
-				&types.Header{
-					Number: big.NewInt(10),
-					Root:   common.StringToHash("1234567890" + strconv.Itoa(int(10))),
-				}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
-			blocks[10] = block
-			mockStoreManager.On("GetSyncBlock", targetBlock).Return(int64(0), nil).Once()
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
-				Number: 10,
-				Hash:   block.Hash().Bytes(),
-			}, nil).Once()
-			for i := int64(11); i <= targetBlock; i++ {
-				block = types.NewBlock(
+			for i := int64(1); i <= targetBlock; i++ {
+				block := types.NewBlock(
 					&types.Header{
 						Number:     big.NewInt(i),
-						ParentHash: blocks[i-1].Hash(),
 						Root:       common.StringToHash("1234567890" + strconv.Itoa(int(i))),
 						Difficulty: big.NewInt(1),
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				blocks[i] = block
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
-				mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
+				mockStoreManager.On("ForceInsertBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
 			}
-			mockStoreManager.On("GetTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
-				10, blocks[10].Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
-			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(9)
+			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(int(targetBlock))
 
-			err := idx.SyncToTarget(context.Background(), 0, targetBlock)
+			err := idx.SyncToTarget(context.Background(), 1, targetBlock)
 			Expect(err).Should(BeNil())
 		})
 	})

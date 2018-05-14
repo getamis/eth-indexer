@@ -21,6 +21,7 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
+	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
 	"github.com/maichain/mapi/api"
@@ -68,7 +69,7 @@ func (s *server) GetBlockByHash(ctx context.Context, req *pb.BlockHashQueryReque
 	hashBytes := common.HexToBytes(req.Hash)
 	header, err := s.manager.FindBlockByHash(hashBytes)
 	if err != nil {
-		return nil, wrapBlockNotFoundError(err)
+		return nil, WrapBlockNotFoundError(err)
 	}
 
 	response := &pb.BlockQueryResponse{
@@ -95,7 +96,7 @@ func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQueryR
 		header, err = s.manager.FindBlockByNumber(req.Number)
 	}
 	if err != nil {
-		return nil, wrapBlockNotFoundError(err)
+		return nil, WrapBlockNotFoundError(err)
 	}
 
 	response := &pb.BlockQueryResponse{
@@ -116,7 +117,7 @@ func (s *server) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQueryR
 func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
 	transaction, err := s.manager.FindTransaction(common.HexToBytes(req.Hash))
 	if err != nil {
-		return nil, wrapTransactionNotFoundError(err)
+		return nil, WrapTransactionNotFoundError(err)
 	}
 	result := &pb.TransactionQueryResponse{Tx: &pb.Transaction{
 		Hash:     common.BytesTo0xHex(transaction.Hash),

@@ -20,6 +20,7 @@ import (
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/service/rpc/mocks"
 
+	. "github.com/maichain/eth-indexer/service"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
