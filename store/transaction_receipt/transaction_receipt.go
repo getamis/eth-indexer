@@ -9,6 +9,7 @@ const (
 	TableName = "transaction_receipts"
 )
 
+//go:generate mockery -name Store
 type Store interface {
 	Insert(data *model.Receipt) error
 	Delete(blockNumber int64) (err error)
