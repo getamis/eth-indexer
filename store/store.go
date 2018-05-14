@@ -37,7 +37,7 @@ type Manager interface {
 	// InsertTd writes the total difficulty for a block
 	InsertTd(block *types.Block, td *big.Int) error
 	// UpdateBlock update data from this block
-	UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error
+	UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error
 	// DeleteDataFromBlock deletes all data from this block and higher
 	DeleteStateFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
@@ -46,11 +46,13 @@ type Manager interface {
 	GetHeaderByNumber(number int64) (*model.Header, error)
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
+	// GetSyncBlock returns the block number which we need to start to sync based on the ERC20 list
+	GetSyncBlock(target int64) (int64, error)
 }
 
 type manager struct {
 	db        *gorm.DB
-	erc20List map[string]struct{}
+	erc20List map[string]model.ERC20
 }
 
 // NewManager news a store manager to insert block, receipts and states.
@@ -59,9 +61,9 @@ func NewManager(db *gorm.DB) (Manager, error) {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
-	erc20List := make(map[string]struct{})
+	erc20List := make(map[string]model.ERC20)
 	for _, e := range list {
-		erc20List[common.BytesToHex(e.Address)] = struct{}{}
+		erc20List[common.BytesToHex(e.Address)] = e
 	}
 	return &manager{
 		db:        db,
@@ -74,7 +76,7 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	return headerStore.InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) (err error) {
+func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error) {
 	headerStore := header.NewWithDB(m.db)
 	blockNumber := block.Number().Int64()
 	// Best effort to check if we already have the data
@@ -99,7 +101,11 @@ func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, acc
 		return
 	}
 
-	err = m.updateState(dbTx, block, accounts)
+	// No need to update states
+	if dump == nil {
+		return
+	}
+	err = m.updateState(dbTx, block, dump)
 	if err != nil {
 		return
 	}
@@ -178,21 +184,24 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 }
 
 // updateState updates states inside a DB transaction
-func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, accounts map[string]state.DumpDirtyAccount) (err error) {
+func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump) (err error) {
 	accountStore := account.NewWithDB(dbTx)
 
+	blockNumber := block.Number().Int64()
 	// Insert modified accounts
-	for addr, account := range accounts {
-		err = insertAccount(accountStore, block.Number().Int64(), addr, account)
+	modifiedERC20s := make(map[string]struct{})
+	for addr, account := range dump.Accounts {
+		err = insertAccount(accountStore, blockNumber, addr, account)
 		if err != nil {
 			return
 		}
 
 		// If it's in our erc20 list, update it's storage
 		if _, ok := m.erc20List[addr]; len(account.Storage) > 0 && ok {
+			modifiedERC20s[addr] = struct{}{}
 			for key, value := range account.Storage {
 				s := &model.ERC20Storage{
-					BlockNumber: block.Number().Int64(),
+					BlockNumber: blockNumber,
 					Address:     common.HexToBytes(addr),
 					Key:         common.HexToBytes(key),
 					Value:       common.HexToBytes(value),
@@ -202,6 +211,28 @@ func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, accounts map[st
 					return
 				}
 			}
+		}
+	}
+
+	// Update non-modified ERC20s
+	for addr, erc20 := range m.erc20List {
+		// This erc20 contract is not deployed yet
+		if blockNumber < erc20.BlockNumber {
+			continue
+		}
+
+		// This erc20 contract is modified
+		if _, ok := modifiedERC20s[addr]; ok {
+			continue
+		}
+
+		s := &model.ERC20Storage{
+			BlockNumber: blockNumber,
+			Address:     common.HexToBytes(addr),
+		}
+		err = accountStore.InsertERC20Storage(s)
+		if err != nil {
+			return
 		}
 	}
 	return
@@ -228,6 +259,28 @@ func (m *manager) deleteBlock(dbTx *gorm.DB, blockNumber int64) (err error) {
 	return
 }
 
+func (m *manager) GetSyncBlock(target int64) (int64, error) {
+	accountStore := account.NewWithDB(m.db)
+	nextBlock := target
+	for addr, erc20 := range m.erc20List {
+		result, err := accountStore.LastSyncERC20Storage(gethCommon.HexToAddress(addr), target)
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				if nextBlock > erc20.BlockNumber {
+					nextBlock = erc20.BlockNumber
+				}
+				continue
+			}
+			return 0, err
+		}
+
+		if nextBlock > result+1 {
+			nextBlock = result + 1
+		}
+	}
+	return nextBlock, nil
+}
+
 // finalizeTransaction finalizes the db transaction and ignores duplicate key error
 func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	if err != nil {
@@ -241,7 +294,7 @@ func finalizeTransaction(dbtx *gorm.DB, err error) error {
 	return dbtx.Commit().Error
 }
 
-func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DumpDirtyAccount) error {
+func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DirtyDumpAccount) error {
 	return accountStore.InsertAccount(&model.Account{
 		BlockNumber: blockNumber,
 		Address:     common.HexToBytes(addr),

@@ -50,6 +50,27 @@ func (_m *Manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	return r0, r1
 }
 
+// GetSyncBlock provides a mock function with given fields: target
+func (_m *Manager) GetSyncBlock(target int64) (int64, error) {
+	ret := _m.Called(target)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(int64) int64); ok {
+		r0 = rf(target)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(target)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetTd provides a mock function with given fields: hash
 func (_m *Manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	ret := _m.Called(hash)
@@ -110,13 +131,13 @@ func (_m *Manager) LatestHeader() (*model.Header, error) {
 	return r0, r1
 }
 
-// UpdateBlock provides a mock function with given fields: block, receipts, accounts
-func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error {
-	ret := _m.Called(block, receipts, accounts)
+// UpdateBlock provides a mock function with given fields: block, receipts, dump
+func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
+	ret := _m.Called(block, receipts, dump)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, map[string]state.DumpDirtyAccount) error); ok {
-		r0 = rf(block, receipts, accounts)
+	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
+		r0 = rf(block, receipts, dump)
 	} else {
 		r0 = ret.Error(0)
 	}

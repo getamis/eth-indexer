@@ -64,18 +64,22 @@ var _ = Describe("Manager Test", func() {
 					Root:   gethCommon.StringToHash("1234567890"),
 				}, []*types.Transaction{}, nil, []*types.Receipt{})
 
-			dump := map[string]state.DumpDirtyAccount{
-				ethAddr.Hex(): {
-					Nonce:   100,
-					Balance: "101",
-				},
-				// contract
-				erc20Addr.Hex(): {
-					Nonce:   900,
-					Balance: "901",
-					Storage: map[string]string{
-						"key1": "storage1",
-						"key2": "storage2",
+			dump := &state.DirtyDump{
+				Root: common.BytesToHex(block.Root().Bytes()),
+				Accounts: map[string]state.DirtyDumpAccount{
+
+					ethAddr.Hex(): {
+						Nonce:   100,
+						Balance: "101",
+					},
+					// contract
+					erc20Addr.Hex(): {
+						Nonce:   900,
+						Balance: "901",
+						Storage: map[string]string{
+							"key1": "storage1",
+							"key2": "storage2",
+						},
 					},
 				},
 			}
@@ -264,6 +268,8 @@ var _ = Describe("Manager Test", func() {
 	Context("UpdateState()", func() {
 		It("should be ok", func() {
 			accountStore := account.NewWithDB(db)
+
+			// Insert an ERC20 contract. Its storage will be modified.
 			erc20 := &model.ERC20{
 				Address:     gethCommon.HexToAddress("0x01").Bytes(),
 				Code:        common.HexToBytes("0x02"),
@@ -273,6 +279,18 @@ var _ = Describe("Manager Test", func() {
 			}
 			err := accountStore.InsertERC20(erc20)
 			Expect(err).Should(Succeed())
+
+			// Insert an ERC20 contract. Its storage will NOT be modified.
+			erc20_1 := &model.ERC20{
+				Address:     gethCommon.HexToAddress("0x02").Bytes(),
+				Code:        common.HexToBytes("0x02"),
+				TotalSupply: "1000000",
+				Name:        "erc20",
+				Decimals:    18,
+			}
+			err = accountStore.InsertERC20(erc20_1)
+			Expect(err).Should(Succeed())
+
 			tmp := model.ERC20Storage{
 				Address: erc20.Address,
 			}
@@ -287,20 +305,25 @@ var _ = Describe("Manager Test", func() {
 
 			value := gethCommon.HexToHash("0x0a")
 			key := gethCommon.HexToHash("0x0b")
-			dump := map[string]state.DumpDirtyAccount{
-				"fffffffffff": {
-					Nonce:   100,
-					Balance: "101",
-				},
-				// contract
-				common.BytesToHex(erc20.Address): {
-					Nonce:   900,
-					Balance: "901",
-					Storage: map[string]string{
-						key.Hex(): value.Hex(),
+
+			dump := &state.DirtyDump{
+				Root: common.BytesToHex(block1.Root().Bytes()),
+				Accounts: map[string]state.DirtyDumpAccount{
+					"fffffffffff": {
+						Nonce:   100,
+						Balance: "101",
+					},
+					// contract
+					common.BytesToHex(erc20.Address): {
+						Nonce:   900,
+						Balance: "901",
+						Storage: map[string]string{
+							common.HashHex(key): common.HashHex(value),
+						},
 					},
 				},
 			}
+
 			err = manager.UpdateBlock(block1, nil, dump)
 			Expect(err).Should(Succeed())
 
@@ -313,6 +336,16 @@ var _ = Describe("Manager Test", func() {
 			Expect(s.Address).Should(Equal(erc20.Address))
 			Expect(s.Key).Should(Equal(key.Bytes()))
 			Expect(s.Value).Should(Equal(value.Bytes()))
+
+			lastNum, err := account.NewWithDB(db).LastSyncERC20Storage(gethCommon.BytesToAddress(erc20_1.Address), block1.Number().Int64())
+			Expect(err).Should(Succeed())
+			Expect(lastNum).Should(Equal(block1.Number().Int64()))
+		})
+	})
+
+	Context("GetSyncBlock()", func() {
+		Context("should be ok", func() {
+
 		})
 	})
 
@@ -330,18 +363,21 @@ var _ = Describe("Manager Test", func() {
 						Root:   gethCommon.StringToHash("1234567890"),
 					}, []*types.Transaction{}, nil, []*types.Receipt{})
 
-				dump := map[string]state.DumpDirtyAccount{
-					ethAddr.Hex(): {
-						Nonce:   100,
-						Balance: "101",
-					},
-					// contract
-					erc20Addr.Hex(): {
-						Nonce:   900,
-						Balance: "901",
-						Storage: map[string]string{
-							"key1": "storage1",
-							"key2": "storage2",
+				dump := &state.DirtyDump{
+					Root: common.BytesToHex(block.Root().Bytes()),
+					Accounts: map[string]state.DirtyDumpAccount{
+						ethAddr.Hex(): {
+							Nonce:   100,
+							Balance: "101",
+						},
+						// contract
+						erc20Addr.Hex(): {
+							Nonce:   900,
+							Balance: "901",
+							Storage: map[string]string{
+								"key1": "storage1",
+								"key2": "storage2",
+							},
 						},
 					},
 				}
