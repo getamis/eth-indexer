@@ -158,22 +158,22 @@ func (_m *EthClient) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump,
 	return r0, r1
 }
 
-// ModifiedAccountStatesByNumber provides a mock function with given fields: ctx, startNum, endNum
-func (_m *EthClient) ModifiedAccountStatesByNumber(ctx context.Context, startNum uint64, endNum uint64) (map[string]state.DumpDirtyAccount, error) {
-	ret := _m.Called(ctx, startNum, endNum)
+// ModifiedAccountStatesByNumber provides a mock function with given fields: ctx, num
+func (_m *EthClient) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {
+	ret := _m.Called(ctx, num)
 
-	var r0 map[string]state.DumpDirtyAccount
-	if rf, ok := ret.Get(0).(func(context.Context, uint64, uint64) map[string]state.DumpDirtyAccount); ok {
-		r0 = rf(ctx, startNum, endNum)
+	var r0 *state.DirtyDump
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) *state.DirtyDump); ok {
+		r0 = rf(ctx, num)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]state.DumpDirtyAccount)
+			r0 = ret.Get(0).(*state.DirtyDump)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, uint64, uint64) error); ok {
-		r1 = rf(ctx, startNum, endNum)
+	if rf, ok := ret.Get(1).(func(context.Context, uint64) error); ok {
+		r1 = rf(ctx, num)
 	} else {
 		r1 = ret.Error(1)
 	}
