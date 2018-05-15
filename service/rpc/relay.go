@@ -124,9 +124,9 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 		to = common.AddressHex(*tx.To())
 	}
 	return &pb.TransactionQueryResponse{Tx: &pb.Transaction{
-		Hash: common.HashHex(tx.Hash()),
+		Hash: tx.Hash().Hex(),
 		// TODO: Need block number to get signer
-		// From:     common.BytesToHex(transaction.From),
+		// From:     common.BytesTo0xHex(transaction.From),
 		To:       to,
 		Nonce:    int64(tx.Nonce()),
 		GasPrice: tx.GasPrice().String(),
@@ -260,7 +260,7 @@ func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error)
 	binary.BigEndian.PutUint64(nonce, block.Nonce())
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   common.HashHex(block.Hash()),
+			Hash:   common.BytesTo0xHex(block.Hash().Bytes()),
 			Number: block.Number().Int64(),
 			Nonce:  nonce,
 		},
@@ -271,8 +271,8 @@ func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error)
 			return nil, err
 		}
 		tx := &pb.Transaction{
-			Hash:     common.BytesToHex(transaction.Hash),
-			From:     common.BytesToHex(transaction.From),
+			Hash:     common.BytesTo0xHex(transaction.Hash),
+			From:     common.BytesTo0xHex(transaction.From),
 			Nonce:    transaction.Nonce,
 			GasPrice: transaction.GasPrice,
 			GasLimit: transaction.GasLimit,
@@ -280,7 +280,7 @@ func buildBlockQueryResponse(block *types.Block) (*pb.BlockQueryResponse, error)
 			Payload:  transaction.Payload,
 		}
 		if transaction.To != nil {
-			tx.To = common.BytesToHex(transaction.To)
+			tx.To = common.BytesTo0xHex(transaction.To)
 		}
 		response.Txs = append(response.Txs, tx)
 	}

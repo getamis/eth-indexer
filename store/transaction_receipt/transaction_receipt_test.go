@@ -2,7 +2,6 @@ package transaction_receipt
 
 import (
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/jinzhu/gorm"
@@ -82,15 +81,15 @@ var _ = Describe("Receipt Database Test", func() {
 
 		receipt, err := store.FindReceipt(data1.TxHash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*receipt, *data1)).Should(BeTrue())
+		Expect(*receipt).Should(Equal(*data1))
 
 		receipt, err = store.FindReceipt(data2.TxHash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*receipt, *data2)).Should(BeTrue())
+		Expect(*receipt).Should(Equal(*data2))
 
 		receipt, err = store.FindReceipt(common.HexToBytes("0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"))
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		Expect(reflect.DeepEqual(*receipt, model.Receipt{})).Should(BeTrue())
+		Expect(*receipt).Should(Equal(model.Receipt{}))
 	})
 
 	It("delete from a block number", func() {
@@ -98,22 +97,27 @@ var _ = Describe("Receipt Database Test", func() {
 
 		data1 := makeReceipt(32100, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeReceipt(42100, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data3 := makeReceipt(52100, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
-		data := []*model.Receipt{data1, data2, data3}
+		data3 := makeReceipt(42100, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data4 := makeReceipt(52100, "0x88bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
+		data := []*model.Receipt{data1, data2, data3, data4}
 		for _, receipt := range data {
 			err := store.Insert(receipt)
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.DeleteFromBlock(42100)
+		err := store.Delete(42100)
 		receipt, err := store.FindReceipt(data1.TxHash)
 		Expect(err).Should(Succeed())
-		Expect(reflect.DeepEqual(*receipt, *data1)).Should(BeTrue())
+		Expect(*receipt).Should(Equal(*data1))
 
 		receipt, err = store.FindReceipt(data2.TxHash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
 		receipt, err = store.FindReceipt(data3.TxHash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
+
+		receipt, err = store.FindReceipt(data4.TxHash)
+		Expect(err).Should(Succeed())
+		Expect(*receipt).Should(Equal(*data4))
 	})
 })
 

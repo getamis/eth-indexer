@@ -6,33 +6,49 @@ import (
 )
 
 const (
-	TableName = "block_headers"
+	TableName   = "block_headers"
+	TableNameTd = "total_difficulty"
 )
 
+//go:generate mockery -name Store
+
 type Store interface {
+	InsertTd(data *model.TotalDifficulty) error
 	Insert(data *model.Header) error
-	DeleteFromBlock(blockNumber int64) (err error)
+	Delete(blockNumber int64) (err error)
+	FindTd(hash []byte) (result *model.TotalDifficulty, err error)
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
 	FindLatestBlock() (result *model.Header, err error)
 }
 
 type store struct {
-	db *gorm.DB
+	db   *gorm.DB
+	tdDb *gorm.DB
 }
 
 func NewWithDB(db *gorm.DB) Store {
 	return &store{
-		db: db.Table(TableName),
+		db:   db.Table(TableName),
+		tdDb: db.Table(TableNameTd),
 	}
+}
+
+func (t *store) InsertTd(data *model.TotalDifficulty) error {
+	return t.tdDb.Create(data).Error
 }
 
 func (t *store) Insert(data *model.Header) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) DeleteFromBlock(blockNumber int64) (err error) {
-	err = t.db.Delete(model.Header{}, "number >= ?", blockNumber).Error
+func (t *store) Delete(blockNumber int64) error {
+	return t.db.Delete(model.Header{}, "number = ?", blockNumber).Error
+}
+
+func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {
+	result = &model.TotalDifficulty{}
+	err = t.tdDb.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 

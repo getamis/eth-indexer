@@ -16,7 +16,6 @@ package rpc
 import (
 	"context"
 	"math/big"
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -70,14 +69,14 @@ func makeTx(txHex, blockHex string) *model.Transaction {
 func makeBlockQueryResponse(header *model.Header, txs []*model.Transaction) *pb.BlockQueryResponse {
 	response := &pb.BlockQueryResponse{
 		Block: &pb.Block{
-			Hash:   common.BytesToHex(header.Hash),
+			Hash:   common.BytesTo0xHex(header.Hash),
 			Number: header.Number,
 			Nonce:  header.Nonce},
 	}
 	for _, transaction := range txs {
 		tx := &pb.Transaction{
-			Hash:     common.BytesToHex(transaction.Hash),
-			From:     common.BytesToHex(transaction.From),
+			Hash:     common.BytesTo0xHex(transaction.Hash),
+			From:     common.BytesTo0xHex(transaction.From),
 			Nonce:    transaction.Nonce,
 			GasPrice: transaction.GasPrice,
 			GasLimit: transaction.GasLimit,
@@ -85,7 +84,7 @@ func makeBlockQueryResponse(header *model.Header, txs []*model.Transaction) *pb.
 			Payload:  transaction.Payload,
 		}
 		if transaction.To != nil {
-			tx.To = common.BytesToHex(transaction.To)
+			tx.To = common.BytesTo0xHex(transaction.To)
 		}
 		response.Txs = append(response.Txs, tx)
 	}
@@ -95,8 +94,8 @@ func makeBlockQueryResponse(header *model.Header, txs []*model.Transaction) *pb.
 func makeTxQueryResponse(tx *model.Transaction) *pb.TransactionQueryResponse {
 	return &pb.TransactionQueryResponse{
 		Tx: &pb.Transaction{
-			Hash:     common.BytesToHex(tx.Hash),
-			From:     common.BytesToHex(tx.From),
+			Hash:     common.BytesTo0xHex(tx.Hash),
+			From:     common.BytesTo0xHex(tx.From),
 			Nonce:    tx.Nonce,
 			GasPrice: tx.GasPrice,
 			GasLimit: tx.GasLimit,
@@ -138,7 +137,7 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(txs, nil).Once()
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).Should(Succeed())
-				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, txs))).Should(BeTrue())
+				Expect(*res).Should(Equal(*makeBlockQueryResponse(header, txs)))
 			})
 		})
 
@@ -171,7 +170,7 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(nil, driver.ErrBadConn).Once()
 				res, err := svr.GetBlockByHash(ctx, req)
 				Expect(err).ShouldNot(BeNil())
-				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, []*model.Transaction{}))).Should(BeTrue())
+				Expect(*res).Should(Equal(*makeBlockQueryResponse(header, []*model.Transaction{})))
 			})
 		})
 	})
@@ -194,7 +193,7 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(txs, nil).Once()
 				res, err := svr.GetBlockByNumber(ctx, req)
 				Expect(err).Should(Succeed())
-				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, txs))).Should(BeTrue())
+				Expect(*res).Should(Equal(*makeBlockQueryResponse(header, txs)))
 			})
 		})
 
@@ -228,7 +227,7 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransactionsByBlockHash", common.HexToBytes(blockHashHex)).Return(nil, driver.ErrBadConn).Once()
 				res, err := svr.GetBlockByNumber(ctx, req)
 				Expect(err).ShouldNot(BeNil())
-				Expect(reflect.DeepEqual(*res, *makeBlockQueryResponse(header, []*model.Transaction{}))).Should(BeTrue())
+				Expect(*res).Should(Equal(*makeBlockQueryResponse(header, []*model.Transaction{})))
 			})
 		})
 	})
@@ -244,7 +243,7 @@ var _ = Describe("Server Test", func() {
 				mockServiceManager.On("FindTransaction", tx.Hash).Return(tx, nil).Once()
 				res, err := svr.GetTransactionByHash(ctx, req)
 				Expect(err).Should(Succeed())
-				Expect(reflect.DeepEqual(*res, *makeTxQueryResponse(tx))).Should(BeTrue())
+				Expect(*res).Should(Equal(*makeTxQueryResponse(tx)))
 			})
 		})
 
