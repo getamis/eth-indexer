@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180504063325) do
+ActiveRecord::Schema.define(version: 20180515060328) do
 
   create_table "accounts", force: :cascade do |t|
     t.binary  "address",      limit: 20, null: false
@@ -24,22 +24,21 @@ ActiveRecord::Schema.define(version: 20180504063325) do
   add_index "accounts", ["address"], name: "index_accounts_on_address", using: :btree
 
   create_table "block_headers", force: :cascade do |t|
-    t.binary  "hash",         limit: 32,                 null: false
-    t.binary  "parent_hash",  limit: 32,                 null: false
-    t.binary  "uncle_hash",   limit: 32,                 null: false
-    t.binary  "coinbase",     limit: 20,                 null: false
-    t.binary  "root",         limit: 32,                 null: false
-    t.binary  "tx_hash",      limit: 32,                 null: false
-    t.binary  "receipt_hash", limit: 32,                 null: false
-    t.integer "difficulty",   limit: 8,                  null: false
-    t.integer "number",       limit: 8,                  null: false
-    t.integer "gas_limit",    limit: 8,                  null: false
-    t.integer "gas_used",     limit: 8,                  null: false
-    t.integer "time",         limit: 8,                  null: false
+    t.binary  "hash",         limit: 32,   null: false
+    t.binary  "parent_hash",  limit: 32,   null: false
+    t.binary  "uncle_hash",   limit: 32,   null: false
+    t.binary  "coinbase",     limit: 20,   null: false
+    t.binary  "root",         limit: 32,   null: false
+    t.binary  "tx_hash",      limit: 32,   null: false
+    t.binary  "receipt_hash", limit: 32,   null: false
+    t.integer "difficulty",   limit: 8,    null: false
+    t.integer "number",       limit: 8,    null: false
+    t.integer "gas_limit",    limit: 8,    null: false
+    t.integer "gas_used",     limit: 8,    null: false
+    t.integer "time",         limit: 8,    null: false
     t.binary  "extra_data",   limit: 1024
-    t.binary  "mix_digest",   limit: 32,                 null: false
-    t.binary  "nonce",        limit: 8,                  null: false
-    t.string  "td",           limit: 32,   default: "0", null: false
+    t.binary  "mix_digest",   limit: 32,   null: false
+    t.binary  "nonce",        limit: 8,    null: false
   end
 
   add_index "block_headers", ["hash"], name: "index_block_headers_on_hash", unique: true, using: :btree
@@ -49,13 +48,21 @@ ActiveRecord::Schema.define(version: 20180504063325) do
     t.binary  "address",      limit: 20,       null: false
     t.integer "block_number", limit: 8,        null: false
     t.binary  "code",         limit: 16777215, null: false
-    t.string  "name",         limit: 8
+    t.string  "name",         limit: 32
     t.string  "total_supply", limit: 32
     t.integer "decimals",     limit: 8
   end
 
   add_index "erc20", ["address"], name: "index_erc20_on_address", unique: true, using: :btree
   add_index "erc20", ["block_number"], name: "index_erc20_on_block_number", using: :btree
+
+  create_table "total_difficulty", force: :cascade do |t|
+    t.integer "block", limit: 8,   null: false
+    t.binary  "hash",  limit: 32,  null: false
+    t.string  "td",    limit: 255, null: false
+  end
+
+  add_index "total_difficulty", ["hash"], name: "index_total_difficulty_on_hash", unique: true, using: :btree
 
   create_table "transaction_receipts", force: :cascade do |t|
     t.binary  "root",                limit: 32
