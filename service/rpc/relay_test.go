@@ -145,6 +145,27 @@ var _ = Describe("Relay Server Test", func() {
 				Expect(err).Should(Succeed())
 				Expect(res).Should(Equal(expRes))
 			})
+			It("valid parameters (block number = -1)", func() {
+				var number *big.Int
+				balance := big.NewInt(100)
+				expRes := &pb.GetBalanceResponse{
+					Amount:      balance.String(),
+					BlockNumber: int64(1000301),
+				}
+				mockClient.On("BlockByNumber", ctx, number).Return(types.NewBlockWithHeader(
+					&types.Header{
+						Number: big.NewInt(expRes.BlockNumber),
+					},
+				), nil).Once()
+				mockClient.On("BalanceAt", ctx, ethCommon.HexToAddress(req.Address), new(big.Int).SetInt64(expRes.BlockNumber)).Return(balance, nil).Once()
+				res, err := svr.GetBalance(ctx, &pb.GetBalanceRequest{
+					Address:     "0x343c43a37d37dff08ae8c4a11544c718abb4fcf8",
+					BlockNumber: -1,
+					Token:       ethToken,
+				})
+				Expect(err).Should(Succeed())
+				Expect(res).Should(Equal(expRes))
+			})
 			Context("invalid parameters", func() {
 				unknownErr := errors.New("unknown error")
 				It("failed to call balance at", func() {
