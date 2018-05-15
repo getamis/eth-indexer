@@ -139,9 +139,22 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
 	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
 	address := ethCommon.HexToAddress(req.Address)
+	var blockNumber *big.Int
+	if req.BlockNumber < 0 {
+		// Get latest block
+		block, err := s.client.BlockByNumber(ctx, nil)
+		if err != nil {
+			logger.Error("Failed to get latest block", "err", err)
+			return nil, ErrInternal
+		}
+		blockNumber = block.Number()
+	} else {
+		blockNumber = new(big.Int).SetInt64(req.BlockNumber)
+	}
+
 	if req.Token == ethToken {
 		// Get Ether
-		balance, err := s.client.BalanceAt(ctx, address, new(big.Int).SetInt64(req.BlockNumber))
+		balance, err := s.client.BalanceAt(ctx, address, blockNumber)
 		if err != nil {
 			logger.Error("Failed to get balance from ethereum", "err", err)
 			return nil, ErrInternal
@@ -149,13 +162,9 @@ func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 
 		return &pb.GetBalanceResponse{
 			Amount:      balance.String(),
-			BlockNumber: req.BlockNumber,
+			BlockNumber: blockNumber.Int64(),
 		}, nil
 	} else {
-		var blockNumber *big.Int
-		if req.BlockNumber >= 0 {
-			blockNumber = new(big.Int).SetInt64(req.BlockNumber)
-		}
 		// Get ERC20 token
 		balance, err := s.balanceOf(ctx, blockNumber, ethCommon.HexToAddress(req.Token), address)
 		if err != nil {
@@ -173,7 +182,7 @@ func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 		result := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(decimalInt))
 		return &pb.GetBalanceResponse{
 			Amount:      result.String(),
-			BlockNumber: req.BlockNumber,
+			BlockNumber: blockNumber.Int64(),
 		}, nil
 	}
 }
