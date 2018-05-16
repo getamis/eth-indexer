@@ -26,6 +26,7 @@ import (
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/store/account"
+	"github.com/shopspring/decimal"
 )
 
 var (
@@ -140,10 +141,10 @@ func (db *contractDB) GetState(addr ethCommon.Address, key ethCommon.Hash) ethCo
 	return ethCommon.Hash{}
 }
 
-func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address ethCommon.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address ethCommon.Address, blockNr int64) (*decimal.Decimal, *big.Int, error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
-	contractCode, err := srv.FindERC20(contractAddress)
+	erc20, err := srv.FindERC20(contractAddress)
 	if err != nil {
 		logger.Error("Failed to find contract code", "err", err)
 		return nil, nil, err
@@ -172,7 +173,7 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 	// Get balance from contract
 	db := &contractDB{
 		blockNumber:  blockNumber.Int64(),
-		code:         contractCode,
+		code:         erc20,
 		account:      account,
 		accountStore: srv.accountStore,
 	}
@@ -185,5 +186,8 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 		logger.Error("Failed to get balance due to state db error", "err", db.err)
 		return nil, nil, db.err
 	}
-	return balance, blockNumber, nil
+
+	// Consider decimals
+	result := decimal.NewFromBigInt(balance, int32(-erc20.Decimals))
+	return &result, blockNumber, nil
 }

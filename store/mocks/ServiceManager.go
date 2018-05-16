@@ -4,6 +4,7 @@ package mocks
 import big "math/big"
 import common "github.com/ethereum/go-ethereum/common"
 import context "context"
+import decimal "github.com/shopspring/decimal"
 import mock "github.com/stretchr/testify/mock"
 import model "github.com/maichain/eth-indexer/model"
 
@@ -160,15 +161,15 @@ func (_m *ServiceManager) GetBalance(ctx context.Context, address common.Address
 }
 
 // GetERC20Balance provides a mock function with given fields: ctx, contractAddress, address, blockNr
-func (_m *ServiceManager) GetERC20Balance(ctx context.Context, contractAddress common.Address, address common.Address, blockNr int64) (*big.Int, *big.Int, error) {
+func (_m *ServiceManager) GetERC20Balance(ctx context.Context, contractAddress common.Address, address common.Address, blockNr int64) (*decimal.Decimal, *big.Int, error) {
 	ret := _m.Called(ctx, contractAddress, address, blockNr)
 
-	var r0 *big.Int
-	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address, int64) *big.Int); ok {
+	var r0 *decimal.Decimal
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address, int64) *decimal.Decimal); ok {
 		r0 = rf(ctx, contractAddress, address, blockNr)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*big.Int)
+			r0 = ret.Get(0).(*decimal.Decimal)
 		}
 	}
 

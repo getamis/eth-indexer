@@ -20,6 +20,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jinzhu/gorm"
+	"github.com/shopspring/decimal"
 
 	"github.com/maichain/eth-indexer/model"
 	accStore "github.com/maichain/eth-indexer/store/account"
@@ -50,7 +51,7 @@ type ServiceManager interface {
 	// given block number. If blockNr < 0, the given block is the latest block.
 	// Noted that the return block number may be different from the input one because
 	// we don't have state in the input one.
-	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error)
+	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (*decimal.Decimal, *big.Int, error)
 }
 
 type accountStore = accStore.Store

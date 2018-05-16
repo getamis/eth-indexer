@@ -15,7 +15,6 @@ package rpc
 
 import (
 	"context"
-	"math/big"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
@@ -169,17 +168,20 @@ func (s *server) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceR
 }
 
 func (s *server) getBalance(ctx context.Context, blockNr int64, addr string, token string) (*pb.GetBalanceResponse, error) {
-	// Get balance
-	var err error
-	var number *big.Int
-	var balance *big.Int
 	if token == ethToken {
 		// Get Ether
-		balance, number, err = s.manager.GetBalance(ctx, ethCommon.HexToAddress(addr), blockNr)
-	} else {
-		// Get ERC20 token
-		balance, number, err = s.manager.GetERC20Balance(ctx, ethCommon.HexToAddress(token), ethCommon.HexToAddress(addr), blockNr)
+		balance, number, err := s.manager.GetBalance(ctx, ethCommon.HexToAddress(addr), blockNr)
+		if err != nil {
+			return nil, err
+		}
+		return &pb.GetBalanceResponse{
+			Amount:      balance.String(),
+			BlockNumber: number.Int64(),
+		}, nil
 	}
+
+	// Get ERC20 token
+	balance, number, err := s.manager.GetERC20Balance(ctx, ethCommon.HexToAddress(token), ethCommon.HexToAddress(addr), blockNr)
 	if err != nil {
 		return nil, err
 	}
