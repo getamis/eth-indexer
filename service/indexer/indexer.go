@@ -138,6 +138,7 @@ func (idx *indexer) getLocalState() (header *model.Header, currentTd *big.Int, e
 			log.Info("The header db is empty")
 			header = &model.Header{
 				Number: -1,
+				Hash:   ethCommon.Hash{}.Bytes(),
 			}
 			err = nil
 			currentTd = big.NewInt(0)
@@ -368,6 +369,7 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 			return nil, nil, err
 		}
 		dump.Root = d.Root
+		dump.Accounts = make(map[string]state.DirtyDumpAccount)
 		for addr, acc := range d.Accounts {
 			dump.Accounts[addr] = state.DirtyDumpAccount{
 				Balance: acc.Balance,
