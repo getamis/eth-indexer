@@ -30,9 +30,11 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.integer :gas_limit, :limit => 8, :null => false
       t.string :amount, :limit => 32, :null => false
       t.binary :payload, :limit => 1.megabyte, :null => false
+      t.integer :block_number, :limit => 8, :null => false, :default => 0
     end
     add_index :transactions, :hash, :unique => true
     add_index :transactions, :block_hash
+    add_index :transactions, :block_number
 
     create_table :transaction_receipts do |t|
       t.binary :root, :limit => 32
@@ -42,23 +44,28 @@ class InitializeIndexerTables < ActiveRecord::Migration
       t.binary :tx_hash, :limit => 32, :null => false
       t.binary :contract_address, :limit => 20
       t.integer :gas_used, :limit => 8, :null => false
+      t.integer :block_number, :limit => 8, :null => false, :default => 0
     end
     add_index :transaction_receipts, :tx_hash, :unique => true
+    add_index :transaction_receipts, :block_number
 
-    # Use state_blocks to record the blocks for which state (accounts and contracts table) are updated.
-    create_table :state_blocks do |t|
-      t.integer :number, :limit => 8, :null => false
+    create_table :total_difficulty do |t|
+      t.integer :block, :limit => 8, :null => false
+      t.binary :hash, :limit => 32, :null => false
+      t.string :td, null: false
     end
-    add_index :state_blocks, :number, :unique => true
+    add_index :total_difficulty, :hash, :unique => true
 
-    create_table :contract_code do |t|
+    create_table :erc20 do |t|
       t.binary :address, :limit => 20, :null => false
       t.integer :block_number, :limit => 8, :null => false
-      t.binary :hash, :limit => 32, :null => false
-      t.text :code, :limit => 1.megabyte, :null => false
+      t.binary :code, :limit => 1.megabyte, :null => false
+      t.string :name, :limit => 32
+      t.string :total_supply, :limit => 32
+      t.integer :decimals, :limit => 8
     end
-    add_index :contract_code, :address, :unique => true
-    add_index :contract_code, :block_number
+    add_index :erc20, :address, :unique => true
+    add_index :erc20, :block_number
 
     create_table :accounts do |t|
       t.binary :address, :limit => 20, :null => false
@@ -69,17 +76,5 @@ class InitializeIndexerTables < ActiveRecord::Migration
     add_index :accounts, :address
     add_index :accounts, [:address, :block_number], :unique => true
 
-    create_table :contracts do |t|
-      t.binary :address, :limit => 20, :null => false
-      t.integer :block_number, :limit => 8, :null => false
-      t.string :balance, :limit => 32, :null => false
-      t.integer :nonce, :limit => 8, :null => false
-      t.binary :root, :limit => 32, :null => false
-      t.binary :storage, :limit => 10.megabyte, :null => false
-    end
-    add_index :contracts, :address
-    add_index :contracts, [:address, :block_number], :unique => true
-
-    # TODO: Add foreign keys?
   end
 end
