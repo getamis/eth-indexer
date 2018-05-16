@@ -71,7 +71,7 @@ var _ = Describe("Call Test", func() {
 		type account struct {
 			address      common.Address
 			balance      *big.Int
-			dirtyStateDB map[string]state.DumpDirtyAccount
+			dirtyStateDB map[string]state.DirtyDumpAccount
 		}
 		Expect(tx).ShouldNot(BeNil())
 		Expect(err).Should(BeNil())
@@ -87,7 +87,7 @@ var _ = Describe("Call Test", func() {
 			tx, err := contract.Transfer(auth, acc.address, acc.balance)
 			Expect(tx).ShouldNot(BeNil())
 			Expect(err).Should(BeNil())
-			accounts[sim.Blockchain().CurrentBlock().NumberU64()] = acc
+			accounts[sim.Blockchain().CurrentBlock().NumberU64()+1] = acc
 			sim.Commit()
 		}
 
@@ -104,8 +104,8 @@ var _ = Describe("Call Test", func() {
 
 		By("get dirty storage")
 		for blockNumber, account := range accounts {
-			next := blockNumber + 1
-			account.dirtyStateDB, err = eth.GetDirtyStorage(params.AllEthashProtocolChanges, sim.Blockchain(), blockNumber, &next)
+			dump, err := eth.GetDirtyStorage(params.AllEthashProtocolChanges, sim.Blockchain(), blockNumber)
+			account.dirtyStateDB = dump.Accounts
 			Expect(err).Should(BeNil())
 			accounts[blockNumber] = account
 		}

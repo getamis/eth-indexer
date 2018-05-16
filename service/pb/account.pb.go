@@ -7,6 +7,7 @@
 	It is generated from these files:
 		github.com/maichain/eth-indexer/service/pb/account.proto
 		github.com/maichain/eth-indexer/service/pb/block.proto
+		github.com/maichain/eth-indexer/service/pb/erc20.proto
 		github.com/maichain/eth-indexer/service/pb/transaction.proto
 
 	It has these top-level messages:
@@ -17,6 +18,8 @@
 		BlockHashQueryRequest
 		BlockQueryResponse
 		Block
+		AddERC20Request
+		AddERC20Response
 		TransactionQueryRequest
 		TransactionQueryResponse
 		Transaction

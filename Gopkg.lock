@@ -151,7 +151,7 @@
     "rpc",
     "trie"
   ]
-  revision = "ddef8a795a87bda0375f4e9327a3bfea1a5ea698"
+  revision = "562c9e00761970afc37e0b1156736c93a9c0b044"
   source = "github.com/getamis/go-ethereum"
 
 [[projects]]

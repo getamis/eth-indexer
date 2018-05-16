@@ -21,6 +21,7 @@ import (
 
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/cmd/flags"
+	"github.com/maichain/eth-indexer/service/erc20"
 	"github.com/maichain/eth-indexer/service/rpc"
 	"github.com/maichain/eth-indexer/store"
 	"github.com/maichain/mapi/api"
@@ -59,23 +60,31 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// eth-client
+		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
+		if err != nil {
+			log.Error("Failed to new a eth client", "err", err)
+			return err
+		}
+		defer ethClient.Close()
+
+		db := MustNewDatabase()
+		defer db.Close()
+
+		manager, err := store.NewManager(db)
+		if err != nil {
+			return err
+		}
+
 		var s api.Server
 		if eth {
-			ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-			if err != nil {
-				log.Error("Failed to new a eth client", "err", err)
-				return err
-			}
-			defer ethClient.Close()
-
 			s = api.NewServer(
 				rpc.NewRelay(ethClient),
+				erc20.New(manager, ethClient),
 			)
 		} else {
-			db := MustNewDatabase()
-			defer db.Close()
 			s = api.NewServer(
 				rpc.New(store.NewServiceManager(db)),
+				erc20.New(manager, ethClient),
 			)
 		}
 

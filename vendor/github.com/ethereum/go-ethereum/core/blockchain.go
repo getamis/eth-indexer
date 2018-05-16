@@ -1143,6 +1143,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
+
+		// Start to record dirty storage
+		state.StartDirtyStorage()
+
 		// Process block using the parent state as reference point.
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
@@ -1185,6 +1189,16 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		stats.processed++
 		stats.usedGas += usedGas
 		stats.report(chain, i, bc.stateCache.TrieDB().Size())
+
+		// Write dirty storage
+		dump := state.DumpDirty()
+		err = bc.WriteDirtyDump(block.Hash(), dump)
+		if err != nil {
+			log.Warn("Failed to write dirty dump", "err", err)
+		} else {
+			log.Debug("Write dirty dump successfully", "root", dump.Root)
+		}
+		state.StopDirtyStorage()
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1561,4 +1575,16 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 // SubscribeLogsEvent registers a subscription of []*types.Log.
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
+}
+
+// WriteDirtyDump writes the dirty dump
+func (bc *BlockChain) WriteDirtyDump(hash common.Hash, dump *state.DirtyDump) error {
+	bc.wg.Add(1)
+	defer bc.wg.Done()
+	return WriteDirtyDump(bc.db, hash, dump)
+}
+
+// GetDirtyDump gets the dirty dump
+func (bc *BlockChain) GetDirtyDump(hash common.Hash) (*state.DirtyDump, error) {
+	return GetDirtyDump(bc.db, hash)
 }

@@ -156,6 +156,27 @@ func (_m *Store) InsertERC20Storage(storage *model.ERC20Storage) error {
 	return r0
 }
 
+// LastSyncERC20Storage provides a mock function with given fields: address, blockNr
+func (_m *Store) LastSyncERC20Storage(address common.Address, blockNr int64) (int64, error) {
+	ret := _m.Called(address, blockNr)
+
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(common.Address, int64) int64); ok {
+		r0 = rf(address, blockNr)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, int64) error); ok {
+		r1 = rf(address, blockNr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ListERC20 provides a mock function with given fields:
 func (_m *Store) ListERC20() ([]model.ERC20, error) {
 	ret := _m.Called()

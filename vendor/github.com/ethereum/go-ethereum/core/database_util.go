@@ -25,6 +25,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
@@ -50,14 +51,15 @@ var (
 	trieSyncKey   = []byte("TrieSync")
 
 	// Data item prefixes (use single byte to avoid mixing data types, avoid `i`).
-	headerPrefix        = []byte("h") // headerPrefix + num (uint64 big endian) + hash -> header
-	tdSuffix            = []byte("t") // headerPrefix + num (uint64 big endian) + hash + tdSuffix -> td
-	numSuffix           = []byte("n") // headerPrefix + num (uint64 big endian) + numSuffix -> hash
-	blockHashPrefix     = []byte("H") // blockHashPrefix + hash -> num (uint64 big endian)
-	bodyPrefix          = []byte("b") // bodyPrefix + num (uint64 big endian) + hash -> block body
-	blockReceiptsPrefix = []byte("r") // blockReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
-	lookupPrefix        = []byte("l") // lookupPrefix + hash -> transaction/receipt lookup metadata
-	bloomBitsPrefix     = []byte("B") // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
+	headerPrefix        = []byte("h")    // headerPrefix + num (uint64 big endian) + hash -> header
+	tdSuffix            = []byte("t")    // headerPrefix + num (uint64 big endian) + hash + tdSuffix -> td
+	numSuffix           = []byte("n")    // headerPrefix + num (uint64 big endian) + numSuffix -> hash
+	blockHashPrefix     = []byte("H")    // blockHashPrefix + hash -> num (uint64 big endian)
+	bodyPrefix          = []byte("b")    // bodyPrefix + num (uint64 big endian) + hash -> block body
+	blockReceiptsPrefix = []byte("r")    // blockReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
+	lookupPrefix        = []byte("l")    // lookupPrefix + hash -> transaction/receipt lookup metadata
+	bloomBitsPrefix     = []byte("B")    // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
+	dirtyDumpPrefix     = []byte("DIFF") // diffStoragePrefix + hash -> dirty dump per block
 
 	preimagePrefix = "secure-key-"              // preimagePrefix + hash -> preimage
 	configPrefix   = []byte("ethereum-config-") // config prefix for the db
@@ -102,6 +104,20 @@ func GetCanonicalHash(db DatabaseReader, number uint64) common.Hash {
 // missingNumber is returned by GetBlockNumber if no header with the
 // given block hash has been stored in the database
 const missingNumber = uint64(0xffffffffffffffff)
+
+// GetDirtyDump returns the dirty dump for the given block
+func GetDirtyDump(db DatabaseReader, root common.Hash) (*state.DirtyDump, error) {
+	data, err := db.Get(append(dirtyDumpPrefix, root.Bytes()...))
+	if err != nil {
+		return nil, err
+	}
+	result := &state.DirtyDump{}
+	err = json.Unmarshal(data, result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 
 // GetBlockNumber returns the block number assigned to a block hash
 // if the corresponding header is present in the database
@@ -357,6 +373,19 @@ func WriteCanonicalHash(db ethdb.Putter, hash common.Hash, number uint64) error 
 	key := append(append(headerPrefix, encodeBlockNumber(number)...), numSuffix...)
 	if err := db.Put(key, hash.Bytes()); err != nil {
 		log.Crit("Failed to store number to hash mapping", "err", err)
+	}
+	return nil
+}
+
+// WriteDirtyDump stores the dirty dump for the given block
+func WriteDirtyDump(db ethdb.Putter, hash common.Hash, dump *state.DirtyDump) error {
+	data, err := json.MarshalIndent(dump, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	if err := db.Put(append(dirtyDumpPrefix, hash.Bytes()...), data); err != nil {
+		return err
 	}
 	return nil
 }

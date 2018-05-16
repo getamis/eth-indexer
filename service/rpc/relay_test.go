@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/contracts"
+	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/indexer/mocks"
 	"github.com/maichain/eth-indexer/service/pb"
 	. "github.com/onsi/ginkgo"

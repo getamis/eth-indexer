@@ -86,14 +86,14 @@ var _ = Describe("DB ERC 20 Test", func() {
 
 		By("get dirty storage")
 		now := sim.Blockchain().CurrentBlock().NumberU64()
-		dirtyStorage, err := eth.GetDirtyStorage(params.AllEthashProtocolChanges, sim.Blockchain(), sim.Blockchain().CurrentBlock().NumberU64()-1, &now)
+		dump, err := eth.GetDirtyStorage(params.AllEthashProtocolChanges, sim.Blockchain(), now)
 		Expect(err).Should(BeNil())
 
 		By("find the contract code and data")
 		blockNumber := int64(sim.Blockchain().CurrentBlock().NumberU64())
 		var code *model.ERC20
 		storages = make(map[string]*model.ERC20Storage)
-		for addrStr, account := range dirtyStorage {
+		for addrStr, account := range dump.Accounts {
 			if contractAddr == common.HexToAddress(addrStr) {
 				c, _ := sim.CodeAt(context.Background(), contractAddr, nil)
 				code = &model.ERC20{

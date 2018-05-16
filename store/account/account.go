@@ -38,6 +38,7 @@ type Store interface {
 	InsertERC20Storage(storage *model.ERC20Storage) error
 	FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error)
 	DeleteERC20Storage(address common.Address, fromBlock int64) error
+	LastSyncERC20Storage(address common.Address, blockNr int64) (result int64, err error)
 
 	// Accounts
 	InsertAccount(account *model.Account) error
@@ -72,6 +73,17 @@ func (t *store) InsertERC20Storage(storage *model.ERC20Storage) error {
 
 func (t *store) InsertAccount(account *model.Account) error {
 	return t.db.Table(NameAccounts).Create(account).Error
+}
+
+func (t *store) LastSyncERC20Storage(address common.Address, blockNr int64) (int64, error) {
+	result := &model.ERC20Storage{}
+	err := t.db.Table(model.ERC20Storage{
+		Address: address.Bytes(),
+	}.TableName()).Where("block_number <= ?", blockNr).Order("block_number DESC").Limit(1).Find(result).Error
+	if err != nil {
+		return 0, err
+	}
+	return result.BlockNumber, nil
 }
 
 func (t *store) DeleteAccounts(fromBlock int64) error {

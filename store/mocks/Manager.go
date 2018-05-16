@@ -27,6 +27,20 @@ func (_m *Manager) DeleteStateFromBlock(blockNumber int64) error {
 	return r0
 }
 
+// ForceInsertBlock provides a mock function with given fields: block, receipts, dump
+func (_m *Manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
+	ret := _m.Called(block, receipts, dump)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
+		r0 = rf(block, receipts, dump)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // GetHeaderByNumber provides a mock function with given fields: number
 func (_m *Manager) GetHeaderByNumber(number int64) (*model.Header, error) {
 	ret := _m.Called(number)
@@ -73,6 +87,20 @@ func (_m *Manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	return r0, r1
 }
 
+// InsertERC20 provides a mock function with given fields: code
+func (_m *Manager) InsertERC20(code *model.ERC20) error {
+	ret := _m.Called(code)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
+		r0 = rf(code)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // InsertTd provides a mock function with given fields: block, td
 func (_m *Manager) InsertTd(block *types.Block, td *big.Int) error {
 	ret := _m.Called(block, td)
@@ -110,13 +138,13 @@ func (_m *Manager) LatestHeader() (*model.Header, error) {
 	return r0, r1
 }
 
-// UpdateBlock provides a mock function with given fields: block, receipts, accounts
-func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, accounts map[string]state.DumpDirtyAccount) error {
-	ret := _m.Called(block, receipts, accounts)
+// UpdateBlock provides a mock function with given fields: block, receipts, dump
+func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
+	ret := _m.Called(block, receipts, dump)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, map[string]state.DumpDirtyAccount) error); ok {
-		r0 = rf(block, receipts, accounts)
+	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
+		r0 = rf(block, receipts, dump)
 	} else {
 		r0 = ret.Error(0)
 	}

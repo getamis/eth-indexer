@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-
+	"github.com/maichain/eth-indexer/cmd/service/erc20"
 	"github.com/maichain/eth-indexer/cmd/service/indexer"
 	"github.com/maichain/eth-indexer/cmd/service/proxy"
 	"github.com/maichain/eth-indexer/cmd/service/rpc"
+	"github.com/spf13/cobra"
 )
 
 var cfgFile string
@@ -51,4 +51,5 @@ func init() {
 	RootCmd.AddCommand(indexer.ServerCmd)
 	RootCmd.AddCommand(proxy.ServerCmd)
 	RootCmd.AddCommand(rpc.ServerCmd)
+	RootCmd.AddCommand(erc20.Cmd)
 }
