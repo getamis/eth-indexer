@@ -7,6 +7,7 @@ import context "context"
 import ethereum "github.com/ethereum/go-ethereum"
 
 import mock "github.com/stretchr/testify/mock"
+import model "github.com/maichain/eth-indexer/model"
 import state "github.com/ethereum/go-ethereum/core/state"
 import types "github.com/ethereum/go-ethereum/core/types"
 
@@ -151,6 +152,29 @@ func (_m *EthClient) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump,
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
 		r1 = rf(ctx, blockNr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetERC20 provides a mock function with given fields: ctx, addr, num
+func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
+	ret := _m.Called(ctx, addr, num)
+
+	var r0 *model.ERC20
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, int64) *model.ERC20); ok {
+		r0 = rf(ctx, addr, num)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ERC20)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, int64) error); ok {
+		r1 = rf(ctx, addr, num)
 	} else {
 		r1 = ret.Error(1)
 	}

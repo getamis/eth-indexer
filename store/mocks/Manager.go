@@ -2,6 +2,7 @@
 package mocks
 
 import big "math/big"
+import common "github.com/ethereum/go-ethereum/common"
 import mock "github.com/stretchr/testify/mock"
 import model "github.com/maichain/eth-indexer/model"
 import state "github.com/ethereum/go-ethereum/core/state"
@@ -25,6 +26,29 @@ func (_m *Manager) DeleteStateFromBlock(blockNumber int64) error {
 	}
 
 	return r0
+}
+
+// FindERC20 provides a mock function with given fields: address
+func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
+	ret := _m.Called(address)
+
+	var r0 *model.ERC20
+	if rf, ok := ret.Get(0).(func(common.Address) *model.ERC20); ok {
+		r0 = rf(address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ERC20)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // ForceInsertBlock provides a mock function with given fields: block, receipts, dump

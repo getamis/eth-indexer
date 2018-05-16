@@ -16,14 +16,22 @@ package indexer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"math/big"
 
+	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
+	"github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/store"
+)
+
+var (
+	//ErrInconsistentLength returns if the length of ERC20 addresses and block numbers is
+	ErrInconsistentLength = errors.New("inconsistent length")
 )
 
 // New news an indexer service
@@ -37,6 +45,46 @@ func New(client EthClient, storeManager store.Manager) *indexer {
 type indexer struct {
 	client  EthClient
 	manager store.Manager
+}
+
+// Init ensures all tables for erc20 contracts are created
+func (idx *indexer) Init(ctx context.Context, addresses []string, numbers []int) error {
+	if len(addresses) != len(numbers) {
+		log.Error("Inconsistent array length", "addrs", len(addresses), "numbers", len(numbers))
+		return ErrInconsistentLength
+	}
+
+	for i, addr := range addresses {
+		if !ethCommon.IsHexAddress(addr) {
+			return service.ErrInvalidAddress
+		}
+		address := ethCommon.HexToAddress(addr)
+
+		_, err := idx.manager.FindERC20(address)
+		// The ERC20 exists, no need to insert again
+		if err == nil {
+			continue
+		}
+		// Other database error, return error
+		if !common.NotFoundError(err) {
+			return err
+		}
+
+		erc20, err := idx.client.GetERC20(ctx, address, int64(numbers[i]))
+		if err != nil {
+			log.Error("Failed to get ERC20", "addr", addr, "err", err)
+			return err
+		}
+
+		// Insert ERC20
+		err = idx.manager.InsertERC20(erc20)
+		if err != nil {
+			log.Error("Failed to insert ERC20", "addr", addr, "err", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SyncToTarget syncs the blocks fromBlock to targetBlock. In this function, we are NOT checking reorg and inserting TD. We force to INSERT blocks.

@@ -15,14 +15,10 @@ package erc20
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/contracts"
-	"github.com/maichain/eth-indexer/model"
 	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/maichain/eth-indexer/service/pb"
@@ -67,10 +63,7 @@ func (s *server) AddERC20(ctx context.Context, req *pb.AddERC20Request) (res *pb
 	logger := s.logger.New("address", req.Address, "blockNumber", req.BlockNumber)
 
 	addr := ethCommon.HexToAddress(req.Address)
-	blockNumber := big.NewInt(req.BlockNumber)
-
-	// Get contract code
-	code, err := s.client.CodeAt(ctx, addr, blockNumber)
+	erc20, err := s.client.GetERC20(ctx, addr, int64(req.BlockNumber))
 	if err != nil {
 		logger.Error("Failed to get code from ethereum", "err", err)
 		if err == ethereum.NotFound {
@@ -79,56 +72,17 @@ func (s *server) AddERC20(ctx context.Context, req *pb.AddERC20Request) (res *pb
 		return nil, ErrInternal
 	}
 
-	defer func() {
-		if err != nil {
-			return
-		}
-		// Write db if there is no error
-		erc20 := &model.ERC20{
-			BlockNumber: res.BlockNumber,
-			Address:     addr.Bytes(),
-			Code:        code,
-			TotalSupply: res.TotalSupply,
-			Decimals:    int(res.Decimals),
-			Name:        res.Name,
-		}
-		err = s.manager.InsertERC20(erc20)
-		if err != nil {
-			logger.Error("Failed to write ERC20 to db", "err", err)
-			err = ErrInternal
-			res = nil
-		}
-	}()
-	res = &pb.AddERC20Response{
+	err = s.manager.InsertERC20(erc20)
+	if err != nil {
+		logger.Error("Failed to write ERC20 to db", "err", err)
+		return nil, ErrInternal
+	}
+
+	return &pb.AddERC20Response{
 		Address:     req.Address,
 		BlockNumber: req.BlockNumber,
-	}
-
-	caller, err := contracts.NewERC20TokenCaller(addr, s.client)
-	if err != nil {
-		logger.Warn("Failed to initiate contract caller", "err", err)
-		return res, nil
-	}
-
-	// Set decimals
-	decimal, err := caller.Decimals(&bind.CallOpts{})
-	if err != nil {
-		logger.Warn("Failed to get decimals", "err", err)
-	}
-	res.Decimals = int64(decimal)
-
-	// Set total supply
-	supply, err := caller.TotalSupply(&bind.CallOpts{})
-	if err != nil {
-		logger.Warn("Failed to get total supply", "err", err)
-	}
-	res.TotalSupply = supply.String()
-
-	// Set name
-	name, err := caller.Name(&bind.CallOpts{})
-	if err != nil {
-		logger.Warn("Failed to get name", "err", err)
-	}
-	res.Name = name
-	return res, nil
+		TotalSupply: erc20.TotalSupply,
+		Decimals:    int64(erc20.Decimals),
+		Name:        erc20.Name,
+	}, nil
 }

@@ -16,18 +16,17 @@ package erc20
 import (
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/maichain/eth-indexer/model"
 	. "github.com/maichain/eth-indexer/service"
 	clientMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	"github.com/maichain/eth-indexer/service/pb"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 )
 
 var _ = Describe("ERC20 Test", func() {
@@ -52,70 +51,70 @@ var _ = Describe("ERC20 Test", func() {
 
 		It("with valid parameters", func() {
 			addr := ethCommon.HexToAddress("0x01")
-			blockNumber := big.NewInt(100)
-			code := []byte("1234567890")
 			req := &pb.AddERC20Request{
 				Address:     addr.Hex(),
-				BlockNumber: blockNumber.Int64(),
+				BlockNumber: 100,
 			}
-			mockClient.On("CodeAt", ctx, addr, blockNumber).Return(code, nil).Once()
-			mockClient.On("CallContract", ctx, mock.Anything, mock.Anything).Return(code, nil).Times(3)
-			mockStore.On("InsertERC20", mock.Anything).Return(nil).Once()
+			erc20 := &model.ERC20{
+				BlockNumber: req.BlockNumber,
+				Address:     addr.Bytes(),
+				Code:        []byte("1234567890"),
+				Name:        "name",
+				Decimals:    18,
+				TotalSupply: "123",
+			}
+			expRes := &pb.AddERC20Response{
+				Address:     req.Address,
+				BlockNumber: req.BlockNumber,
+				TotalSupply: erc20.TotalSupply,
+				Name:        erc20.Name,
+				Decimals:    int64(erc20.Decimals),
+			}
+			mockClient.On("GetERC20", ctx, addr, req.BlockNumber).Return(erc20, nil).Once()
+			mockStore.On("InsertERC20", erc20).Return(nil).Once()
 			res, err := srv.AddERC20(ctx, req)
 			Expect(err).Should(BeNil())
-			Expect(res).ShouldNot(BeNil())
-		})
-		It("success even if failed to call contract", func() {
-			addr := ethCommon.HexToAddress("0x01")
-			blockNumber := big.NewInt(100)
-			code := []byte("1234567890")
-			req := &pb.AddERC20Request{
-				Address:     addr.Hex(),
-				BlockNumber: blockNumber.Int64(),
-			}
-			mockClient.On("CodeAt", ctx, addr, blockNumber).Return(code, nil).Once()
-			mockClient.On("CallContract", ctx, mock.Anything, mock.Anything).Return(nil, unknownErr).Times(3)
-			mockStore.On("InsertERC20", mock.Anything).Return(nil).Once()
-			res, err := srv.AddERC20(ctx, req)
-			Expect(err).Should(BeNil())
-			Expect(res).ShouldNot(BeNil())
+			Expect(res).Should(Equal(expRes))
 		})
 		Context("with invalid parameters", func() {
 			It("failed to insert to db", func() {
 				addr := ethCommon.HexToAddress("0x01")
-				blockNumber := big.NewInt(100)
-				code := []byte("1234567890")
 				req := &pb.AddERC20Request{
 					Address:     addr.Hex(),
-					BlockNumber: blockNumber.Int64(),
+					BlockNumber: 100,
 				}
-				mockClient.On("CodeAt", ctx, addr, blockNumber).Return(code, nil).Once()
-				mockClient.On("CallContract", ctx, mock.Anything, mock.Anything).Return(code, nil).Times(3)
-				mockStore.On("InsertERC20", mock.Anything).Return(unknownErr).Once()
+				erc20 := &model.ERC20{
+					BlockNumber: req.BlockNumber,
+					Address:     addr.Bytes(),
+					Code:        []byte("1234567890"),
+					Name:        "name",
+					Decimals:    18,
+					TotalSupply: "123",
+				}
+				mockClient.On("GetERC20", ctx, addr, req.BlockNumber).Return(erc20, nil).Once()
+				mockStore.On("InsertERC20", erc20).Return(unknownErr).Once()
 				res, err := srv.AddERC20(ctx, req)
 				Expect(err).Should(Equal(ErrInternal))
 				Expect(res).Should(BeNil())
 			})
-			It("failed to get code due to unknown error", func() {
+			It("failed to get ERC20 code due to unknown error", func() {
 				addr := ethCommon.HexToAddress("0x01")
-				blockNumber := big.NewInt(100)
 				req := &pb.AddERC20Request{
 					Address:     addr.Hex(),
-					BlockNumber: blockNumber.Int64(),
+					BlockNumber: 100,
 				}
-				mockClient.On("CodeAt", ctx, addr, blockNumber).Return(nil, unknownErr).Once()
+				mockClient.On("GetERC20", ctx, addr, req.BlockNumber).Return(nil, unknownErr).Once()
 				res, err := srv.AddERC20(ctx, req)
 				Expect(err).Should(Equal(ErrInternal))
 				Expect(res).Should(BeNil())
 			})
 			It("failed to get code due to ethereum not found error", func() {
 				addr := ethCommon.HexToAddress("0x01")
-				blockNumber := big.NewInt(100)
 				req := &pb.AddERC20Request{
 					Address:     addr.Hex(),
-					BlockNumber: blockNumber.Int64(),
+					BlockNumber: 100,
 				}
-				mockClient.On("CodeAt", ctx, addr, blockNumber).Return(nil, ethereum.NotFound).Once()
+				mockClient.On("GetERC20", ctx, addr, req.BlockNumber).Return(nil, ethereum.NotFound).Once()
 				res, err := srv.AddERC20(ctx, req)
 				Expect(err).Should(Equal(ErrInvalidAddress))
 				Expect(res).Should(BeNil())
