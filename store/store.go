@@ -34,6 +34,8 @@ import (
 
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
+	// FindERC20 finds the erc20 code
+	FindERC20(address gethCommon.Address) (*model.ERC20, error)
 	// InsertERC20 inserts the erc20 code
 	InsertERC20(code *model.ERC20) error
 	// InsertTd writes the total difficulty for a block
@@ -290,6 +292,11 @@ func (m *manager) deleteBlock(dbTx *gorm.DB, blockNumber int64) (err error) {
 func (m *manager) InsertERC20(code *model.ERC20) error {
 	accountStore := account.NewWithDB(m.db)
 	return accountStore.InsertERC20(code)
+}
+
+func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {
+	accountStore := account.NewWithDB(m.db)
+	return accountStore.FindERC20(address)
 }
 
 // finalizeTransaction finalizes the db transaction and ignores duplicate key error

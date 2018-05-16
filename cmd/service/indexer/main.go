@@ -52,6 +52,10 @@ var (
 	// flags for syncing
 	targetBlock int64
 	fromBlock   int64
+
+	// flags for erc20
+	erc20Addresses   []string
+	erc20BlockNumber []int
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -102,6 +106,9 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 		indexer := indexer.New(ethClient, manager)
+		if err := indexer.Init(ctx, erc20Addresses, erc20BlockNumber); err != nil {
+			return err
+		}
 
 		if targetBlock > 0 {
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
@@ -145,6 +152,8 @@ func init() {
 	// Syncing related flags
 	ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
 	ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlockFlag, 0, "The init block number to sync to initially")
+	ServerCmd.Flags().StringArrayVar(&erc20Addresses, "erc20.addresses", []string{}, "The addresses of erc20 token contracts")
+	ServerCmd.Flags().IntSliceVar(&erc20BlockNumber, "erc20.block-numbers", []int{}, "The block numbers as the erc20 contract is deployed")
 }
 
 func loadConfigUsingViper(vp *viper.Viper, filename string) error {

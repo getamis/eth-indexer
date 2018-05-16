@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/model"
 	indexerMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
@@ -50,6 +51,80 @@ var _ = Describe("Indexer Test", func() {
 		mockEthClient.AssertExpectations(GinkgoT())
 	})
 
+	Context("Init()", func() {
+		ctx := context.Background()
+
+		It("with valid parameters", func() {
+			addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
+			numbers := []int{1, 2}
+			ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
+			// The first erc20 is not found
+			mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
+			erc20 := &model.ERC20{
+				Address:     ethAddresses[0].Bytes(),
+				BlockNumber: int64(numbers[0]),
+				Name:        "name",
+				Decimals:    18,
+				TotalSupply: "123",
+			}
+			mockEthClient.On("GetERC20", ctx, ethAddresses[0], int64(numbers[0])).Return(erc20, nil).Once()
+			mockStoreManager.On("InsertERC20", erc20).Return(nil).Once()
+			// The second erc20 exists
+			mockStoreManager.On("FindERC20", ethAddresses[1]).Return(nil, nil).Once()
+			err := idx.Init(ctx, addresses, numbers)
+			Expect(err).Should(BeNil())
+		})
+
+		Context("with invalid parameters", func() {
+			unknownErr := errors.New("unknown error")
+			It("failed to insert ERC20", func() {
+				addresses := []string{"0x1234567890123456789012345678901234567890"}
+				numbers := []int{1}
+				ethAddresses := []common.Address{common.HexToAddress(addresses[0])}
+				// The first erc20 is not found
+				mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
+				erc20 := &model.ERC20{
+					Address:     ethAddresses[0].Bytes(),
+					BlockNumber: int64(numbers[0]),
+					Name:        "name",
+					Decimals:    18,
+					TotalSupply: "123",
+				}
+				mockEthClient.On("GetERC20", ctx, ethAddresses[0], int64(numbers[0])).Return(erc20, nil).Once()
+				mockStoreManager.On("InsertERC20", erc20).Return(unknownErr).Once()
+				err := idx.Init(ctx, addresses, numbers)
+				Expect(err).Should(Equal(unknownErr))
+			})
+
+			It("failed to get ERC20 from client", func() {
+				addresses := []string{"0x1234567890123456789012345678901234567890"}
+				numbers := []int{1}
+				ethAddresses := []common.Address{common.HexToAddress(addresses[0])}
+				// The first erc20 is not found
+				mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
+				mockEthClient.On("GetERC20", ctx, ethAddresses[0], int64(numbers[0])).Return(nil, unknownErr).Once()
+				err := idx.Init(ctx, addresses, numbers)
+				Expect(err).Should(Equal(unknownErr))
+			})
+
+			It("failed to find ERC20", func() {
+				addresses := []string{"0x1234567890123456789012345678901234567890"}
+				numbers := []int{1}
+				ethAddresses := []common.Address{common.HexToAddress(addresses[0])}
+				// The first erc20 is not found
+				mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, unknownErr).Once()
+				err := idx.Init(ctx, addresses, numbers)
+				Expect(err).Should(Equal(unknownErr))
+			})
+
+			It("inconsistent length between addresses and block numbers", func() {
+				addresses := []string{"0x1234567890123456789012345678901234567890"}
+				numbers := []int{1, 2}
+				err := idx.Init(ctx, addresses, numbers)
+				Expect(err).Should(Equal(ErrInconsistentLength))
+			})
+		})
+	})
 	Context("SyncToTarget()", func() {
 		targetBlock := int64(19)
 

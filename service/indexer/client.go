@@ -20,11 +20,15 @@ import (
 	"math/big"
 
 	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/contracts"
+	"github.com/maichain/eth-indexer/model"
 )
 
 //go:generate mockery -name EthClient
@@ -40,6 +44,7 @@ type EthClient interface {
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
+	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
 	Close()
 }
 
@@ -69,6 +74,46 @@ func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) 
 	r := &state.DirtyDump{}
 	err := c.rpc.CallContext(ctx, r, "debug_getModifiedAccountStatesByNumber", num)
 	return r, err
+}
+
+func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
+	logger := log.New("addr", addr, "number", num)
+	code, err := c.CodeAt(ctx, addr, nil)
+	if err != nil {
+		return nil, err
+	}
+	erc20 := &model.ERC20{
+		Address:     addr.Bytes(),
+		Code:        code,
+		BlockNumber: num,
+	}
+
+	caller, err := contracts.NewERC20TokenCaller(addr, c)
+	if err != nil {
+		logger.Warn("Failed to initiate contract caller", "err", err)
+	} else {
+		// Set decimals
+		decimal, err := caller.Decimals(&bind.CallOpts{})
+		if err != nil {
+			logger.Warn("Failed to get decimals", "err", err)
+		}
+		erc20.Decimals = int(decimal)
+
+		// Set total supply
+		supply, err := caller.TotalSupply(&bind.CallOpts{})
+		if err != nil {
+			logger.Warn("Failed to get total supply", "err", err)
+		}
+		erc20.TotalSupply = supply.String()
+
+		// Set name
+		name, err := caller.Name(&bind.CallOpts{})
+		if err != nil {
+			logger.Warn("Failed to get name", "err", err)
+		}
+		erc20.Name = name
+	}
+	return erc20, nil
 }
 
 func (c *client) Close() {

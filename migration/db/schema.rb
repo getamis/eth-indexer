@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180515060328) do
+ActiveRecord::Schema.define(version: 20180313051512) do
 
   create_table "accounts", force: :cascade do |t|
     t.binary  "address",      limit: 20, null: false
