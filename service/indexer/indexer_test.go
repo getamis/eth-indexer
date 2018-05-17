@@ -25,8 +25,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/jinzhu/gorm"
+	clientMocks "github.com/maichain/eth-indexer/client/mocks"
 	"github.com/maichain/eth-indexer/model"
-	indexerMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,14 +35,14 @@ import (
 
 var _ = Describe("Indexer Test", func() {
 	var (
-		mockEthClient    *indexerMocks.EthClient
+		mockEthClient    *clientMocks.EthClient
 		mockStoreManager *storeMocks.Manager
 		idx              *indexer
 		nilDirtyDump     *state.DirtyDump
 	)
 	BeforeEach(func() {
 		mockStoreManager = new(storeMocks.Manager)
-		mockEthClient = new(indexerMocks.EthClient)
+		mockEthClient = new(clientMocks.EthClient)
 		idx = New(mockEthClient, mockStoreManager)
 	})
 

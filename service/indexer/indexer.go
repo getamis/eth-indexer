@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/client"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/eth-indexer/service"
@@ -35,7 +36,7 @@ var (
 )
 
 // New news an indexer service
-func New(client EthClient, storeManager store.Manager) *indexer {
+func New(client client.EthClient, storeManager store.Manager) *indexer {
 	return &indexer{
 		client:  client,
 		manager: storeManager,
@@ -43,7 +44,7 @@ func New(client EthClient, storeManager store.Manager) *indexer {
 }
 
 type indexer struct {
-	client        EthClient
+	client        client.EthClient
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int

@@ -24,10 +24,10 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/client"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/contracts"
 	. "github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/mapi/api"
 	"github.com/shopspring/decimal"
@@ -35,13 +35,13 @@ import (
 )
 
 type relayServer struct {
-	client      indexer.EthClient
+	client      client.EthClient
 	erc20ABI    abi.ABI
 	logger      log.Logger
 	middlewares []middleware
 }
 
-func NewRelay(client indexer.EthClient) *relayServer {
+func NewRelay(client client.EthClient) *relayServer {
 	logger := log.New("ws", "relay")
 	parsed, _ := abi.JSON(strings.NewReader(contracts.ERC20TokenABI))
 	s := &relayServer{

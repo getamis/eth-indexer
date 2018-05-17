@@ -23,11 +23,11 @@ import (
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/service/indexer"
+	"github.com/maichain/eth-indexer/client"
 )
 
-func NewEthConn(url string) (indexer.EthClient, error) {
-	return indexer.NewClient(url)
+func NewEthConn(url string) (client.EthClient, error) {
+	return client.NewClient(url)
 }
 
 func NewDatabase() (*gorm.DB, error) {
