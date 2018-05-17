@@ -30,6 +30,7 @@ import (
 	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/mapi/api"
+	"github.com/shopspring/decimal"
 	"google.golang.org/grpc"
 )
 
@@ -165,27 +166,25 @@ func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 			Amount:      balance.String(),
 			BlockNumber: blockNumber.Int64(),
 		}, nil
-	} else {
-		// Get ERC20 token
-		balance, err := s.balanceOf(ctx, blockNumber, ethCommon.HexToAddress(req.Token), address)
-		if err != nil {
-			logger.Error("Failed to get balance from ethereum", "err", err)
-			return nil, ErrInternal
-		}
-
-		decimal, err := s.decimals(ctx, blockNumber, ethCommon.HexToAddress(req.Token))
-		if err != nil {
-			logger.Error("Failed to get decimals from ethereum", "err", err)
-			return nil, ErrInternal
-		}
-
-		decimalInt := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(*decimal)), nil)
-		result := new(big.Float).Quo(new(big.Float).SetInt(balance), new(big.Float).SetInt(decimalInt))
-		return &pb.GetBalanceResponse{
-			Amount:      result.String(),
-			BlockNumber: blockNumber.Int64(),
-		}, nil
 	}
+	// Get ERC20 token
+	balance, err := s.balanceOf(ctx, blockNumber, ethCommon.HexToAddress(req.Token), address)
+	if err != nil {
+		logger.Error("Failed to get balance from ethereum", "err", err)
+		return nil, ErrInternal
+	}
+
+	d, err := s.decimals(ctx, blockNumber, ethCommon.HexToAddress(req.Token))
+	if err != nil {
+		logger.Error("Failed to get decimals from ethereum", "err", err)
+		return nil, ErrInternal
+	}
+
+	result := decimal.NewFromBigInt(balance, int32(-(*d)))
+	return &pb.GetBalanceResponse{
+		Amount:      result.String(),
+		BlockNumber: blockNumber.Int64(),
+	}, nil
 }
 
 func (s *relayServer) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceRequest) (*pb.GetBalanceResponse, error) {

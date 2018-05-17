@@ -448,6 +448,12 @@
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/shopspring/decimal"
+  packages = ["."]
+  revision = "69b3a8ad1f5f2c8bd855cb6506d18593064a346b"
+  version = "1.0.1"
+
+[[projects]]
   name = "github.com/spf13/afero"
   packages = [
     ".",
@@ -704,6 +710,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4cf6d59ad47762fe6524841c7d713edbfae9578e594e1c8514a7085f3a9cf990"
+  inputs-digest = "06d911093b84bce700e2404995c0270b743c0a15b8d3ed32e634748ba358a5b5"
   solver-name = "gps-cdcl"
   solver-version = 1

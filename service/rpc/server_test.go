@@ -31,6 +31,7 @@ import (
 	"github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/shopspring/decimal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -344,9 +345,19 @@ var _ = Describe("Server Balance Test", func() {
 			Context("account exists", func() {
 				It("returns the balance", func() {
 					balanceString := "987654321098765432109876543210"
-					balance, ok := new(big.Int).SetString(balanceString, 10)
-					Expect(ok).Should(BeTrue())
-					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					balance, err := decimal.NewFromString(balanceString)
+					Expect(err).Should(BeNil())
+					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(&balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					res, err := svr.GetBalance(ctx, req)
+					Expect(err).Should(Succeed())
+					expRes := &pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum}
+					Expect(res).Should(Equal(expRes))
+				})
+				It("returns the fixed-point balance", func() {
+					balanceString := "987654321098765432109.87654321"
+					balance, err := decimal.NewFromString(balanceString)
+					Expect(err).Should(BeNil())
+					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), req.BlockNumber).Return(&balance, new(big.Int).SetInt64(blockNum), nil).Once()
 					res, err := svr.GetBalance(ctx, req)
 					Expect(err).Should(Succeed())
 					expRes := &pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum}
@@ -445,10 +456,21 @@ var _ = Describe("Server Balance Test", func() {
 			Context("account exists", func() {
 				It("returns the balance", func() {
 					balanceString := "987654321098765432109876543210"
-					balance, ok := new(big.Int).SetString(balanceString, 10)
-					Expect(ok).Should(BeTrue())
+					balance, err := decimal.NewFromString(balanceString)
+					Expect(err).Should(BeNil())
 					mockServiceManager.On("FindLatestBlock").Return(header, nil).Once()
-					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), target).Return(balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), target).Return(&balance, new(big.Int).SetInt64(blockNum), nil).Once()
+					res, err := svr.GetOffsetBalance(ctx, req)
+					Expect(err).Should(Succeed())
+					expRes := &pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum}
+					Expect(res).Should(Equal(expRes))
+				})
+				It("returns the fixed-point balance", func() {
+					balanceString := "98765432109876543210987.654321"
+					balance, err := decimal.NewFromString(balanceString)
+					Expect(err).Should(BeNil())
+					mockServiceManager.On("FindLatestBlock").Return(header, nil).Once()
+					mockServiceManager.On("GetERC20Balance", ctx, gethCommon.HexToAddress(req.Token), gethCommon.HexToAddress(req.Address), target).Return(&balance, new(big.Int).SetInt64(blockNum), nil).Once()
 					res, err := svr.GetOffsetBalance(ctx, req)
 					Expect(err).Should(Succeed())
 					expRes := &pb.GetBalanceResponse{Amount: balanceString, BlockNumber: blockNum}
