@@ -28,10 +28,11 @@ type store struct {
 }
 
 func NewWithDB(db *gorm.DB) Store {
-	return &store{
+	s := &store{
 		db:   db.Table(TableName),
 		tdDb: db.Table(TableNameTd),
 	}
+	return newCacheMiddleware(s)
 }
 
 func (t *store) InsertTd(data *model.TotalDifficulty) error {
