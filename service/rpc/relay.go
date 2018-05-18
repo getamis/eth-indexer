@@ -180,7 +180,7 @@ func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 		return nil, ErrInternal
 	}
 
-	result := decimal.NewFromBigInt(balance, int32(-(*d)))
+	result := decimal.NewFromBigInt(balance, -int32(*d))
 	return &pb.GetBalanceResponse{
 		Amount:      result.String(),
 		BlockNumber: blockNumber.Int64(),

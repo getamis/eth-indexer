@@ -180,18 +180,24 @@ var _ = Describe("Relay Server Test", func() {
 		})
 
 		Context("other tokens", func() {
-			// TODO: mock CallContract correctly
-			// It("valid parameters", func() {
-			// 	balance := big.NewInt(100)
-			// 	expRes := &pb.GetBalanceResponse{
-			// 		Amount:      balance.String(),
-			// 		BlockNumber: req.BlockNumber,
-			// 	}
-			// 	mockClient.On("CallContract", ctx, mock.Anything, new(big.Int).SetInt64(req.BlockNumber)).Return(balance.Bytes(), nil).Once()
-			// 	res, err := svr.GetBalance(ctx, req)
-			// 	Expect(err).Should(Succeed())
-			// 	Expect(res).Should(Equal(expRes))
-			// })
+			It("valid parameters", func() {
+				expectedBalance := "1"
+
+				// output for getBalance
+				output := []uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 224, 182, 179, 167, 100, 0, 0}
+
+				// output for decimal
+				decimalOutput := []uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18}
+
+				req.Token = "0x3893b9422cd5d70a81edeffe3d5a1c6a978310bb"
+				req.Address = "0xccbf4a59bc42129dcb80a8b703dcf4217635a91d"
+				req.BlockNumber = 5141437
+				mockClient.On("CallContract", ctx, mock.Anything, new(big.Int).SetInt64(req.BlockNumber)).Return(output, nil).Once()
+				mockClient.On("CallContract", ctx, mock.Anything, new(big.Int).SetInt64(req.BlockNumber)).Return(decimalOutput, nil).Once()
+				res, err := svr.GetBalance(ctx, req)
+				Expect(err).Should(BeNil())
+				Expect(res.Amount).Should(Equal(expectedBalance))
+			})
 			Context("invalid parameters", func() {
 				unknownErr := errors.New("unknown error")
 				It("failed to call contract", func() {
