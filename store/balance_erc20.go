@@ -188,6 +188,6 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 	}
 
 	// Consider decimals
-	result := decimal.NewFromBigInt(balance, int32(-erc20.Decimals))
+	result := decimal.NewFromBigInt(balance, -int32(erc20.Decimals))
 	return &result, blockNumber, nil
 }
