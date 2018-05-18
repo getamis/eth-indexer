@@ -140,9 +140,21 @@ var _ = Describe("Indexer Test", func() {
 						Difficulty: big.NewInt(1),
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				blocks[i] = block
+
+				parent := block.ParentHash().Bytes()
+
+				// Cannot get TD from DB, get it from etherem
+				if i == 1 {
+					mockStoreManager.On("GetTd", parent).Return(nil, gorm.ErrRecordNotFound).Once()
+					mockEthClient.On("GetTotalDifficulty", mock.Anything, block.ParentHash()).Return(big.NewInt(i), nil).Once()
+				} else {
+					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+						i - 1, parent, strconv.Itoa(int(i))}, nil).Once()
+				}
+				mockStoreManager.On("InsertTd", block, big.NewInt(i+1)).Return(nil).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockStoreManager.On("ForceInsertBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(nil).Once()
 			}
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(int(targetBlock))
 
@@ -186,7 +198,7 @@ var _ = Describe("Indexer Test", func() {
 						i - i, parent, strconv.Itoa(int(i - 1))}, nil).Once()
 					mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-					mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
+					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(nil).Once()
 				}
 
 				mockStoreManager.On("LatestHeader").Return(&model.Header{
@@ -216,8 +228,79 @@ var _ = Describe("Indexer Test", func() {
 
 				err := idx.Listen(ctx, ch)
 				Expect(err).Should(Equal(context.Canceled))
-				mockStoreManager.AssertExpectations(GinkgoT())
-				mockEthClient.AssertExpectations(GinkgoT())
+			})
+
+			It("empty database", func() {
+				ctx, cancel := context.WithCancel(context.Background())
+				// init state, there is no data stored.
+				// receive 19 block
+				blocks := make([]*types.Block, 20)
+				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
+				receipt := types.NewReceipt([]byte{}, false, 0)
+				block := types.NewBlock(
+					&types.Header{
+						Number:     big.NewInt(0),
+						Root:       common.StringToHash("1234567890" + strconv.Itoa(int(10))),
+						Difficulty: big.NewInt(1),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+				blocks[0] = block
+				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(block, nil).Once()
+				mockStoreManager.On("InsertTd", block, big.NewInt(1)).Return(nil).Once()
+				mockEthClient.On("DumpBlock", mock.Anything, int64(0)).Return(&state.Dump{
+					Root: "root",
+					Accounts: map[string]state.DumpAccount{
+						"0001": {
+							Balance: "10000",
+						},
+						"0002": {
+							Balance: "20000",
+						},
+					},
+				}, nil).Once()
+				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{{
+					Root: "root",
+					Accounts: map[string]state.DirtyDumpAccount{
+						"0001": {
+							Balance: "10000",
+						},
+						"0002": {
+							Balance: "20000",
+						},
+					},
+				}}, false).Return(nil).Once()
+
+				for i := int64(1); i <= 19; i++ {
+					block = types.NewBlock(
+						&types.Header{
+							Number:     big.NewInt(i),
+							ParentHash: blocks[i-1].Hash(),
+							Root:       common.StringToHash("1234567890" + strconv.Itoa(int(i))),
+							Difficulty: big.NewInt(1),
+						}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+					blocks[i] = block
+					mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
+					parent := block.ParentHash().Bytes()
+					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+						i - i, parent, strconv.Itoa(int(i))}, nil).Once()
+					mockStoreManager.On("InsertTd", block, big.NewInt(i+1)).Return(nil).Once()
+					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
+					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(nil).Once()
+				}
+
+				mockStoreManager.On("LatestHeader").Return(nil, gorm.ErrRecordNotFound).Once()
+				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(20)
+				var recvCh chan<- *types.Header
+				recvCh = ch
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+
+				go func() {
+					ch <- blocks[19].Header()
+					time.Sleep(time.Second)
+					cancel()
+				}()
+
+				err := idx.Listen(ctx, ch)
+				Expect(err).Should(Equal(context.Canceled))
 			})
 
 			It("disordered blocks", func() {
@@ -250,7 +333,7 @@ var _ = Describe("Indexer Test", func() {
 						i - i, parent, strconv.Itoa(int(i - 1))}, nil).Once()
 					mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-					mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
+					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(nil).Once()
 				}
 				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
@@ -288,8 +371,6 @@ var _ = Describe("Indexer Test", func() {
 
 				err := idx.Listen(ctx, ch)
 				Expect(err).Should(Equal(context.Canceled))
-				mockStoreManager.AssertExpectations(GinkgoT())
-				mockEthClient.AssertExpectations(GinkgoT())
 			})
 		})
 
@@ -401,7 +482,7 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
 					10, parent, strconv.Itoa(10)}, nil).Once()
 				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(nil).Once()
-				mockStoreManager.On("UpdateBlock", block, []*types.Receipt{receipt}, nilDirtyDump).Return(unknownErr).Once()
+				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(unknownErr).Once()
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
@@ -558,7 +639,7 @@ var _ = Describe("Indexer Test", func() {
 
 		It("should be ok", func() {
 			// local state has block 10,
-			// receive 18, 19 blocks from header channel
+			// receive 18 blocks from header channel
 			// when receiving block 18, we found chain was reorg'ed at block 15
 
 			// set up old blocks
@@ -599,21 +680,12 @@ var _ = Describe("Indexer Test", func() {
 				Hash:   blocks[15].Hash().Bytes(),
 			}, nil).Once()
 
-			// when receiving the second header from ethereum
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
-				Number: 18,
-				Hash:   newBlocks[18].Hash().Bytes(),
-			}, nil).Once()
-
 			// receiving the first header, syncing from 16-18
 			mockStoreManager.On("GetTd", blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
 				15, blocks[15].Hash().Bytes(), strconv.Itoa(15)}, nil).Once()
-			// receiving the second header, syncing new block 19
-			mockStoreManager.On("GetTd", newBlocks[18].Hash().Bytes()).Return(&model.TotalDifficulty{
-				18, newBlocks[18].Hash().Bytes(), strconv.Itoa(34)}, nil).Once()
 
 			// expectations for eth client
-			for i := int64(16); i <= 19; i++ {
+			for i := int64(16); i <= 18; i++ {
 				if i <= 17 {
 					mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(blocks[i], nil).Once()
 				} else {
@@ -640,7 +712,7 @@ var _ = Describe("Indexer Test", func() {
 			mockStoreManager.On("GetTd", blocks[14].Hash().Bytes()).Return(&model.TotalDifficulty{
 				14, blocks[14].Hash().Bytes(), strconv.Itoa(14)}, nil).Once()
 
-			for i := int64(15); i <= 19; i++ {
+			for i := int64(15); i <= 18; i++ {
 				td := prevTd + 5*(i-14)
 				parent := newBlocks[i].ParentHash().Bytes()
 				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
@@ -659,16 +731,16 @@ var _ = Describe("Indexer Test", func() {
 			// state diff for the old blocks
 			for i := int64(16); i <= 17; i++ {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlock", blocks[i], []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", []*types.Block{blocks[i]}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, false).Return(nil).Once()
 			}
 			// state diff for the new blocks
-			for i := int64(15); i <= 19; i++ {
+			for i := int64(15); i <= 18; i++ {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
 			}
-			mockStoreManager.On("DeleteStateFromBlock", int64(15)).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump, nilDirtyDump, nilDirtyDump}, true).Return(nil).Once()
+
 			mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(2)
-			mockEthClient.On("TransactionReceipt", mock.Anything, newTx.Hash()).Return(receipt, nil).Times(5)
+			mockEthClient.On("TransactionReceipt", mock.Anything, newTx.Hash()).Return(receipt, nil).Times(4)
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
@@ -676,7 +748,6 @@ var _ = Describe("Indexer Test", func() {
 
 			go func() {
 				ch <- newBlocks[18].Header()
-				ch <- newBlocks[19].Header()
 				time.Sleep(time.Second)
 				cancel()
 			}()
@@ -763,9 +834,8 @@ var _ = Describe("Indexer Test", func() {
 			// state diff for the new blocks
 			for i := int64(15); i <= 16; i++ {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlock", newBlocks[i], []*types.Receipt{receipt}, nilDirtyDump).Return(nil).Once()
 			}
-			mockStoreManager.On("DeleteStateFromBlock", int64(15)).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", newBlocks[15:17], [][]*types.Receipt{{receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump}, true).Return(nil).Once()
 			mockEthClient.On("TransactionReceipt", mock.Anything, newTx.Hash()).Return(receipt, nil).Times(2)
 
 			var recvCh chan<- *types.Header
