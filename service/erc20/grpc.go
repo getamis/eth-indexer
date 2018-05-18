@@ -19,8 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
+	"github.com/maichain/eth-indexer/client"
 	. "github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/indexer"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
 	"google.golang.org/grpc"
@@ -29,12 +29,12 @@ import (
 //go:generate mockery -dir ../pb -name ^ERC20Service
 type server struct {
 	manager     store.Manager
-	client      indexer.EthClient
+	client      client.EthClient
 	middlewares []middleware
 	logger      log.Logger
 }
 
-func New(manager store.Manager, client indexer.EthClient) *server {
+func New(manager store.Manager, client client.EthClient) *server {
 	logger := log.New("erc20", "grpc")
 	s := &server{
 		manager: manager,

@@ -20,9 +20,9 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	clientMocks "github.com/maichain/eth-indexer/client/mocks"
 	"github.com/maichain/eth-indexer/model"
 	. "github.com/maichain/eth-indexer/service"
-	clientMocks "github.com/maichain/eth-indexer/service/indexer/mocks"
 	"github.com/maichain/eth-indexer/service/pb"
 	storeMocks "github.com/maichain/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"

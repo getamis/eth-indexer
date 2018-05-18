@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package indexer
+package client
 
 import (
 	"context"
@@ -58,10 +58,11 @@ func NewClient(url string) (EthClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &client{
+	client := &client{
 		Client: ethclient.NewClient(rpcClient),
 		rpc:    rpcClient,
-	}, nil
+	}
+	return newCacheMiddleware(client), nil
 }
 
 func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
