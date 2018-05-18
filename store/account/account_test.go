@@ -137,14 +137,17 @@ var _ = Describe("Account Database Test", func() {
 				Expect(err).Should(Succeed())
 			}
 
-			store.DeleteAccounts(1000301)
+			// Delete data2 and data3
+			err := store.DeleteAccounts(1000301, 1000315)
+			Expect(err).Should(Succeed())
 
+			// Found data1 and data4
 			account, err := store.FindAccount(gethCommon.BytesToAddress(data1.Address))
 			Expect(err).Should(Succeed())
-			Expect(reflect.DeepEqual(*account, *data1)).Should(BeTrue())
-
-			account, err = store.FindAccount(gethCommon.BytesToAddress(data3.Address))
-			Expect(common.NotFoundError(err)).Should(BeTrue())
+			Expect(account).Should(Equal(data1))
+			account, err = store.FindAccount(gethCommon.BytesToAddress(data4.Address))
+			Expect(err).Should(Succeed())
+			Expect(account).Should(Equal(data4))
 		})
 	})
 
@@ -170,6 +173,10 @@ var _ = Describe("Account Database Test", func() {
 			code, err := store.FindERC20(gethCommon.BytesToAddress(data.Address))
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*code, *data)).Should(BeTrue())
+
+			list, err := store.ListERC20()
+			Expect(err).Should(Succeed())
+			Expect(list).Should(Equal([]model.ERC20{*data}))
 		})
 	})
 
@@ -241,6 +248,10 @@ var _ = Describe("Account Database Test", func() {
 			s, err = store.FindERC20Storage(addr, gethCommon.BytesToHash(storage2.Key), storage2.BlockNumber)
 			Expect(err).Should(Succeed())
 			Expect(s).Should(Equal(storage2))
+
+			num, err := store.LastSyncERC20Storage(addr, int64(1000))
+			Expect(err).Should(Succeed())
+			Expect(num).Should(Equal(storage2.BlockNumber))
 		})
 	})
 
@@ -288,7 +299,7 @@ var _ = Describe("Account Database Test", func() {
 				Expect(s).Should(Equal(storage))
 			}
 
-			err = store.DeleteERC20Storage(addr, int64(105))
+			err = store.DeleteERC20Storage(addr, int64(105), int64(110))
 			Expect(err).Should(Succeed())
 
 			s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage1.Key), storage1.BlockNumber)

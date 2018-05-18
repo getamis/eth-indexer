@@ -123,15 +123,6 @@ var _ = Describe("Cache Test", func() {
 		})
 	})
 
-	Context("Delete()", func() {
-		It("returns the same response from mockStore", func() {
-			number := int64(100)
-			mockStore.On("Delete", number).Return(unknownErr).Once()
-			err := cacheStore.Delete(number)
-			Expect(err).Should(Equal(unknownErr))
-		})
-	})
-
 	Context("FindTd()", func() {
 		It("in cache", func() {
 			By("wrong in cache")

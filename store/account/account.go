@@ -37,13 +37,13 @@ type Store interface {
 	// ERC 20 storage
 	InsertERC20Storage(storage *model.ERC20Storage) error
 	FindERC20Storage(address common.Address, key common.Hash, blockNr int64) (result *model.ERC20Storage, err error)
-	DeleteERC20Storage(address common.Address, fromBlock int64) error
+	DeleteERC20Storage(address common.Address, from, to int64) error
 	LastSyncERC20Storage(address common.Address, blockNr int64) (result int64, err error)
 
 	// Accounts
 	InsertAccount(account *model.Account) error
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
-	DeleteAccounts(fromBlock int64) error
+	DeleteAccounts(from, to int64) error
 }
 
 type store struct {
@@ -86,8 +86,8 @@ func (t *store) LastSyncERC20Storage(address common.Address, blockNr int64) (int
 	return result.BlockNumber, nil
 }
 
-func (t *store) DeleteAccounts(fromBlock int64) error {
-	return t.db.Table(NameAccounts).Delete(model.Account{}, "block_number >= ?", fromBlock).Error
+func (t *store) DeleteAccounts(from, to int64) error {
+	return t.db.Table(NameAccounts).Delete(model.Account{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }
 
 func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error) {
@@ -121,8 +121,8 @@ func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockN
 	return
 }
 
-func (t *store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
+func (t *store) DeleteERC20Storage(address common.Address, from, to int64) error {
 	return t.db.Table(model.ERC20Storage{
 		Address: address.Bytes(),
-	}.TableName()).Delete(model.ERC20Storage{}, "block_number >= ?", fromBlock).Error
+	}.TableName()).Delete(model.ERC20Storage{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }

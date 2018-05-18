@@ -9,13 +9,13 @@ type Store struct {
 	mock.Mock
 }
 
-// Delete provides a mock function with given fields: blockNumber
-func (_m *Store) Delete(blockNumber int64) error {
-	ret := _m.Called(blockNumber)
+// Delete provides a mock function with given fields: from, to
+func (_m *Store) Delete(from int64, to int64) error {
+	ret := _m.Called(from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(blockNumber)
+	if rf, ok := ret.Get(0).(func(int64, int64) error); ok {
+		r0 = rf(from, to)
 	} else {
 		r0 = ret.Error(0)
 	}

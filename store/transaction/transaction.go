@@ -12,7 +12,7 @@ const (
 //go:generate mockery -name Store
 type Store interface {
 	Insert(data *model.Transaction) error
-	Delete(blockNumber int64) (err error)
+	Delete(from, to int64) (err error)
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 }
@@ -31,8 +31,8 @@ func (t *store) Insert(data *model.Transaction) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) Delete(blockNumber int64) (err error) {
-	err = t.db.Delete(model.Transaction{}, "block_number = ?", blockNumber).Error
+func (t *store) Delete(from, to int64) (err error) {
+	err = t.db.Delete(model.Transaction{}, "block_number >= ? AND block_number <= ?", from, to).Error
 	return
 }
 
