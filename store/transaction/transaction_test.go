@@ -89,7 +89,7 @@ var _ = Describe("Transaction Database Test", func() {
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.Delete(42100)
+		err := store.Delete(42100, 42100)
 		Expect(err).Should(Succeed())
 
 		tx, err := store.FindTransaction(data1.Hash)

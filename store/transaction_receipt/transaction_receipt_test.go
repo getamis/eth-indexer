@@ -105,7 +105,7 @@ var _ = Describe("Receipt Database Test", func() {
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.Delete(42100)
+		err := store.Delete(42100, 42100)
 		receipt, err := store.FindReceipt(data1.TxHash)
 		Expect(err).Should(Succeed())
 		Expect(*receipt).Should(Equal(*data1))

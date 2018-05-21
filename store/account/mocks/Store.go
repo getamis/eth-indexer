@@ -10,13 +10,13 @@ type Store struct {
 	mock.Mock
 }
 
-// DeleteAccounts provides a mock function with given fields: fromBlock
-func (_m *Store) DeleteAccounts(fromBlock int64) error {
-	ret := _m.Called(fromBlock)
+// DeleteAccounts provides a mock function with given fields: from, to
+func (_m *Store) DeleteAccounts(from int64, to int64) error {
+	ret := _m.Called(from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(fromBlock)
+	if rf, ok := ret.Get(0).(func(int64, int64) error); ok {
+		r0 = rf(from, to)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -24,13 +24,13 @@ func (_m *Store) DeleteAccounts(fromBlock int64) error {
 	return r0
 }
 
-// DeleteERC20Storage provides a mock function with given fields: address, fromBlock
-func (_m *Store) DeleteERC20Storage(address common.Address, fromBlock int64) error {
-	ret := _m.Called(address, fromBlock)
+// DeleteERC20Storage provides a mock function with given fields: address, from, to
+func (_m *Store) DeleteERC20Storage(address common.Address, from int64, to int64) error {
+	ret := _m.Called(address, from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(common.Address, int64) error); ok {
-		r0 = rf(address, fromBlock)
+	if rf, ok := ret.Get(0).(func(common.Address, int64, int64) error); ok {
+		r0 = rf(address, from, to)
 	} else {
 		r0 = ret.Error(0)
 	}

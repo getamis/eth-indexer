@@ -29,16 +29,19 @@ const cacheSize = 128
 type cacheMiddleware struct {
 	EthClient
 	txCache    *lru.ARCCache
+	tdCache    *lru.ARCCache
 	blockCache *lru.ARCCache
 }
 
 func newCacheMiddleware(client EthClient) EthClient {
 	txCache, _ := lru.NewARC(cacheSize)
+	tdCache, _ := lru.NewARC(cacheSize)
 	blockCache, _ := lru.NewARC(cacheSize)
 
 	return &cacheMiddleware{
 		EthClient:  client,
 		txCache:    txCache,
+		tdCache:    tdCache,
 		blockCache: blockCache,
 	}
 }
@@ -94,4 +97,25 @@ func (c *cacheMiddleware) TransactionByHash(ctx context.Context, hash common.Has
 		c.txCache.Add(key, result)
 	}()
 	return c.EthClient.TransactionByHash(ctx, hash)
+}
+
+func (c *cacheMiddleware) GetTotalDifficulty(ctx context.Context, hash common.Hash) (result *big.Int, err error) {
+	key := hash.Hex()
+	value, ok := c.tdCache.Get(key)
+	if ok {
+		td, ok := value.(*big.Int)
+		if ok {
+			return td, nil
+		}
+		log.Warn("Failed to convert value to *types.Int", "hash", key)
+		c.tdCache.Remove(key)
+	}
+
+	defer func() {
+		if err != nil {
+			return
+		}
+		c.tdCache.Add(key, result)
+	}()
+	return c.EthClient.GetTotalDifficulty(ctx, hash)
 }

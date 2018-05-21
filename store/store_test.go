@@ -22,9 +22,25 @@ import (
 
 var _ = Describe("Manager Test", func() {
 	var (
-		mysql *test.MySQLContainer
-		db    *gorm.DB
+		mysql    *test.MySQLContainer
+		db       *gorm.DB
+		blocks   []*types.Block
+		receipts [][]*types.Receipt
+		dumps    []*state.DirtyDump
+		manager  Manager
 	)
+
+	newErc20Addr := gethCommon.HexToAddress("1234567891")
+	newErc20 := &model.ERC20{
+		Address:     newErc20Addr.Bytes(),
+		Code:        []byte("1332"),
+		BlockNumber: 0,
+	}
+	newErc20Storage := map[string]string{
+		common.BytesToHex(gethCommon.HexToHash("0x0a").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0b").Bytes()),
+		common.BytesToHex(gethCommon.HexToHash("0x0c").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0d").Bytes()),
+	}
+
 	BeforeSuite(func() {
 		var err error
 		mysql, err = test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
@@ -44,362 +60,206 @@ var _ = Describe("Manager Test", func() {
 	})
 
 	BeforeEach(func() {
+		// ERC20 contract
+		erc20 := &model.ERC20{
+			Address:     gethCommon.HexToAddress("1234567890").Bytes(),
+			Code:        []byte("1333"),
+			BlockNumber: 0,
+		}
+
+		// Clean all data
 		db.Table(block_header.TableName).Delete(&model.Header{})
 		db.Table(transaction.TableName).Delete(&model.Transaction{})
 		db.Table(transaction_receipt.TableName).Delete(&model.Receipt{})
 		db.Table(account.NameAccounts).Delete(&model.Account{})
 		db.Table(account.NameERC20).Delete(&model.ERC20{})
-	})
+		db.DropTable(model.ERC20Storage{
+			Address: erc20.Address,
+		})
 
-	Context("UpdateBlock()", func() {
-		It("should be ok", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			ethAddr := gethCommon.HexToAddress("0xB287a379e6caCa6732E50b88D23c290aA990A892")
-			erc20Addr := gethCommon.HexToAddress("0xC287a379e6caCa6732E50b88D23c290aA990A892")
-			block := types.NewBlock(
-				&types.Header{
-					Number: big.NewInt(10),
-					Root:   gethCommon.StringToHash("1234567890"),
-				}, []*types.Transaction{}, nil, []*types.Receipt{})
-
-			dump := &state.DirtyDump{
-				Root: common.BytesToHex(block.Root().Bytes()),
+		// Init initial states
+		blocks = []*types.Block{
+			types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(100),
+			}),
+			types.NewBlockWithHeader(&types.Header{
+				Number: big.NewInt(101),
+			}),
+		}
+		receipts = [][]*types.Receipt{
+			{
+				&types.Receipt{
+					TxHash: gethCommon.HexToHash("0x01"),
+				},
+			},
+			{
+				&types.Receipt{
+					TxHash: gethCommon.HexToHash("0x02"),
+				},
+			},
+		}
+		dumps = []*state.DirtyDump{
+			{
+				Root: "root1",
 				Accounts: map[string]state.DirtyDumpAccount{
-
-					ethAddr.Hex(): {
-						Nonce:   100,
-						Balance: "101",
-					},
-					// contract
-					erc20Addr.Hex(): {
-						Nonce:   900,
-						Balance: "901",
+					common.BytesToHex(erc20.Address): {
 						Storage: map[string]string{
-							"key1": "storage1",
-							"key2": "storage2",
+							"1": "2",
+						},
+					},
+					common.BytesToHex(newErc20.Address): {
+						Storage: newErc20Storage,
+					},
+				},
+			},
+			{
+				Root: "root2",
+				Accounts: map[string]state.DirtyDumpAccount{
+					"3": {
+						Storage: map[string]string{
+							"4": "5",
 						},
 					},
 				},
+			},
+		}
+
+		var err error
+		manager, err = NewManager(db)
+		Expect(err).Should(BeNil())
+
+		err = manager.InsertERC20(erc20)
+		Expect(err).Should(BeNil())
+
+		resERC20, err := manager.FindERC20(gethCommon.BytesToAddress(erc20.Address))
+		Expect(err).Should(BeNil())
+		Expect(resERC20).Should(Equal(erc20))
+
+		err = manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
+		Expect(err).Should(BeNil())
+	})
+
+	Context("UpdateBlocks()", func() {
+		It("sync mode", func() {
+			newBlocks := []*types.Block{
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(100),
+					ReceiptHash: gethCommon.HexToHash("0x02"),
+				}),
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(101),
+					ReceiptHash: gethCommon.HexToHash("0x03"),
+				}),
 			}
-
-			err = manager.UpdateBlock(block, nil, dump)
-			Expect(err).Should(Succeed())
-
-			hdr, err := manager.GetHeaderByNumber(int64(10))
-			Expect(err).Should(Succeed())
-			Expect(hdr.Number).Should(Equal(int64(10)))
-
-			accStore := account.NewWithDB(db)
-			acct, err := accStore.FindAccount(ethAddr)
-			Expect(err).Should(Succeed())
-			Expect(acct.BlockNumber).Should(Equal(int64(10)))
-			contract, err := accStore.FindAccount(erc20Addr)
-			Expect(err).Should(Succeed())
-			Expect(contract.BlockNumber).Should(Equal(int64(10)))
-
-			By("insert the same block again, should be ok")
-			err = manager.UpdateBlock(block, nil, dump)
-			Expect(err).Should(Succeed())
-		})
-
-		It("changes data for a block number", func() {
-			manager, err := NewManager(db)
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeSync)
 			Expect(err).Should(BeNil())
 
-			blockNum := int64(654321)
-			block := types.NewBlock(
-				&types.Header{
-					Number: big.NewInt(blockNum),
-					Root:   gethCommon.StringToHash("1234567890"),
-				}, []*types.Transaction{}, nil, []*types.Receipt{})
+			header, err := manager.GetHeaderByNumber(100)
+			Expect(err).Should(BeNil())
+			Expect(header).Should(Equal(common.Header(blocks[0])))
+		})
 
-			newBlock := types.NewBlock(
-				&types.Header{
-					Number: big.NewInt(blockNum),
-					Root:   gethCommon.StringToHash("9876543210"),
-				}, []*types.Transaction{}, nil, []*types.Receipt{})
+		It("reorg mode", func() {
+			newBlocks := []*types.Block{
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(100),
+					ReceiptHash: gethCommon.HexToHash("0x02"),
+				}),
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(101),
+					ReceiptHash: gethCommon.HexToHash("0x03"),
+				}),
+			}
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeReOrg)
+			Expect(err).Should(BeNil())
 
-			Expect(block.Hash()).ShouldNot(Equal(newBlock.Hash()))
+			header, err := manager.GetHeaderByNumber(100)
+			Expect(err).Should(BeNil())
+			Expect(header).Should(Equal(common.Header(newBlocks[0])))
+		})
 
-			err = manager.UpdateBlock(block, nil, nil)
-			Expect(err).Should(Succeed())
+		It("force sync mode", func() {
+			accountStore := account.NewWithDB(db)
 
-			hdr, err := manager.GetHeaderByNumber(blockNum)
-			Expect(err).Should(Succeed())
-			Expect(hdr.Hash).Should(Equal(block.Hash().Bytes()))
+			// Cannot find new erc20 storage
+			for k := range newErc20Storage {
+				_, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
+				Expect(err).ShouldNot(BeNil())
+			}
 
-			err = manager.UpdateBlock(newBlock, nil, nil)
-			Expect(err).Should(Succeed())
+			// Create find new erc20
+			err := manager.InsertERC20(newErc20)
+			Expect(err).Should(BeNil())
 
-			hdr, err = manager.GetHeaderByNumber(blockNum)
-			Expect(err).Should(Succeed())
-			Expect(hdr.Hash).Should(Equal(newBlock.Hash().Bytes()))
+			// Reload manager
+			manager, err = NewManager(db)
+			Expect(err).Should(BeNil())
+
+			// Force update blocks
+			err = manager.UpdateBlocks(blocks, receipts, dumps, ModeForceSync)
+			Expect(err).Should(BeNil())
+
+			// Got blocks 0
+			header, err := manager.GetHeaderByNumber(100)
+			Expect(err).Should(BeNil())
+			Expect(header).Should(Equal(common.Header(blocks[0])))
+
+			// Found new erc20 storage
+			for k, v := range newErc20Storage {
+				value, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
+				Expect(err).Should(BeNil())
+				Expect(value.Value).Should(Equal(gethCommon.HexToHash(v).Bytes()))
+			}
+
+			db.DropTable(model.ERC20Storage{
+				Address: newErc20.Address,
+			})
 		})
 
 		It("failed due to wrong signer", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
+			blocks[0] = types.NewBlock(
+				blocks[0].Header(), []*types.Transaction{
+					types.NewTransaction(0, gethCommon.Address{}, gethCommon.Big0, 0, gethCommon.Big0, []byte{}),
+				}, nil, []*types.Receipt{
+					types.NewReceipt([]byte{}, false, 0),
+				})
 
-			header := &types.Header{
-				Number: big.NewInt(11),
-			}
-			block := types.NewBlock(header, []*types.Transaction{
-				types.NewTransaction(0, gethCommon.Address{}, gethCommon.Big0, 0, gethCommon.Big0, []byte{}),
-			}, []*types.Header{
-				header,
-			}, []*types.Receipt{
-				types.NewReceipt([]byte{}, false, 0),
-			})
-
-			err = manager.UpdateBlock(block, nil, nil)
+			err := manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
 
-	Context("InsertTd()", func() {
-		It("saves TD", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			header := &types.Header{
-				Number: big.NewInt(100),
-			}
-			block := types.NewBlock(header, nil, []*types.Header{
-				header,
-			}, []*types.Receipt{
-				types.NewReceipt([]byte{}, false, 0),
-			})
-
-			err = manager.InsertTd(block, new(big.Int).SetInt64(123456789))
+	Context("InsertTd/GetTd()", func() {
+		It("saves and get TD", func() {
+			err := manager.InsertTd(blocks[0], new(big.Int).SetInt64(123456789))
 			Expect(err).Should(Succeed())
 
-			err = manager.InsertTd(block, new(big.Int).SetInt64(123456789))
+			_, err = manager.GetTd(blocks[0].Hash().Bytes())
+			Expect(err).Should(Succeed())
+
+			err = manager.InsertTd(blocks[0], new(big.Int).SetInt64(123456789))
 			Expect(common.DuplicateError(err)).Should(BeTrue())
+
+			_, err = manager.GetTd(blocks[0].Hash().Bytes())
+			Expect(err).Should(Succeed())
 		})
 	})
 
 	Context("GetHeaderByNumber()", func() {
 		It("gets the right header", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			block1 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-			})
-			block2 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(99),
-			})
-			err = manager.UpdateBlock(block1, nil, nil)
-			Expect(err).Should(Succeed())
-			err = manager.UpdateBlock(block2, nil, nil)
-			Expect(err).Should(Succeed())
-
-			header, err := manager.GetHeaderByNumber(100)
-			Expect(err).Should(Succeed())
-			Expect(header).Should(Equal(common.Header(block1)))
-
-			header, err = manager.GetHeaderByNumber(99)
-			Expect(err).Should(Succeed())
-			Expect(header).Should(Equal(common.Header(block2)))
-
-			header, err = manager.GetHeaderByNumber(199)
-			Expect(common.NotFoundError(err)).Should(BeTrue())
-		})
-	})
-
-	Context("GetTd()", func() {
-		It("gets the block TD", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			block1 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-			})
-			block2 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(99),
-			})
-			err = manager.InsertTd(block1, new(big.Int).SetInt64(123456789))
-			Expect(err).Should(Succeed())
-			err = manager.InsertTd(block2, new(big.Int).SetInt64(987654321))
-			Expect(err).Should(Succeed())
-
-			td, err := manager.GetTd(block1.Hash().Bytes())
-			Expect(err).Should(Succeed())
-			Expect(td).Should(Equal(&model.TotalDifficulty{
-				Block: block1.Number().Int64(),
-				Hash:  block1.Hash().Bytes(),
-				Td:    "123456789",
-			}))
-
-			td, err = manager.GetTd(block2.Hash().Bytes())
-			Expect(err).Should(Succeed())
-			Expect(td).Should(Equal(&model.TotalDifficulty{
-				Block: block2.Number().Int64(),
-				Hash:  block2.Hash().Bytes(),
-				Td:    "987654321",
-			}))
+			for _, block := range blocks {
+				header, err := manager.GetHeaderByNumber(block.Number().Int64())
+				Expect(err).Should(Succeed())
+				Expect(header).Should(Equal(common.Header(block)))
+			}
 		})
 	})
 
 	Context("LatestHeader()", func() {
 		It("gets the latest header", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			block1 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-			})
-			block2 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(99),
-			})
-			err = manager.UpdateBlock(block1, nil, nil)
-			Expect(err).Should(Succeed())
-			err = manager.UpdateBlock(block2, nil, nil)
-			Expect(err).Should(Succeed())
-
 			header, err := manager.LatestHeader()
 			Expect(err).Should(Succeed())
-			Expect(header).Should(Equal(common.Header(block1)))
-		})
-	})
-
-	Context("UpdateState()", func() {
-		It("should be ok", func() {
-			accountStore := account.NewWithDB(db)
-
-			// Insert an ERC20 contract. Its storage will be modified.
-			erc20 := &model.ERC20{
-				Address:     gethCommon.HexToAddress("0x01").Bytes(),
-				Code:        common.HexToBytes("0x02"),
-				TotalSupply: "1000000",
-				Name:        "erc20",
-				Decimals:    18,
-			}
-			err := accountStore.InsertERC20(erc20)
-			Expect(err).Should(Succeed())
-
-			// Insert an ERC20 contract. Its storage will NOT be modified.
-			erc20_1 := &model.ERC20{
-				Address:     gethCommon.HexToAddress("0x02").Bytes(),
-				Code:        common.HexToBytes("0x02"),
-				TotalSupply: "1000000",
-				Name:        "erc20",
-				Decimals:    18,
-			}
-			err = accountStore.InsertERC20(erc20_1)
-			Expect(err).Should(Succeed())
-
-			tmp := model.ERC20Storage{
-				Address: erc20.Address,
-			}
-			Expect(db.HasTable(tmp)).Should(BeTrue())
-
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-			block1 := types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-				Root:   gethCommon.StringToHash("1234567890"),
-			})
-
-			value := gethCommon.HexToHash("0x0a")
-			key := gethCommon.HexToHash("0x0b")
-
-			dump := &state.DirtyDump{
-				Root: common.BytesToHex(block1.Root().Bytes()),
-				Accounts: map[string]state.DirtyDumpAccount{
-					"fffffffffff": {
-						Nonce:   100,
-						Balance: "101",
-					},
-					// contract
-					common.BytesToHex(erc20.Address): {
-						Nonce:   900,
-						Balance: "901",
-						Storage: map[string]string{
-							common.HashHex(key): common.HashHex(value),
-						},
-					},
-				},
-			}
-
-			err = manager.UpdateBlock(block1, nil, dump)
-			Expect(err).Should(Succeed())
-
-			By("update the same state again, should be ok")
-			err = manager.UpdateBlock(block1, nil, dump)
-			Expect(err).Should(Succeed())
-
-			s, err := account.NewWithDB(db).FindERC20Storage(gethCommon.BytesToAddress(erc20.Address), key, block1.Number().Int64())
-			Expect(err).Should(Succeed())
-			Expect(s.Address).Should(Equal(erc20.Address))
-			Expect(s.Key).Should(Equal(key.Bytes()))
-			Expect(s.Value).Should(Equal(value.Bytes()))
-
-			lastNum, err := account.NewWithDB(db).LastSyncERC20Storage(gethCommon.BytesToAddress(erc20_1.Address), block1.Number().Int64())
-			Expect(err).Should(Succeed())
-			Expect(lastNum).Should(Equal(block1.Number().Int64()))
-		})
-	})
-
-	Context("ForceInsertBlock()", func() {
-		Context("should be ok", func() {
-			// TODO: Add tests
-		})
-	})
-
-	Context("DeleteStateFromBlock()", func() {
-		It("deletes state from a block number", func() {
-			manager, err := NewManager(db)
-			Expect(err).Should(BeNil())
-
-			ethAddr := gethCommon.HexToAddress("0xB287a379e6caCa6732E50b88D23c290aA990A892")
-			erc20Addr := gethCommon.HexToAddress("0xC287a379e6caCa6732E50b88D23c290aA990A892")
-			for i := int64(100); i < 120; i++ {
-				block := types.NewBlock(
-					&types.Header{
-						Number: big.NewInt(i),
-						Root:   gethCommon.StringToHash("1234567890"),
-					}, []*types.Transaction{}, nil, []*types.Receipt{})
-
-				dump := &state.DirtyDump{
-					Root: common.BytesToHex(block.Root().Bytes()),
-					Accounts: map[string]state.DirtyDumpAccount{
-						ethAddr.Hex(): {
-							Nonce:   100,
-							Balance: "101",
-						},
-						// contract
-						erc20Addr.Hex(): {
-							Nonce:   900,
-							Balance: "901",
-							Storage: map[string]string{
-								"key1": "storage1",
-								"key2": "storage2",
-							},
-						},
-					},
-				}
-				err = manager.UpdateBlock(block, nil, dump)
-				Expect(err).Should(Succeed())
-			}
-
-			accStore := account.NewWithDB(db)
-			acct, err := accStore.FindAccount(ethAddr)
-			Expect(err).Should(Succeed())
-			Expect(acct.BlockNumber).Should(Equal(int64(119)))
-			contract, err := accStore.FindAccount(erc20Addr)
-			Expect(err).Should(Succeed())
-			Expect(contract.BlockNumber).Should(Equal(int64(119)))
-
-			manager.DeleteStateFromBlock(int64(110))
-			acct, err = accStore.FindAccount(ethAddr)
-			Expect(err).Should(Succeed())
-			Expect(acct.BlockNumber).Should(Equal(int64(109)))
-			contract, err = accStore.FindAccount(erc20Addr)
-			Expect(err).Should(Succeed())
-			Expect(contract.BlockNumber).Should(Equal(int64(109)))
+			Expect(header).Should(Equal(common.Header(blocks[1])))
 		})
 	})
 })

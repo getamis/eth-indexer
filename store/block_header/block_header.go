@@ -15,7 +15,7 @@ const (
 type Store interface {
 	InsertTd(data *model.TotalDifficulty) error
 	Insert(data *model.Header) error
-	Delete(blockNumber int64) (err error)
+	Delete(from, to int64) (err error)
 	FindTd(hash []byte) (result *model.TotalDifficulty, err error)
 	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(hash []byte) (result *model.Header, err error)
@@ -28,11 +28,15 @@ type store struct {
 }
 
 func NewWithDB(db *gorm.DB) Store {
-	s := &store{
+	return newCacheMiddleware(newWithDB(db))
+}
+
+// newWithDB news a new store, for testing use
+func newWithDB(db *gorm.DB) Store {
+	return &store{
 		db:   db.Table(TableName),
 		tdDb: db.Table(TableNameTd),
 	}
-	return newCacheMiddleware(s)
 }
 
 func (t *store) InsertTd(data *model.TotalDifficulty) error {
@@ -43,8 +47,8 @@ func (t *store) Insert(data *model.Header) error {
 	return t.db.Create(data).Error
 }
 
-func (t *store) Delete(blockNumber int64) error {
-	return t.db.Delete(model.Header{}, "number = ?", blockNumber).Error
+func (t *store) Delete(from, to int64) error {
+	return t.db.Delete(model.Header{}, "number >= ? AND number <= ?", from, to).Error
 }
 
 func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {

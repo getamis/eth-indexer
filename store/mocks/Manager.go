@@ -14,20 +14,6 @@ type Manager struct {
 	mock.Mock
 }
 
-// DeleteStateFromBlock provides a mock function with given fields: blockNumber
-func (_m *Manager) DeleteStateFromBlock(blockNumber int64) error {
-	ret := _m.Called(blockNumber)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(blockNumber)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // FindERC20 provides a mock function with given fields: address
 func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
 	ret := _m.Called(address)
@@ -49,20 +35,6 @@ func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
 	}
 
 	return r0, r1
-}
-
-// ForceInsertBlock provides a mock function with given fields: block, receipts, dump
-func (_m *Manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
-	ret := _m.Called(block, receipts, dump)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
-		r0 = rf(block, receipts, dump)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
 }
 
 // GetHeaderByNumber provides a mock function with given fields: number
@@ -162,13 +134,13 @@ func (_m *Manager) LatestHeader() (*model.Header, error) {
 	return r0, r1
 }
 
-// UpdateBlock provides a mock function with given fields: block, receipts, dump
-func (_m *Manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error {
-	ret := _m.Called(block, receipts, dump)
+// UpdateBlocks provides a mock function with given fields: blocks, receipts, dumps, mode
+func (_m *Manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, mode int) error {
+	ret := _m.Called(blocks, receipts, dumps, mode)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Block, []*types.Receipt, *state.DirtyDump) error); ok {
-		r0 = rf(block, receipts, dump)
+	if rf, ok := ret.Get(0).(func([]*types.Block, [][]*types.Receipt, []*state.DirtyDump, int) error); ok {
+		r0 = rf(blocks, receipts, dumps, mode)
 	} else {
 		r0 = ret.Error(0)
 	}

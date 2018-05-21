@@ -2,10 +2,10 @@
 package mocks
 
 import big "math/big"
+
 import common "github.com/ethereum/go-ethereum/common"
 import context "context"
 import ethereum "github.com/ethereum/go-ethereum"
-
 import mock "github.com/stretchr/testify/mock"
 import model "github.com/maichain/eth-indexer/model"
 import state "github.com/ethereum/go-ethereum/core/state"
@@ -175,6 +175,29 @@ func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address, num int6
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, common.Address, int64) error); ok {
 		r1 = rf(ctx, addr, num)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetTotalDifficulty provides a mock function with given fields: ctx, hash
+func (_m *EthClient) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 *big.Int
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) *big.Int); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, hash)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -15,12 +15,12 @@
 package store
 
 import (
-	"bytes"
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
@@ -28,6 +28,21 @@ import (
 	header "github.com/maichain/eth-indexer/store/block_header"
 	"github.com/maichain/eth-indexer/store/transaction"
 	receipt "github.com/maichain/eth-indexer/store/transaction_receipt"
+)
+
+// UpdateMode defines the mode to update blocks
+type UpdateMode = int
+
+const (
+	// ModeReOrg represents update blocks by reorg
+	// Stop if any errors occur.
+	ModeReOrg UpdateMode = iota
+	// ModeSync represents update blocks by ethereum sync
+	// Stop if any errors occur, but return nil error if it's a duplicate error
+	ModeSync
+	// ModeForceSync represents update erc20 storage data forcibly
+	// Update all erc20 storage data even if duplicate errors occur.
+	ModeForceSync
 )
 
 //go:generate mockery -name Manager
@@ -40,18 +55,14 @@ type Manager interface {
 	InsertERC20(code *model.ERC20) error
 	// InsertTd writes the total difficulty for a block
 	InsertTd(block *types.Block, td *big.Int) error
-	// DeleteDataFromBlock deletes all data from this block and higher
-	DeleteStateFromBlock(blockNumber int64) error
 	// LatestHeader returns a latest header from db
 	LatestHeader() (*model.Header, error)
 	// GetHeaderByNumber returns the header of the given block number
 	GetHeaderByNumber(number int64) (*model.Header, error)
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
-	// UpdateBlock updates all block data if the block doesn't exist
-	UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) error
-	// ForceInsertBlock inserts all block data even if some data already exist
-	ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error)
+	// UpdateBlock updates all block data. 'delete' indicates whether deletes all data before update.
+	UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, mode UpdateMode) error
 }
 
 type manager struct {
@@ -80,45 +91,27 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	return headerStore.InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error) {
-	headerStore := header.NewWithDB(m.db)
-	blockNumber := block.Number().Int64()
-	// Best effort to check if we already have the data
-	hdr, err := headerStore.FindBlockByNumber(blockNumber)
-	if err == nil && bytes.Equal(hdr.Hash, block.Hash().Bytes()) {
-		return
+func (m *manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, mode UpdateMode) (err error) {
+	size := len(blocks)
+	if size != len(receipts) || size != len(dumps) {
+		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts), "dumps", len(dumps))
+		return common.ErrInconsistentStates
 	}
-	err = nil
+
+	from := int64(blocks[0].NumberU64())
+	to := int64(blocks[size-1].NumberU64())
+	if (to - from + 1) != int64(size) {
+		log.Error("Inconsistent size and range", "size", size, "range", to-from+1)
+		return common.ErrInconsistentStates
+	}
 
 	dbTx := m.db.Begin()
 	defer func() {
-		err = finalizeTransaction(dbTx, err)
-	}()
+		// In ModeSync, return nil error if it's a duplicate error
+		if (mode == ModeSync) && common.DuplicateError(err) {
+			err = nil
+		}
 
-	err = m.deleteBlock(dbTx, blockNumber)
-	if err != nil {
-		return
-	}
-
-	err = m.insertBlock(dbTx, block, receipts)
-	if err != nil {
-		return
-	}
-
-	// No need to update states
-	if dump == nil {
-		return
-	}
-	err = m.updateState(dbTx, block, dump, true)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (m *manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error) {
-	dbTx := m.db.Begin()
-	defer func() {
 		if err != nil {
 			dbTx.Rollback()
 			return
@@ -126,18 +119,30 @@ func (m *manager) ForceInsertBlock(block *types.Block, receipts []*types.Receipt
 		err = dbTx.Commit().Error
 	}()
 
-	err = m.insertBlock(dbTx, block, receipts)
-	if err != nil && !common.DuplicateError(err) {
-		return
+	// In ModeReOrg, delete all blocks, recipients and states within this range before insertions
+	if mode == ModeReOrg {
+		err = m.delete(dbTx, from, to)
+		if err != nil {
+			return err
+		}
 	}
 
-	// No need to update states
-	if dump == nil {
-		return
-	}
-	err = m.updateState(dbTx, block, dump, false)
-	if err != nil {
-		return
+	// In ModeForceSync, ignore the duplicate error and continue to process it.
+	ignoreDupErr := (mode == ModeForceSync)
+	// Start to insert blocks and states
+	for i := 0; i < size; i++ {
+		err = m.insertBlock(dbTx, blocks[i], receipts[i], dumps[i])
+		if ignoreDupErr && common.DuplicateError(err) {
+			err = nil
+		}
+
+		if err != nil {
+			return
+		}
+		err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -156,37 +161,14 @@ func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	return header.NewWithDB(m.db).FindTd(hash)
 }
 
-func (m *manager) DeleteStateFromBlock(blockNumber int64) (err error) {
-	dbTx := m.db.Begin()
-	defer func(dbTx *gorm.DB) {
-		if err != nil {
-			dbTx.Rollback()
-			return
-		}
-		err = dbTx.Commit().Error
-	}(dbTx)
-
-	accountStore := account.NewWithDB(dbTx)
-	err = accountStore.DeleteAccounts(blockNumber)
-	if err != nil {
-		return
-	}
-
-	for hexAddr := range m.erc20List {
-		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), blockNumber)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-// insertBlock inserts block inside a DB transaction
-func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt) (err error) {
+// insertBlock inserts block, and accounts inside a DB transaction
+func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump) (err error) {
 	headerStore := header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
+	accountStore := account.NewWithDB(dbTx)
 
+	// Insert blocks, txs and receipts
 	err = headerStore.Insert(common.Header(block))
 	if err != nil {
 		return err
@@ -210,81 +192,93 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 		}
 	}
 
+	// Insert accounts
+	blockNumber := block.Number().Int64()
+	for addr, account := range dump.Accounts {
+		err := insertAccount(accountStore, blockNumber, addr, account)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-// updateState updates states inside a DB transaction
-func (m *manager) updateState(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump, ignoreDuplicateError bool) (err error) {
-	accountStore := account.NewWithDB(dbTx)
-
-	blockNumber := block.Number().Int64()
-	// Insert modified accounts
-	modifiedERC20s := make(map[string]struct{})
-	for addr, account := range dump.Accounts {
-		err = insertAccount(accountStore, blockNumber, addr, account)
-		if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
-			return
-		}
-
-		// If it's in our erc20 list, update it's storage
-		if _, ok := m.erc20List[addr]; len(account.Storage) > 0 && ok {
-			modifiedERC20s[addr] = struct{}{}
-			for key, value := range account.Storage {
-				s := &model.ERC20Storage{
-					BlockNumber: blockNumber,
-					Address:     common.HexToBytes(addr),
-					Key:         common.HexToBytes(key),
-					Value:       common.HexToBytes(value),
-				}
-				err = accountStore.InsertERC20Storage(s)
-				if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
-					return
-				}
-			}
-		}
+// updateERC20 updates erc20 storages. If 'ignoreDuplicateError' is true, ignore duplicate key error, and continue to process
+func (m *manager) updateERC20(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump, ignoreDuplicateError bool) error {
+	// Ensure accounts is not nil
+	if dump.Accounts == nil {
+		dump.Accounts = make(map[string]state.DirtyDumpAccount)
 	}
 
-	// Update non-modified ERC20s
+	// There is no erc20 storage updates
+	accountStore := account.NewWithDB(dbTx)
+	blockNumber := block.Number().Int64()
+
 	for addr, erc20 := range m.erc20List {
 		// This erc20 contract is not deployed yet
 		if blockNumber < erc20.BlockNumber {
 			continue
 		}
 
-		// This erc20 contract is modified
-		if _, ok := modifiedERC20s[addr]; ok {
+		account, ok := dump.Accounts[addr]
+		// Insert a null record if it's NOT in modified accounts
+		if !ok || len(account.Storage) == 0 {
+			s := &model.ERC20Storage{
+				BlockNumber: blockNumber,
+				Address:     common.HexToBytes(addr),
+			}
+			err := accountStore.InsertERC20Storage(s)
+			if err != nil && !(ignoreDuplicateError && common.DuplicateError(err)) {
+				return err
+			}
 			continue
 		}
 
-		s := &model.ERC20Storage{
-			BlockNumber: blockNumber,
-			Address:     common.HexToBytes(addr),
-		}
-		err = accountStore.InsertERC20Storage(s)
-		if err != nil && (!ignoreDuplicateError || !common.DuplicateError(err)) {
-			return
+		// Update storage record if it's in modified accounts
+		for key, value := range account.Storage {
+			s := &model.ERC20Storage{
+				BlockNumber: blockNumber,
+				Address:     common.HexToBytes(addr),
+				Key:         common.HexToBytes(key),
+				Value:       common.HexToBytes(value),
+			}
+			err := accountStore.InsertERC20Storage(s)
+			if err != nil && !(ignoreDuplicateError && common.DuplicateError(err)) {
+				return err
+			}
 		}
 	}
-	return
+	return nil
 }
 
-// deleteBlock deletes block data inside a DB transaction
-func (m *manager) deleteBlock(dbTx *gorm.DB, blockNumber int64) (err error) {
+// delete deletes block and state data inside a DB transaction
+func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	headerStore := header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
+	accountStore := account.NewWithDB(dbTx)
+	err = headerStore.Delete(from, to)
+	if err != nil {
+		return
+	}
+	err = txStore.Delete(from, to)
+	if err != nil {
+		return
+	}
+	err = receiptStore.Delete(from, to)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteAccounts(from, to)
+	if err != nil {
+		return
+	}
 
-	err = headerStore.Delete(blockNumber)
-	if err != nil {
-		return
-	}
-	err = txStore.Delete(blockNumber)
-	if err != nil {
-		return
-	}
-	err = receiptStore.Delete(blockNumber)
-	if err != nil {
-		return
+	for hexAddr := range m.erc20List {
+		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
@@ -297,19 +291,6 @@ func (m *manager) InsertERC20(code *model.ERC20) error {
 func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {
 	accountStore := account.NewWithDB(m.db)
 	return accountStore.FindERC20(address)
-}
-
-// finalizeTransaction finalizes the db transaction and ignores duplicate key error
-func finalizeTransaction(dbtx *gorm.DB, err error) error {
-	if err != nil {
-		dbtx.Rollback()
-		// If it's a duplicate key error, ignore it
-		if common.DuplicateError(err) {
-			err = nil
-		}
-		return err
-	}
-	return dbtx.Commit().Error
 }
 
 func insertAccount(accountStore account.Store, blockNumber int64, addr string, account state.DirtyDumpAccount) error {

@@ -12,7 +12,7 @@ const (
 //go:generate mockery -name Store
 type Store interface {
 	Insert(data *model.Receipt) error
-	Delete(blockNumber int64) (err error)
+	Delete(from, to int64) (err error)
 	FindReceipt(hash []byte) (result *model.Receipt, err error)
 }
 
@@ -30,8 +30,8 @@ func (r *store) Insert(data *model.Receipt) error {
 	return r.db.Create(data).Error
 }
 
-func (t *store) Delete(blockNumber int64) (err error) {
-	err = t.db.Delete(model.Receipt{}, "block_number = ?", blockNumber).Error
+func (r *store) Delete(from, to int64) (err error) {
+	err = r.db.Delete(model.Receipt{}, "block_number >= ? AND block_number <= ?", from, to).Error
 	return
 }
 

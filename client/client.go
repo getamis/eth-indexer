@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -29,6 +30,10 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/maichain/eth-indexer/contracts"
 	"github.com/maichain/eth-indexer/model"
+)
+
+var (
+	ErrInvalidTDFormat = errors.New("invalid td format")
 )
 
 //go:generate mockery -name EthClient
@@ -45,6 +50,7 @@ type EthClient interface {
 	ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
+	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	Close()
 }
 
@@ -69,6 +75,20 @@ func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, err
 	r := &state.Dump{}
 	err := c.rpc.CallContext(ctx, r, "debug_dumpBlock", fmt.Sprintf("0x%x", blockNr))
 	return r, err
+}
+
+func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
+	var r string
+	err := c.rpc.CallContext(ctx, &r, "debug_getTotalDifficulty", hash.Hex())
+	if err != nil {
+		return nil, err
+	}
+	// Remove the '0x' prefix
+	td, ok := new(big.Int).SetString(r[2:], 16)
+	if !ok {
+		return nil, ErrInvalidTDFormat
+	}
+	return td, nil
 }
 
 func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {

@@ -59,7 +59,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("should get header by hash", func() {
-		store := NewWithDB(db)
+		store := newWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -81,7 +81,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("should get header by number", func() {
-		store := NewWithDB(db)
+		store := newWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -100,7 +100,7 @@ var _ = Describe("Block Header Database Test", func() {
 
 	It("should insert one new record in database", func() {
 		By("insert new one header")
-		store := NewWithDB(db)
+		store := newWithDB(db)
 		data := makeHeader(1000300, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		err := store.Insert(data)
 		Expect(err).Should(Succeed())
@@ -111,7 +111,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("deletes header from a block number", func() {
-		store := NewWithDB(db)
+		store := newWithDB(db)
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data3 := makeHeader(1000303, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -121,21 +121,21 @@ var _ = Describe("Block Header Database Test", func() {
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.Delete(1000301)
+		err := store.Delete(1000301, 1000302)
 		Expect(err).Should(Succeed())
 
 		result, err := store.FindBlockByNumber(data1.Number)
 		Expect(err).Should(Succeed())
-		Expect(*result).Should(Equal(*data1))
+		Expect(result).Should(Equal(data1))
 		_, err = store.FindBlockByNumber(data2.Number)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		_, err = store.FindBlockByNumber(data3.Number)
-		Expect(err).Should(Succeed())
 		result, err = store.FindBlockByNumber(data3.Number)
+		Expect(err).Should(Succeed())
+		Expect(result).Should(Equal(data3))
 	})
 
 	It("should get the last header", func() {
-		store := NewWithDB(db)
+		store := newWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -148,6 +148,25 @@ var _ = Describe("Block Header Database Test", func() {
 		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
 		Expect(*lastResult).Should(Equal(*data3))
+	})
+
+	It("should get TD", func() {
+		store := newWithDB(db)
+
+		td := &model.TotalDifficulty{
+			Block: 1000,
+			Hash:  []byte("1234567890"),
+			Td:    "10000000",
+		}
+		err := store.InsertTd(td)
+		Expect(err).Should(BeNil())
+
+		resTD, err := store.FindTd(td.Hash)
+		Expect(err).Should(BeNil())
+		Expect(resTD).Should(Equal(td))
+
+		resTD, err = store.FindTd([]byte("not found"))
+		Expect(err).Should(Equal(gorm.ErrRecordNotFound))
 	})
 })
 
