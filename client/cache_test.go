@@ -34,11 +34,12 @@ var _ = Describe("Cache Test", func() {
 	)
 
 	ctx := context.Background()
+	td := big.NewInt(100)
 	block := types.NewBlockWithHeader(
 		&types.Header{
 			Number:     big.NewInt(100),
 			Root:       common.StringToHash("12345678900"),
-			Difficulty: big.NewInt(100),
+			Difficulty: td,
 		},
 	)
 	tx := types.NewTransaction(1, common.HexToAddress("1234567890"), big.NewInt(1000), 100, big.NewInt(10000), nil)
@@ -162,6 +163,49 @@ var _ = Describe("Cache Test", func() {
 				Expect(resTX).Should(BeNil())
 
 				_, ok := cacheClient.txCache.Get(tx.Hash().Hex())
+				Expect(ok).Should(BeFalse())
+			})
+		})
+	})
+
+	Context("GetTotalDifficulty()", func() {
+		It("in cache", func() {
+			By("wrong in cache")
+			cacheClient.tdCache.Add(block.Hash().Hex(), "wrong data")
+			mockClient.On("GetTotalDifficulty", ctx, block.Hash()).Return(nil, unknownErr).Once()
+			resTD, err := cacheClient.GetTotalDifficulty(ctx, block.Hash())
+			Expect(err).Should(Equal(unknownErr))
+			Expect(resTD).Should(BeNil())
+
+			By("add in cache")
+			mockClient.On("GetTotalDifficulty", ctx, block.Hash()).Return(td, nil).Once()
+			resTD, err = cacheClient.GetTotalDifficulty(ctx, block.Hash())
+			Expect(err).Should(BeNil())
+			Expect(resTD).Should(Equal(td))
+
+			By("already in cache")
+			resTD, err = cacheClient.GetTotalDifficulty(ctx, block.Hash())
+			Expect(err).Should(BeNil())
+			Expect(resTD).Should(Equal(td))
+		})
+		Context("not in cache", func() {
+			It("find block successfully", func() {
+				mockClient.On("GetTotalDifficulty", ctx, block.Hash()).Return(td, nil).Once()
+				resTD, err := cacheClient.GetTotalDifficulty(ctx, block.Hash())
+				Expect(err).Should(BeNil())
+				Expect(resTD).Should(Equal(td))
+
+				resTD, err = cacheClient.GetTotalDifficulty(ctx, block.Hash())
+				Expect(err).Should(BeNil())
+				Expect(resTD).Should(Equal(td))
+			})
+			It("failed to find block", func() {
+				mockClient.On("GetTotalDifficulty", ctx, block.Hash()).Return(nil, unknownErr).Once()
+				resTD, err := cacheClient.GetTotalDifficulty(ctx, block.Hash())
+				Expect(err).Should(Equal(unknownErr))
+				Expect(resTD).Should(BeNil())
+
+				_, ok := cacheClient.tdCache.Get(block.Hash().Hex())
 				Expect(ok).Should(BeFalse())
 			})
 		})
