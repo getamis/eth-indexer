@@ -29,6 +29,18 @@ var _ = Describe("Manager Test", func() {
 		dumps    []*state.DirtyDump
 		manager  Manager
 	)
+
+	newErc20Addr := gethCommon.HexToAddress("1234567891")
+	newErc20 := &model.ERC20{
+		Address:     newErc20Addr.Bytes(),
+		Code:        []byte("1332"),
+		BlockNumber: 0,
+	}
+	newErc20Storage := map[string]string{
+		common.BytesToHex(gethCommon.HexToHash("0x0a").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0b").Bytes()),
+		common.BytesToHex(gethCommon.HexToHash("0x0c").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0d").Bytes()),
+	}
+
 	BeforeSuite(func() {
 		var err error
 		mysql, err = test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
@@ -95,6 +107,9 @@ var _ = Describe("Manager Test", func() {
 							"1": "2",
 						},
 					},
+					common.BytesToHex(newErc20.Address): {
+						Storage: newErc20Storage,
+					},
 				},
 			},
 			{
@@ -120,12 +135,12 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(blocks, receipts, dumps, true)
+		err = manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
 		Expect(err).Should(BeNil())
 	})
 
 	Context("UpdateBlocks()", func() {
-		It("can not change blocks", func() {
+		It("sync mode", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
@@ -136,7 +151,7 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, false)
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeSync)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
@@ -144,7 +159,7 @@ var _ = Describe("Manager Test", func() {
 			Expect(header).Should(Equal(common.Header(blocks[0])))
 		})
 
-		It("can not change blocks", func() {
+		It("reorg mode", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
@@ -155,12 +170,50 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, true)
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
 			Expect(header).Should(Equal(common.Header(newBlocks[0])))
+		})
+
+		It("force sync mode", func() {
+			accountStore := account.NewWithDB(db)
+
+			// Cannot find new erc20 storage
+			for k := range newErc20Storage {
+				_, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
+				Expect(err).ShouldNot(BeNil())
+			}
+
+			// Create find new erc20
+			err := manager.InsertERC20(newErc20)
+			Expect(err).Should(BeNil())
+
+			// Reload manager
+			manager, err = NewManager(db)
+			Expect(err).Should(BeNil())
+
+			// Force update blocks
+			err = manager.UpdateBlocks(blocks, receipts, dumps, ModeForceSync)
+			Expect(err).Should(BeNil())
+
+			// Got blocks 0
+			header, err := manager.GetHeaderByNumber(100)
+			Expect(err).Should(BeNil())
+			Expect(header).Should(Equal(common.Header(blocks[0])))
+
+			// Found new erc20 storage
+			for k, v := range newErc20Storage {
+				value, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
+				Expect(err).Should(BeNil())
+				Expect(value.Value).Should(Equal(gethCommon.HexToHash(v).Bytes()))
+			}
+
+			db.DropTable(model.ERC20Storage{
+				Address: newErc20.Address,
+			})
 		})
 
 		It("failed due to wrong signer", func() {
@@ -171,7 +224,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(blocks, receipts, dumps, true)
+			err := manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})

@@ -98,7 +98,7 @@ func (idx *indexer) SyncToTarget(ctx context.Context, fromBlock, targetBlock int
 			log.Error("Failed to get block from ethereum", "number", i, "err", err)
 			return err
 		}
-		_, _, err = idx.insertBlocks(ctx, []*types.Block{block}, false)
+		_, _, err = idx.insertBlocks(ctx, []*types.Block{block}, store.ModeForceSync)
 		if err != nil {
 			log.Error("Failed to update block atomically", "number", i, "err", err)
 			return err
@@ -235,7 +235,7 @@ func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err er
 	return common.ParseTd(ltd)
 }
 
-func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reorg bool) (*types.Block, *big.Int, error) {
+func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mode store.UpdateMode) (*types.Block, *big.Int, error) {
 	var lastTd *big.Int
 	// Insert td
 	for i := len(blocks) - 1; i >= 0; i-- {
@@ -261,7 +261,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 		receipts = append(receipts, receipt)
 		dumps = append(dumps, dump)
 	}
-	err := idx.manager.UpdateBlocks(newBlocks, receipts, dumps, reorg)
+	err := idx.manager.UpdateBlocks(newBlocks, receipts, dumps, mode)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -284,7 +284,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 	var blocksToInsert []*types.Block
 	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
-		return idx.insertBlocks(ctx, blocksToInsert, false)
+		return idx.insertBlocks(ctx, blocksToInsert, store.ModeSync)
 	}
 
 	logger.Trace("Reorg tracing: Start")
@@ -334,7 +334,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 
 	// Now atomically update the reorg'ed blocks
 	logger.Trace("Reorg: Starting at", "branch", branchBlock.Number(), "hash", branchBlock.Hash().Hex())
-	block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert, true)
+	block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert, store.ModeReOrg)
 	if err != nil {
 		logger.Error("Reorg: Failed to insert blocks", "err", err)
 		return nil, nil, err
