@@ -112,7 +112,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	defer cancel()
 
 	// Listen new channel events
-	_, err := idx.client.SubscribeNewHead(childCtx, ch)
+	sub, err := idx.client.SubscribeNewHead(childCtx, ch)
 	if err != nil {
 		log.Error("Failed to subscribe event for new header from ethereum", "err", err)
 		return err
@@ -129,6 +129,9 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 			}
 		case <-childCtx.Done():
 			return childCtx.Err()
+		case err := <-sub.Err():
+			log.Error("Failed to subscribe new chain head", "err", err)
+			return err
 		}
 	}
 }
