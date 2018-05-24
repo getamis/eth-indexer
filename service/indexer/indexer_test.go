@@ -34,14 +34,28 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+type testSub struct {
+	mychan chan error
+}
+
+func (m *testSub) Err() <-chan error {
+	return m.mychan
+}
+
+func (m *testSub) Unsubscribe() {
+	return
+}
+
 var _ = Describe("Indexer Test", func() {
 	var (
+		mockSub          *testSub
 		mockEthClient    *clientMocks.EthClient
 		mockStoreManager *storeMocks.Manager
 		idx              *indexer
 		nilDirtyDump     *state.DirtyDump
 	)
 	BeforeEach(func() {
+		mockSub = &testSub{make(chan error)}
 		mockStoreManager = new(storeMocks.Manager)
 		mockEthClient = new(clientMocks.EthClient)
 		idx = New(mockEthClient, mockStoreManager)
@@ -218,7 +232,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(9)
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- blocks[18].Header()
@@ -292,7 +306,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("TransactionReceipt", mock.Anything, tx.Hash()).Return(receipt, nil).Times(20)
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- blocks[19].Header()
@@ -361,7 +375,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- blocks[15].Header()
@@ -401,7 +415,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -443,7 +457,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -487,7 +501,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -528,7 +542,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -571,7 +585,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -601,7 +615,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- block.Header()
@@ -618,7 +632,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 				go func() {
 					ch <- &types.Header{
@@ -630,6 +644,19 @@ var _ = Describe("Indexer Test", func() {
 
 				err := idx.Listen(ctx, ch)
 				Expect(err).Should(Equal(unknownErr))
+			})
+
+			It("subscribe error", func() {
+				subError := errors.New("client is closed")
+				var recvCh chan<- *types.Header
+				recvCh = ch
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+				go func() {
+					mockSub.mychan <- subError
+				}()
+				err := idx.Listen(ctx, ch)
+				Expect(err).Should(Equal(subError))
 			})
 		})
 	})
@@ -745,7 +772,7 @@ var _ = Describe("Indexer Test", func() {
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
-			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 			go func() {
 				ch <- newBlocks[18].Header()
@@ -841,7 +868,7 @@ var _ = Describe("Indexer Test", func() {
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
-			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, nil).Once()
+			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
 
 			go func() {
 				ch <- newBlocks[16].Header()
