@@ -69,7 +69,7 @@ func StringToHex(data string) string {
 
 func ParseTd(ltd *model.TotalDifficulty) (*big.Int, error) {
 	td, ok := new(big.Int).SetString(ltd.Td, 10)
-	if !ok || td.Int64() <= 0 {
+	if !ok || td.Cmp(common.Big0) <= 0 {
 		return nil, ErrInvalidTD
 	}
 	return td, nil

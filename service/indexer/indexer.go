@@ -208,7 +208,7 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 		}
 	}
 
-	td := new(big.Int).Add(big.NewInt(prevTd.Int64()), block.Difficulty())
+	td := new(big.Int).Add(prevTd, block.Difficulty())
 	err = idx.manager.InsertTd(block, td)
 	if err != nil && !common.DuplicateError(err) {
 		log.Error("Failed to insert td for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex(), "TD", td, "err", err)
