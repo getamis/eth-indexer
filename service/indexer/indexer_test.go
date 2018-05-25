@@ -140,6 +140,30 @@ var _ = Describe("Indexer Test", func() {
 			})
 		})
 	})
+
+	Context("insertTd()", func() {
+		It("should be ok", func() {
+			ctx := context.Background()
+
+			difficultyStr := "11111111111111111111111111111111111111111111111111111111"
+			expTD, _ := new(big.Int).SetString("22222222222222222222222222222222222222222222222222222222", 10)
+			difficulty, _ := new(big.Int).SetString(difficultyStr, 10)
+			block := types.NewBlockWithHeader(&types.Header{
+				ParentHash: common.HexToHash("1234567890"),
+				Difficulty: difficulty,
+				Number:     big.NewInt(100),
+			})
+			mockStoreManager.On("GetTd", block.ParentHash().Bytes()).Return(&model.TotalDifficulty{
+				Hash: block.ParentHash().Bytes(),
+				Td:   difficultyStr,
+			}, nil).Once()
+			mockStoreManager.On("InsertTd", block, expTD).Return(nil).Once()
+			td, err := idx.insertTd(ctx, block)
+			Expect(td).Should(Equal(expTD))
+			Expect(err).Should(BeNil())
+		})
+	})
+
 	Context("SyncToTarget()", func() {
 		targetBlock := int64(19)
 
