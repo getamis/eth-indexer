@@ -2,6 +2,7 @@ package account
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -9,7 +10,6 @@ import (
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	"github.com/maichain/mapi/base/test"
-	"github.com/maichain/mapi/types/reflect"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
