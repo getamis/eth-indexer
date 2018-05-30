@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/getamis/sirius/log"
@@ -29,7 +32,6 @@ import (
 	"github.com/maichain/eth-indexer/service/rpc"
 	"github.com/maichain/eth-indexer/store"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -83,12 +85,13 @@ var ServerCmd = &cobra.Command{
 			}()
 			go func() {
 				if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Crit("Http Server stopped unexpectedly", "err", err)
+					log.Error("Http Server stopped unexpectedly", "err", err)
 				}
 			}()
 		}
 
 		var s *generalRPC.Server
+		metricLabel := make(map[string]string)
 		if eth {
 			// eth-client
 			ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
@@ -98,24 +101,37 @@ var ServerCmd = &cobra.Command{
 			}
 			defer ethClient.Close()
 
+			metricLabel["data_source"] = "eth_relay"
 			s = generalRPC.NewServer(
 				generalRPC.APIs(rpc.NewRelay(ethClient)),
-				generalRPC.Metrics(metrics.NewServerMetrics(metrics.Namespace("indexerRelay"))),
+				generalRPC.Metrics(metrics.NewServerMetrics(
+					metrics.Namespace("indexerRPC"),
+					metrics.Labels(metricLabel))),
 			)
 		} else {
 			db := MustNewDatabase()
 			defer db.Close()
+			metricLabel["data_source"] = "db"
 			s = generalRPC.NewServer(
 				generalRPC.APIs(rpc.New(store.NewServiceManager(db))),
-				generalRPC.Metrics(metrics.NewServerMetrics(metrics.Namespace("indexerDB"))),
+				generalRPC.Metrics(metrics.NewServerMetrics(
+					metrics.Namespace("indexerRPC"),
+					metrics.Labels(metricLabel))),
 			)
 		}
 
-		if err := s.Serve(l); err != grpc.ErrServerStopped {
-			log.Crit("Server stopped unexpectedly", "err", err)
-		}
+		go func() {
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+			defer signal.Stop(sigs)
+			log.Debug("Shutting down", "signal", <-sigs)
+			s.Shutdown()
+		}()
 
-		return nil
+		if err := s.Serve(l); err != nil {
+			log.Error("Server stopped unexpectedly", "err", err)
+		}
+		return err
 	},
 }
 
