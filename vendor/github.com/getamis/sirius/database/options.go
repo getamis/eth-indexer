@@ -30,6 +30,11 @@ type Options struct {
 	RetryDelay    time.Duration
 	RetryTimeout  time.Duration
 	DriverOptions []interface{}
+
+	// options to connection pool
+	MaxIdleConns    int
+	MaxOpenConns    int
+	ConnMaxLifetime time.Duration
 }
 
 func Retry(delay time.Duration, timeout time.Duration) Option {
@@ -66,5 +71,23 @@ func Driver(name string) Option {
 func DriverOption(opts ...interface{}) Option {
 	return func(o *Options) {
 		o.DriverOptions = opts
+	}
+}
+
+func MaxIdleConns(n int) Option {
+	return func(o *Options) {
+		o.MaxIdleConns = n
+	}
+}
+
+func MaxOpenConns(n int) Option {
+	return func(o *Options) {
+		o.MaxOpenConns = n
+	}
+}
+
+func ConnMaxLifetime(d time.Duration) Option {
+	return func(o *Options) {
+		o.ConnMaxLifetime = d
 	}
 }

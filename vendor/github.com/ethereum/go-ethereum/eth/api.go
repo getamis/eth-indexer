@@ -473,7 +473,6 @@ func GetDirtyStorage(config *params.ChainConfig, blockchain *core.BlockChain, nu
 	stateDB.StartDirtyStorage()
 	defer func() {
 		stateDB.StopDirtyStorage()
-		// update db only if the diff is 1 and err == nil
 		if err == nil {
 			stateErr := blockchain.WriteDirtyDump(hash, dump)
 			if stateErr != nil {

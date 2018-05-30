@@ -14,7 +14,11 @@
 
 package rpc
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+
+	"github.com/getamis/sirius/metrics"
+)
 
 type ServerOption func(*Server)
 
@@ -29,5 +33,11 @@ func APIs(apis ...API) ServerOption {
 func Credentials(credentials *tls.Config) ServerOption {
 	return func(s *Server) {
 		s.credentials = credentials
+	}
+}
+
+func Metrics(metrics metrics.ServerMetrics) ServerOption {
+	return func(s *Server) {
+		s.grpcMetrics = metrics
 	}
 }
