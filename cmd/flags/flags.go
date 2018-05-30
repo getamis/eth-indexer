@@ -39,4 +39,8 @@ const (
 	SyncTargetBlockFlag      = "sync.targetBlock"
 	SyncGetMissingBlocksFlag = "sync.getMissingBlocks"
 	SyncFromBlockFlag        = "sync.fromBlock"
+
+	// flags for metrics
+	MetricsHostFlag = "metrics.host"
+	MetricsPortFlag = "metrics.port"
 )
