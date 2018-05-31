@@ -78,6 +78,18 @@ func connectToDatabase(driver, connectionString string, o *database.Options) (*g
 			return nil, err
 		}
 
+		if o.MaxIdleConns > 0 {
+			db.DB().SetMaxIdleConns(o.MaxIdleConns)
+		}
+
+		if o.MaxOpenConns > 0 {
+			db.DB().SetMaxOpenConns(o.MaxOpenConns)
+		}
+
+		if o.ConnMaxLifetime > 0 {
+			db.DB().SetConnMaxLifetime(o.ConnMaxLifetime)
+		}
+
 		db.LogMode(o.Logging)
 		db.SetLogger(&logger{
 			logger: o.Logger,

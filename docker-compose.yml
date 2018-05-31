@@ -47,8 +47,12 @@ services:
       - --eth
       - --eth.host
       - ${ETH_HOST}
+      - --metrics
+      - --metrics.port
+      - "9091"
     ports:
       - 5487:5487
+      - 9091:9091
     restart: always
     depends_on:
       - ws-database

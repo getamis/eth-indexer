@@ -16,16 +16,22 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/metrics"
+	generalRPC "github.com/getamis/sirius/rpc"
 	"github.com/maichain/eth-indexer/cmd/flags"
 	"github.com/maichain/eth-indexer/service/rpc"
 	"github.com/maichain/eth-indexer/store"
-	"github.com/maichain/mapi/api"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -44,6 +50,11 @@ var (
 	dbName     string
 	dbUser     string
 	dbPassword string
+
+	// flags for metrics
+	metricsEnabled bool
+	metricsHost    string
+	metricsPort    int
 )
 
 // ServerCmd represents the grpc-server command
@@ -58,7 +69,29 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		var s api.Server
+		var httpServer *http.Server
+		if metricsEnabled {
+			serveMux := http.NewServeMux()
+			serveMux.HandleFunc("/metrics", metrics.DefaultRegistry.ServeHTTP)
+			httpServer = &http.Server{
+				Addr:    fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+				Handler: serveMux,
+			}
+			// Shutdown http server before termination
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				httpServer.Shutdown(ctx)
+			}()
+			go func() {
+				if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					log.Error("Http Server stopped unexpectedly", "err", err)
+				}
+			}()
+		}
+
+		var s *generalRPC.Server
+		metricLabel := make(map[string]string)
 		if eth {
 			// eth-client
 			ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
@@ -68,22 +101,37 @@ var ServerCmd = &cobra.Command{
 			}
 			defer ethClient.Close()
 
-			s = api.NewServer(
-				rpc.NewRelay(ethClient),
+			metricLabel["data_source"] = "eth_relay"
+			s = generalRPC.NewServer(
+				generalRPC.APIs(rpc.NewRelay(ethClient)),
+				generalRPC.Metrics(metrics.NewServerMetrics(
+					metrics.Namespace("indexerRPC"),
+					metrics.Labels(metricLabel))),
 			)
 		} else {
 			db := MustNewDatabase()
 			defer db.Close()
-			s = api.NewServer(
-				rpc.New(store.NewServiceManager(db)),
+			metricLabel["data_source"] = "db"
+			s = generalRPC.NewServer(
+				generalRPC.APIs(rpc.New(store.NewServiceManager(db))),
+				generalRPC.Metrics(metrics.NewServerMetrics(
+					metrics.Namespace("indexerRPC"),
+					metrics.Labels(metricLabel))),
 			)
 		}
 
-		if err := s.Serve(l); err != grpc.ErrServerStopped {
-			log.Crit("Server stopped unexpectedly", "err", err)
-		}
+		go func() {
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+			defer signal.Stop(sigs)
+			log.Debug("Shutting down", "signal", <-sigs)
+			s.Shutdown()
+		}()
 
-		return nil
+		if err := s.Serve(l); err != nil {
+			log.Error("Server stopped unexpectedly", "err", err)
+		}
+		return err
 	},
 }
 
@@ -114,4 +162,8 @@ func init() {
 	ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocolFlag, "ws", "The eth-client protocol")
 	ServerCmd.Flags().StringVar(&ethHost, flags.EthHostFlag, "127.0.0.1", "The eth-client host")
 	ServerCmd.Flags().IntVar(&ethPort, flags.EthPortFlag, 8546, "The eth-client port")
+
+	ServerCmd.Flags().BoolVar(&metricsEnabled, metrics.MetricsEnabledFlag, false, "Enable metreics")
+	ServerCmd.Flags().StringVar(&metricsHost, flags.MetricsHostFlag, "", "Metrics listening host")
+	ServerCmd.Flags().IntVar(&metricsPort, flags.MetricsPortFlag, 9092, "Metrics listening port")
 }
