@@ -61,6 +61,10 @@
   name = "google.golang.org/grpc"
   version = "1.9.2"
 
+[[override]]
+ branch = "master"
+ name = "github.com/docker/libnetwork"
+
 [prune]
   go-tests = true
   unused-packages = true

@@ -17,10 +17,10 @@
   version = "v0.4.7"
 
 [[projects]]
-  name = "github.com/Sirupsen/logrus"
+  branch = "master"
+  name = "github.com/Nvveen/Gotty"
   packages = ["."]
-  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
-  version = "v1.0.5"
+  revision = "cd527374f1e5bff4938207604a14f2e38a9cf512"
 
 [[projects]]
   branch = "master"
@@ -41,12 +41,19 @@
   revision = "bc0944904505aab55e089371a892be2f87883161"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/containerd/continuity"
+  packages = ["pathdriver"]
+  revision = "d3c23511c1bf5851696cba83143d9cbcd666869b"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -58,6 +65,7 @@
     "api/types/registry",
     "api/types/strslice",
     "api/types/swarm",
+    "api/types/swarm/runtime",
     "api/types/versions",
     "opts",
     "pkg/archive",
@@ -65,18 +73,16 @@
     "pkg/homedir",
     "pkg/idtools",
     "pkg/ioutils",
-    "pkg/jsonlog",
     "pkg/jsonmessage",
     "pkg/longpath",
+    "pkg/mount",
     "pkg/pools",
-    "pkg/promise",
     "pkg/stdcopy",
     "pkg/system",
     "pkg/term",
     "pkg/term/windows"
   ]
-  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
-  version = "v1.13.1"
+  revision = "71cd53e4a197b303c6ba086bd584ffd67a884281"
 
 [[projects]]
   name = "github.com/docker/go-connections"
@@ -89,6 +95,12 @@
   packages = ["."]
   revision = "47565b4f722fb6ceae66b95f853feed578a4a51c"
   version = "v0.3.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/docker/libnetwork"
+  packages = ["ipamutils"]
+  revision = "3931ba4d815e385ab97093c64477b82f14dadefb"
 
 [[projects]]
   branch = "master"
@@ -169,7 +181,8 @@
 [[projects]]
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "199e3d903f173ca5869445d99a5aebe85872a7a4"
+  revision = "ca33ff277b527ce11b793e62f9ba244129b01caf"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "develop"
@@ -182,9 +195,10 @@
     "log",
     "metrics",
     "rpc",
-    "rpc/pb"
+    "rpc/pb",
+    "test"
   ]
-  revision = "91c56a268faa85b3cc0cacbe4263880d03b1ba38"
+  revision = "d65c366c4b8fffe22d9314ac931381644151f951"
 
 [[projects]]
   name = "github.com/go-sql-driver/mysql"
@@ -234,29 +248,19 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/grpc-ecosystem/go-grpc-middleware"
-  packages = [
-    "retry",
-    "util/backoffutils",
-    "util/metautils"
-  ]
-  revision = "e9c5d9645c437ab1b204cff969a2c0fb16cd4276"
-
-[[projects]]
-  branch = "master"
   name = "github.com/grpc-ecosystem/go-grpc-prometheus"
   packages = ["."]
   revision = "39de4380c2e0353a115b80b1c730719c79bfb771"
 
 [[projects]]
+  branch = "master"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
     "runtime",
     "runtime/internal",
     "utilities"
   ]
-  revision = "92583770e3f01b09a0d3e9bdf64321d8bebd48f2"
-  version = "v1.4.1"
+  revision = "a5b66c16bab6156b1cc525e76159bdff463123ba"
 
 [[projects]]
   branch = "master"
@@ -335,21 +339,6 @@
   version = "v1.8.0"
 
 [[projects]]
-  name = "github.com/maichain/mapi"
-  packages = [
-    "api",
-    "api/pb",
-    "base/test",
-    "store/bank",
-    "store/webhook",
-    "types",
-    "types/model",
-    "types/reflect"
-  ]
-  revision = "f9e4080a2af250fa034015d5c03231b5f62331de"
-  version = "v0.5.1"
-
-[[projects]]
   name = "github.com/mattn/go-colorable"
   packages = ["."]
   revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
@@ -419,6 +408,21 @@
   version = "v1.4.0"
 
 [[projects]]
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
+
+[[projects]]
+  name = "github.com/opencontainers/image-spec"
+  packages = [
+    "specs-go",
+    "specs-go/v1"
+  ]
+  revision = "d60099175f88c47cd379c4738d158884749ed235"
+  version = "v1.0.1"
+
+[[projects]]
   name = "github.com/opencontainers/runc"
   packages = [
     "libcontainer/system",
@@ -440,6 +444,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
@@ -452,7 +462,7 @@
     "prometheus",
     "prometheus/promhttp"
   ]
-  revision = "c51dc758d4bb30acacbef9eaa2b774969a135086"
+  revision = "42bc0a18c2207d46ac4039bbb6b4cf1507872837"
 
 [[projects]]
   branch = "master"
@@ -510,6 +520,12 @@
   packages = ["."]
   revision = "69b3a8ad1f5f2c8bd855cb6506d18593064a346b"
   version = "1.0.1"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
+  version = "v1.0.4"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -770,6 +786,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b6f9842fa57549cb8b84696afbf98c894910906037d87e6c796bbc72622c5570"
+  inputs-digest = "c9b3abaeafa7c680827eb35529ddf8cb8efbe1d79829ef68d7b0243887973835"
   solver-name = "gps-cdcl"
   solver-version = 1
