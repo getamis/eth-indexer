@@ -24,11 +24,11 @@ import (
 	"syscall"
 
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/rpc"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
 	"github.com/maichain/eth-indexer/service/proxy"
-	"github.com/maichain/mapi/api"
 )
 
 var (
@@ -59,8 +59,8 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		s := api.NewProxy(
-			api.Proxies(
+		s := rpc.NewProxy(
+			rpc.Proxies(
 				proxy.NewProxy(gRPCEndpoint, opts...),
 			),
 		)
