@@ -14,7 +14,7 @@
 package erc20
 
 import (
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/service/pb"
 )
 
 type middleware func(pb.ERC20ServiceServer) pb.ERC20ServiceServer

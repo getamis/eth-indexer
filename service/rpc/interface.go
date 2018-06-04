@@ -13,7 +13,7 @@
 // limitations under the License.
 package rpc
 
-import "github.com/maichain/eth-indexer/service/pb"
+import "github.com/getamis/eth-indexer/service/pb"
 
 type middleware func(Server) Server
 

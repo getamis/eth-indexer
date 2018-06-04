@@ -14,7 +14,7 @@
 package service
 
 import (
-	"github.com/maichain/eth-indexer/common"
+	"github.com/getamis/eth-indexer/common"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

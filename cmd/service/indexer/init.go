@@ -23,7 +23,7 @@ import (
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/client"
+	"github.com/getamis/eth-indexer/client"
 )
 
 func NewEthConn(url string) (client.EthClient, error) {

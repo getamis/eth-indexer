@@ -19,8 +19,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/maichain/eth-indexer/cmd/flags"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/cmd/flags"
+	"github.com/getamis/eth-indexer/service/pb"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )

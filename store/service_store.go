@@ -22,10 +22,10 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 
-	"github.com/maichain/eth-indexer/model"
-	accStore "github.com/maichain/eth-indexer/store/account"
-	bhStore "github.com/maichain/eth-indexer/store/block_header"
-	txStore "github.com/maichain/eth-indexer/store/transaction"
+	"github.com/getamis/eth-indexer/model"
+	accStore "github.com/getamis/eth-indexer/store/account"
+	bhStore "github.com/getamis/eth-indexer/store/block_header"
+	txStore "github.com/getamis/eth-indexer/store/transaction"
 )
 
 //go:generate mockery -name ServiceManager

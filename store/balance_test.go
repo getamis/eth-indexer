@@ -19,9 +19,9 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/maichain/eth-indexer/model"
-	acctMock "github.com/maichain/eth-indexer/store/account/mocks"
-	hdrMock "github.com/maichain/eth-indexer/store/block_header/mocks"
+	"github.com/getamis/eth-indexer/model"
+	acctMock "github.com/getamis/eth-indexer/store/account/mocks"
+	hdrMock "github.com/getamis/eth-indexer/store/block_header/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/service/pb"
 	"google.golang.org/grpc"
 )
 

@@ -18,8 +18,8 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/go-sql-driver/mysql"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
 )
 
 const cacheSize = 128

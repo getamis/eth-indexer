@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
-	"github.com/maichain/eth-indexer/service/proxy"
+	"github.com/getamis/eth-indexer/service/proxy"
 )
 
 var (

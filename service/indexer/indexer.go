@@ -23,11 +23,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/client"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/store"
+	"github.com/getamis/eth-indexer/client"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/store"
 )
 
 var (

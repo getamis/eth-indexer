@@ -19,11 +19,11 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
 	"github.com/getamis/sirius/rpc"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
-	. "github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/pb"
-	"github.com/maichain/eth-indexer/store"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
+	. "github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/store"
 	"google.golang.org/grpc"
 )
 

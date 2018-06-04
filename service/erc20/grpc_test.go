@@ -20,11 +20,11 @@ import (
 
 	ethereum "github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	clientMocks "github.com/maichain/eth-indexer/client/mocks"
-	"github.com/maichain/eth-indexer/model"
-	. "github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/pb"
-	storeMocks "github.com/maichain/eth-indexer/store/mocks"
+	clientMocks "github.com/getamis/eth-indexer/client/mocks"
+	"github.com/getamis/eth-indexer/model"
+	. "github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/service/pb"
+	storeMocks "github.com/getamis/eth-indexer/store/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

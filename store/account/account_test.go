@@ -8,8 +8,8 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

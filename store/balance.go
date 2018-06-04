@@ -20,8 +20,8 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
 )
 
 var ErrInvalidBalance = errors.New("invalid balance")

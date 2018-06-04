@@ -26,9 +26,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/cmd/flags"
-	"github.com/maichain/eth-indexer/service/indexer"
-	"github.com/maichain/eth-indexer/store"
+	"github.com/getamis/eth-indexer/cmd/flags"
+	"github.com/getamis/eth-indexer/service/indexer"
+	"github.com/getamis/eth-indexer/store"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

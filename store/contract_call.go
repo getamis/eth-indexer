@@ -23,7 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/contracts"
+	"github.com/getamis/eth-indexer/contracts"
 )
 
 // Call calls the specific contract method call in given state

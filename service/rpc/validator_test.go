@@ -17,10 +17,10 @@ import (
 	"context"
 
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/service/pb"
-	"github.com/maichain/eth-indexer/service/rpc/mocks"
+	"github.com/getamis/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/service/rpc/mocks"
 
-	. "github.com/maichain/eth-indexer/service"
+	. "github.com/getamis/eth-indexer/service"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"

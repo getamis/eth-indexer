@@ -28,8 +28,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/contracts"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/contracts"
+	"github.com/getamis/eth-indexer/model"
 )
 
 var (

@@ -4,7 +4,7 @@ package mocks
 import big "math/big"
 import common "github.com/ethereum/go-ethereum/common"
 import mock "github.com/stretchr/testify/mock"
-import model "github.com/maichain/eth-indexer/model"
+import model "github.com/getamis/eth-indexer/model"
 import state "github.com/ethereum/go-ethereum/core/state"
 
 import types "github.com/ethereum/go-ethereum/core/types"

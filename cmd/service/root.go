@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/maichain/eth-indexer/cmd/service/erc20"
-	"github.com/maichain/eth-indexer/cmd/service/indexer"
-	"github.com/maichain/eth-indexer/cmd/service/proxy"
-	"github.com/maichain/eth-indexer/cmd/service/rpc"
+	"github.com/getamis/eth-indexer/cmd/service/erc20"
+	"github.com/getamis/eth-indexer/cmd/service/indexer"
+	"github.com/getamis/eth-indexer/cmd/service/proxy"
+	"github.com/getamis/eth-indexer/cmd/service/rpc"
 	"github.com/spf13/cobra"
 )
 

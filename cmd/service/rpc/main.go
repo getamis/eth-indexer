@@ -28,9 +28,9 @@ import (
 	"github.com/getamis/sirius/log"
 	"github.com/getamis/sirius/metrics"
 	generalRPC "github.com/getamis/sirius/rpc"
-	"github.com/maichain/eth-indexer/cmd/flags"
-	"github.com/maichain/eth-indexer/service/rpc"
-	"github.com/maichain/eth-indexer/store"
+	"github.com/getamis/eth-indexer/cmd/flags"
+	"github.com/getamis/eth-indexer/service/rpc"
+	"github.com/getamis/eth-indexer/store"
 	"github.com/spf13/cobra"
 )
 

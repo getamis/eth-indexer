@@ -24,7 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/model"
 )
 
 // IsLatestBlock returns true if blockNumber < 0 and false otherwise.

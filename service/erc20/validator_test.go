@@ -17,9 +17,9 @@ import (
 	"context"
 
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/erc20/mocks"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/service/erc20/mocks"
+	"github.com/getamis/eth-indexer/service/pb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -23,9 +23,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/store/account"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/account"
 	"github.com/shopspring/decimal"
 )
 

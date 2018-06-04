@@ -19,10 +19,10 @@ import (
 	"github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/client"
-	. "github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/pb"
-	"github.com/maichain/eth-indexer/store"
+	"github.com/getamis/eth-indexer/client"
+	. "github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/store"
 	"google.golang.org/grpc"
 )
 

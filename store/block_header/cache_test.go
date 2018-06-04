@@ -17,9 +17,9 @@ import (
 	"errors"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/store/block_header/mocks"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/block_header/mocks"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

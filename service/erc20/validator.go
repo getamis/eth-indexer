@@ -18,8 +18,8 @@ import (
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/maichain/eth-indexer/service"
-	"github.com/maichain/eth-indexer/service/pb"
+	"github.com/getamis/eth-indexer/service"
+	"github.com/getamis/eth-indexer/service/pb"
 )
 
 func newValidatingMiddleware(logger log.Logger, server pb.ERC20ServiceServer) middleware {

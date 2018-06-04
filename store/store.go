@@ -22,12 +22,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/common"
-	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/eth-indexer/store/account"
-	header "github.com/maichain/eth-indexer/store/block_header"
-	"github.com/maichain/eth-indexer/store/transaction"
-	receipt "github.com/maichain/eth-indexer/store/transaction_receipt"
+	"github.com/getamis/eth-indexer/common"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/account"
+	header "github.com/getamis/eth-indexer/store/block_header"
+	"github.com/getamis/eth-indexer/store/transaction"
+	receipt "github.com/getamis/eth-indexer/store/transaction_receipt"
 )
 
 // UpdateMode defines the mode to update blocks

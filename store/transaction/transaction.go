@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/model"
 )
 
 const (

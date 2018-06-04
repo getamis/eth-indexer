@@ -2,7 +2,7 @@ package block_header
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/maichain/eth-indexer/model"
+	"github.com/getamis/eth-indexer/model"
 )
 
 const (
