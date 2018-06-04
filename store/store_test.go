@@ -8,6 +8,7 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
@@ -15,7 +16,6 @@ import (
 	"github.com/maichain/eth-indexer/store/block_header"
 	"github.com/maichain/eth-indexer/store/transaction"
 	"github.com/maichain/eth-indexer/store/transaction_receipt"
-	"github.com/maichain/mapi/base/test"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -18,12 +18,12 @@ import (
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/rpc"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
 	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/pb"
 	"github.com/maichain/eth-indexer/store"
-	"github.com/maichain/mapi/api"
 	"google.golang.org/grpc"
 )
 
@@ -134,7 +134,7 @@ func (s *server) GetTransactionByHash(ctx context.Context, req *pb.TransactionQu
 }
 
 func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
 	res, err := s.getBalance(ctx, req.BlockNumber, req.Address, req.Token)
 	if err != nil {
 		logger.Error("Failed to get balance", "err", err)
@@ -144,7 +144,7 @@ func (s *server) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb
 }
 
 func (s *server) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceRequest) (*pb.GetBalanceResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "offset", req.Offset, "token", req.Token)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "addr", req.Address, "offset", req.Offset, "token", req.Token)
 	// Get latest block
 	header, err := s.manager.FindLatestBlock()
 	if err != nil {

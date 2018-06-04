@@ -4,10 +4,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/model"
-	"github.com/maichain/mapi/base/test"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

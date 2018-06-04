@@ -24,12 +24,13 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/rpc"
 	"github.com/maichain/eth-indexer/client"
 	"github.com/maichain/eth-indexer/common"
 	"github.com/maichain/eth-indexer/contracts"
 	. "github.com/maichain/eth-indexer/service"
 	"github.com/maichain/eth-indexer/service/pb"
-	"github.com/maichain/mapi/api"
+
 	"github.com/shopspring/decimal"
 	"google.golang.org/grpc"
 )
@@ -73,7 +74,7 @@ func (s *relayServer) Shutdown() {
 
 // Implement grpc functions
 func (s *relayServer) GetBlockByHash(ctx context.Context, req *pb.BlockHashQueryRequest) (*pb.BlockQueryResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "hash", req.Hash)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "hash", req.Hash)
 	block, err := s.client.BlockByHash(ctx, ethCommon.HexToHash(req.Hash))
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
@@ -92,7 +93,7 @@ func (s *relayServer) GetBlockByHash(ctx context.Context, req *pb.BlockHashQuery
 }
 
 func (s *relayServer) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQueryRequest) (*pb.BlockQueryResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "number", req.Number)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "number", req.Number)
 	block, err := s.client.BlockByNumber(ctx, new(big.Int).SetInt64(req.Number))
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
@@ -111,7 +112,7 @@ func (s *relayServer) GetBlockByNumber(ctx context.Context, req *pb.BlockNumberQ
 }
 
 func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.TransactionQueryRequest) (*pb.TransactionQueryResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "hash", req.Hash)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "hash", req.Hash)
 	tx, _, err := s.client.TransactionByHash(ctx, ethCommon.HexToHash(req.Hash))
 	if err != nil {
 		logger.Error("Failed to get transaction from ethereum", "err", err)
@@ -139,7 +140,7 @@ func (s *relayServer) GetTransactionByHash(ctx context.Context, req *pb.Transact
 }
 
 func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "addr", req.Address, "number", req.BlockNumber, "token", req.Token)
 	address := ethCommon.HexToAddress(req.Address)
 	var blockNumber *big.Int
 	if req.BlockNumber < 0 {
@@ -188,7 +189,7 @@ func (s *relayServer) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 }
 
 func (s *relayServer) GetOffsetBalance(ctx context.Context, req *pb.GetOffsetBalanceRequest) (*pb.GetBalanceResponse, error) {
-	logger := s.logger.New("trackingId", api.GetTrackingIDFromContext(ctx), "addr", req.Address, "offset", req.Offset, "token", req.Token)
+	logger := s.logger.New("trackingId", rpc.GetTrackingIDFromContext(ctx), "addr", req.Address, "offset", req.Offset, "token", req.Token)
 	// Get latest block
 	block, err := s.client.BlockByNumber(ctx, nil)
 	if err != nil {
