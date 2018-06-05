@@ -1,17 +1,17 @@
 version: "3"
 services:
   # Customized geth image for indexer
-  # geth:
-  #   image: quay.io/amis/geth:indexer_1.8.3
-  #   ports:
-  #     - "30303:30303"
-  #     - "8546:8546"
-  #   volumes:
-  #     - ./geth-data:/root/.ethereum
-  #   command: "--wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
-  #   restart: always
-  #   depends_on:
-  #     - ws-database
+  geth:
+    image: quay.io/amis/geth:indexer_diff_1.8.10
+    ports:
+      - "30303:30303"
+      - "8546:8546"
+    volumes:
+      - ${GETH_DATA_PATH}:/root/.ethereum
+    command: "--gcmode=archive --syncmode=full --wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
+    restart: always
+    depends_on:
+      - ws-database
   ws-database:
     image: mysql:5.7
     ports:
@@ -36,38 +36,6 @@ services:
       - DATABASE=eth-db
       - USERNAME=root
       - PASSWORD=my-secret-pw
-  ws-rpc:
-    build:
-      context: .
-      dockerfile: ./cmd/service/Dockerfile
-    command:
-      - rpc
-      - --db.host
-      - ws-database
-      - --eth
-      - --eth.host
-      - ${ETH_HOST}
-      - --metrics
-      - --metrics.port
-      - "9091"
-    ports:
-      - 5487:5487
-      - 9091:9091
-    restart: always
-    depends_on:
-      - ws-database
-      - ws-migration
-  ws-proxy:
-    build:
-      context: .
-      dockerfile: ./cmd/service/Dockerfile
-    command:
-      - proxy
-      - --grpc.host
-      - ws-rpc
-    ports:
-      - 8080:8080
-    restart: always
   ws-indexer:
     build:
       context: .
@@ -77,7 +45,7 @@ services:
       - --db.host
       - ws-database
       - --eth.host
-      - ${ETH_HOST}
+      - geth
       # Mithril Token
       - --erc20.addresses
       - "0x3893b9422Cd5D70a81eDeFfe3d5A1c6A978310BB"

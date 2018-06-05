@@ -21,8 +21,6 @@ import (
 
 	"github.com/getamis/eth-indexer/cmd/service/erc20"
 	"github.com/getamis/eth-indexer/cmd/service/indexer"
-	"github.com/getamis/eth-indexer/cmd/service/proxy"
-	"github.com/getamis/eth-indexer/cmd/service/rpc"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +47,5 @@ func Execute() {
 
 func init() {
 	RootCmd.AddCommand(indexer.ServerCmd)
-	RootCmd.AddCommand(proxy.ServerCmd)
-	RootCmd.AddCommand(rpc.ServerCmd)
 	RootCmd.AddCommand(erc20.Cmd)
 }
