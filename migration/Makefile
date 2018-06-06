@@ -14,8 +14,8 @@ $(LOCAL_TARGET)-docker.push:
 PHONY += $(LOCAL_TARGET)
 
 help:
-	@echo  '  migration-docker            - Build MAPI database migration docker image'
-	@echo  '  migration-docker.push       - Push MAPI database migration docker image to quay.io'
+	@echo  '  migration-docker            - Build eth-indexer database migration docker image'
+	@echo  '  migration-docker.push       - Push eth-indexer database migration docker image to quay.io'
 
 .PHONY: FORCE
 FORCE:

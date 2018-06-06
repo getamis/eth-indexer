@@ -69,16 +69,13 @@ contracts: FORCE
 	$(shell abigen --type ERC20Token --abi contracts/ERC20Token.abi -bin contracts/ERC20Token.bin -out contracts/erc20_token.go --pkg contracts)
 	$(shell abigen --type MithrilToken --abi contracts/MithrilToken.abi -bin contracts/MithrilToken.bin -out contracts/mithril_token.go --pkg contracts)
 
-# dashboard-%:
-# 	@$(MAKE) -f dashboard/Makefile $@
+%-docker:
+	@docker build -f ./cmd/$(subst -docker,,$@)/Dockerfile -t $(DOCKER_IMAGE)-$(subst -docker,,$@):$(REV) .
+	@docker tag $(DOCKER_IMAGE)-$(subst -docker,,$@):$(REV) $(DOCKER_IMAGE)-$(subst -docker,,$@):latest
 
-# %-docker:
-# 	@docker build -f ./cmd/$(subst -docker,,$@)/Dockerfile -t $(DOCKER_IMAGE)-$(subst -docker,,$@):$(REV) .
-# 	@docker tag $(DOCKER_IMAGE)-$(subst -docker,,$@):$(REV) $(DOCKER_IMAGE)-$(subst -docker,,$@):latest
-
-# %-docker.push:
-# 	@docker push $(DOCKER_IMAGE)-$(subst -docker.push,,$@):$(REV)
-# 	@docker push $(DOCKER_IMAGE)-$(subst -docker.push,,$@):latest
+%-docker.push:
+	@docker push $(DOCKER_IMAGE)-$(subst -docker.push,,$@):$(REV)
+	@docker push $(DOCKER_IMAGE)-$(subst -docker.push,,$@):latest
 
 clean:
 	rm -fr $(GOBIN)/*
@@ -86,17 +83,8 @@ clean:
 PHONY: help
 help:
 	@echo  'Generic targets:'
-	@echo  '  indexer                       - Build indexer service'
+	@echo  '  service                       - Build indexer service'
 	@echo  ''
-	# @echo  'Code generation targets:'
-	# @echo  '  server-grpc                 - Generate go files from proto for API'
-	# @echo  ''
-	# @echo  'Docker targets:'
-	# @echo  '  server-docker               - Build regulatory API docker image'
-	# @echo  '  server-docker.push          - Push regulatory API docker image to quay.io'
-	# @$(MAKE) -f migration/Makefile $@
-	# @$(MAKE) -f dashboard/Makefile $@
-	# @echo  ''
 	@echo  'Execute "make" or "make all" to build all targets marked with [*] '
 	@echo  'For further info see the ./README.md file'
 
