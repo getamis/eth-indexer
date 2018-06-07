@@ -14,17 +14,30 @@ There are few docker images in the project:
 * docker
 * docker-compose
 
+### Before Building
+
+Before building, please make sure environment variables `MYSQL_DATA_PATH` and `GETH_DATA_PATH` are setup properly, which are used to mount local data folder to MySQL and Geth containers for data persistence.
+One way to set this up is to have a `.env` file in the same folder of the `docker-compose.yml`
+
+Example `.env` file:
+
+```
+MYSQL_DATA_PATH=~/indexer-data/mysql
+GETH_DATA_PATH=~/indexer-data/geth
+```
+
 ### Build
 
 ```shell
 $ git clone git@github.com:getamis/eth-indexer.git
 $ cd eth-indexer
+$ # Set MYSQL_DATA_PATH and GETH_DATA_PATH environment variables
 $ docker-compose build
 ```
 
 ### Usage
 
-We use docker-compose for testing and developing. MYSQL_DATA_PATH & GETH_DATA_PATH environment variables are necessary, create them out of eth-indexer directory to store database and geth data.
+We use docker-compose for testing and developing. `MYSQL_DATA_PATH` & `GETH_DATA_PATH` environment variables are necessary, create them out of eth-indexer directory to store database and geth data.
 
 first time to run indexer you need to create the database schema
 
