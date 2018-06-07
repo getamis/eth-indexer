@@ -28,3 +28,6 @@ profile.out
 cmd/indexer/debug
 geth-data
 mysql-data
+
+# Docker compose env file
+.env
