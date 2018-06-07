@@ -1,4 +1,4 @@
-class InitializeIndexerTables < ActiveRecord::Migration
+class InitializeIndexerTables < ActiveRecord::Migration[5.2]
   def change
     create_table :block_headers do |t|
       t.binary :hash, :limit => 32, :null => false
