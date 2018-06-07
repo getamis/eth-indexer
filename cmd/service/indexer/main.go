@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strings"
@@ -58,6 +60,11 @@ var (
 	// flags for erc20
 	erc20Addresses   []string
 	erc20BlockNumber []int
+
+	// flags for profiling
+	profiling  bool
+	profilAddr string
+	profilPort int
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -112,6 +119,16 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
+		if profiling {
+			// run `go tool pprof build/bin/service http://127.0.0.1:8000/debug/pprof/profile\?seconds\=60`
+			// Start profiling
+			go func() {
+				url := fmt.Sprintf("%s:%d", profilAddr, profilPort)
+				log.Info("Starting profiling", "url", url)
+				http.ListenAndServe(url, nil)
+			}()
+		}
+
 		if targetBlock > 0 {
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
 		} else {
@@ -156,6 +173,11 @@ func init() {
 	ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlockFlag, 0, "The init block number to sync to initially")
 	ServerCmd.Flags().StringArrayVar(&erc20Addresses, "erc20.addresses", []string{}, "The addresses of erc20 token contracts")
 	ServerCmd.Flags().IntSliceVar(&erc20BlockNumber, "erc20.block-numbers", []int{}, "The block numbers as the erc20 contract is deployed")
+
+	// Profling flags
+	ServerCmd.Flags().BoolVar(&profiling, "pprof", false, "Enable the pprof HTTP server")
+	ServerCmd.Flags().IntVar(&profilPort, "pprof.port", 8000, "pprof HTTP server listening port")
+	ServerCmd.Flags().StringVar(&profilAddr, "pprof.address", "0.0.0.0", "pprof HTTP server listening interface")
 }
 
 func loadConfigUsingViper(vp *viper.Viper, filename string) error {
