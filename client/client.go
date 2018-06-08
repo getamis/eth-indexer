@@ -36,7 +36,6 @@ import (
 
 var (
 	ErrInvalidTDFormat = errors.New("invalid td format")
-	ErrEmptyRequests   = errors.New("empty requests")
 )
 
 //go:generate mockery -name EthClient
@@ -77,8 +76,9 @@ func NewClient(url string) (EthClient, error) {
 
 func (c *client) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
 	lens := len(txs)
-	if lens <= 0 {
-		return nil, ErrEmptyRequests
+	if lens == 0 {
+		// Don't need to process this requests
+		return nil, nil
 	}
 
 	// Construct batch requests
