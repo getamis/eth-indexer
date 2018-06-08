@@ -303,3 +303,26 @@ func (_m *EthClient) TransactionReceipt(ctx context.Context, txHash common.Hash)
 
 	return r0, r1
 }
+
+// TransactionReceipts provides a mock function with given fields: ctx, txs
+func (_m *EthClient) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
+	ret := _m.Called(ctx, txs)
+
+	var r0 []*types.Receipt
+	if rf, ok := ret.Get(0).(func(context.Context, types.Transactions) []*types.Receipt); ok {
+		r0 = rf(ctx, txs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Receipt)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.Transactions) error); ok {
+		r1 = rf(ctx, txs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
