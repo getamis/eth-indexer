@@ -2,6 +2,10 @@
 
 eth-indexer is an Ethereum blockchain indexer project to crawl blocks, transactions & state difference per block/address into MySQL database.
 
+[![travis](https://travis-ci.com/getamis/eth-indexer.svg?branch=develop)](https://travis-ci.com/getamis/eth-indexer)
+[![codecov](https://codecov.io/gh/getamis/eth-indexer/branch/develop/graph/badge.svg)](https://codecov.io/gh/getamis/eth-indexer)
+[![Go Report Card](https://goreportcard.com/badge/github.com/getamis/eth-indexer)](https://goreportcard.com/report/github.com/getamis/eth-indexer)
+
 ## Getting Started
 
 There are few docker images in the project:
