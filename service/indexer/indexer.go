@@ -353,18 +353,15 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *state.DirtyDump, error) {
 	blockNumber := block.Number().Int64()
 	logger := log.New("number", blockNumber)
-	var receipts []*types.Receipt
-	for _, tx := range block.Transactions() {
-		r, err := idx.client.TransactionReceipt(ctx, tx.Hash())
-		if err != nil {
-			logger.Error("Failed to get receipt from ethereum", "tx", tx.Hash(), "err", err)
-			return nil, nil, err
-		}
-		receipts = append(receipts, r)
+
+	// Get receipts
+	receipts, err := idx.client.TransactionReceipts(ctx, block.Transactions())
+	if err != nil {
+		logger.Error("Failed to get receipts from ethereum", "err", err)
+		return nil, nil, err
 	}
 
 	dump := &state.DirtyDump{}
-	var err error
 	isGenesis := blockNumber == 0
 	if isGenesis {
 		d, err := idx.client.DumpBlock(ctx, 0)

@@ -36,6 +36,7 @@ import (
 
 var (
 	ErrInvalidTDFormat = errors.New("invalid td format")
+	ErrEmptyRequests   = errors.New("empty requests")
 )
 
 //go:generate mockery -name EthClient
@@ -44,6 +45,7 @@ type EthClient interface {
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
+	TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error)
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 	DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error)
@@ -71,6 +73,41 @@ func NewClient(url string) (EthClient, error) {
 		rpc:    rpcClient,
 	}
 	return newCacheMiddleware(client), nil
+}
+
+func (c *client) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
+	lens := len(txs)
+	if lens <= 0 {
+		return nil, ErrEmptyRequests
+	}
+
+	// Construct batch requests
+	method := "eth_getTransactionReceipt"
+	var reqs []rpc.BatchElem
+	receipts := make([]*types.Receipt, lens)
+	for i, tx := range txs {
+		receipts[i] = &types.Receipt{}
+		reqs = append(reqs, rpc.BatchElem{
+			Method: method,
+			Args:   []interface{}{tx.Hash()},
+			Result: receipts[i],
+		})
+	}
+
+	// Batch calls
+	err := c.rpc.BatchCallContext(ctx, reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure all requests are ok
+	for _, req := range reqs {
+		if req.Error != nil {
+			return nil, req.Error
+		}
+	}
+
+	return receipts, nil
 }
 
 func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
