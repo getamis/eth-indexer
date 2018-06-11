@@ -138,7 +138,8 @@ func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, err
 }
 
 // Receipt converts ethereum transaction receipt to db transaction receipt
-func Receipt(b *types.Block, receipt *types.Receipt) *model.Receipt {
+func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
+	// Construct receipt model
 	r := &model.Receipt{
 		Root:              receipt.PostState,
 		Status:            receipt.Status,
@@ -151,5 +152,34 @@ func Receipt(b *types.Block, receipt *types.Receipt) *model.Receipt {
 	if receipt.ContractAddress != (common.Address{}) {
 		r.ContractAddress = receipt.ContractAddress.Bytes()
 	}
-	return r
+
+	// Construct receipt log model
+	var logs []*model.Log
+	for _, l := range receipt.Logs {
+		// The length of topics should be larger than 0 and equal or smaller than 4
+		// 1 event name and at most 3 indexed parameters
+		if len(l.Topics) == 0 || len(l.Topics) > 4 {
+			return nil, ErrInvalidReceiptLog
+		}
+		log := &model.Log{
+			TxHash:          r.TxHash,
+			BlockNumber:     r.BlockNumber,
+			ContractAddress: l.Address.Bytes(),
+			EventName:       l.Topics[0].Bytes(),
+			Data:            l.Data,
+		}
+		for i := 1; i < len(l.Topics); i++ {
+			switch i {
+			case 1:
+				log.Topic1 = l.Topics[i].Bytes()
+			case 2:
+				log.Topic2 = l.Topics[i].Bytes()
+			case 3:
+				log.Topic3 = l.Topics[i].Bytes()
+			}
+			logs = append(logs, log)
+		}
+	}
+	r.Logs = logs
+	return r, nil
 }

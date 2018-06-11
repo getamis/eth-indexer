@@ -188,7 +188,12 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 	}
 
 	for _, r := range receipts {
-		err = receiptStore.Insert(common.Receipt(block, r))
+		r, err := common.Receipt(block, r)
+		if err != nil {
+			return err
+		}
+
+		err = receiptStore.Insert(r)
 		if err != nil {
 			return err
 		}
