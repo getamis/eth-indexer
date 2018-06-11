@@ -164,7 +164,7 @@ func init() {
 	ServerCmd.Flags().StringVar(&dbDriver, flags.DbDriverFlag, "mysql", "The database driver")
 	ServerCmd.Flags().StringVar(&dbHost, flags.DbHostFlag, "", "The database host")
 	ServerCmd.Flags().IntVar(&dbPort, flags.DbPortFlag, 3306, "The database port")
-	ServerCmd.Flags().StringVar(&dbName, flags.DbNameFlag, "eth-db", "The database name")
+	ServerCmd.Flags().StringVar(&dbName, flags.DbNameFlag, "ethdb", "The database name")
 	ServerCmd.Flags().StringVar(&dbUser, flags.DbUserFlag, "root", "The database username to login")
 	ServerCmd.Flags().StringVar(&dbPassword, flags.DbPasswordFlag, "my-secret-pw", "The database password to login")
 

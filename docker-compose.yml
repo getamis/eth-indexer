@@ -19,7 +19,7 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=my-secret-pw
       - MYSQL_CHARSET=utf8
-      - MYSQL_DATABASE=eth-db
+      - MYSQL_DATABASE=ethdb
     volumes:
       - ${MYSQL_DATA_PATH}:/var/lib/mysql
   ws-migration:
@@ -33,7 +33,7 @@ services:
       - RAILS_ENV=customized
       - HOST=ws-database
       - PORT=3306
-      - DATABASE=eth-db
+      - DATABASE=ethdb
       - USERNAME=root
       - PASSWORD=my-secret-pw
   ws-indexer:

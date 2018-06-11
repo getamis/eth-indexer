@@ -29,7 +29,7 @@ import (
 func main() {
 	db, _ := gormFactory.New("mysql",
 		database.DriverOption(
-			mysql.Database("eth-db"),
+			mysql.Database("ethdb"),
 			mysql.Connector(mysql.DefaultProtocol, "127.0.0.1", "3306"),
 			mysql.UserInfo("root", "my-secret-pw"),
 		),
