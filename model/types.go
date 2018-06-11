@@ -43,6 +43,11 @@ type Header struct {
 	// https://github.com/golang/go/issues/9373
 }
 
+// TableName returns the table name of this model
+func (h Header) TableName() string {
+	return "block_headers"
+}
+
 // Transaction represents a transaction
 type Transaction struct {
 	Hash        []byte
@@ -57,6 +62,11 @@ type Transaction struct {
 	BlockNumber int64
 }
 
+// TableName returns the table name of this model
+func (t Transaction) TableName() string {
+	return "transactions"
+}
+
 // Receipt represents a transaction receipt
 type Receipt struct {
 	Root              []byte
@@ -67,13 +77,43 @@ type Receipt struct {
 	ContractAddress   []byte
 	GasUsed           int64
 	BlockNumber       int64
+	Logs              []*Log
 }
 
-// StateBlock represents the state is at the given block
+// TableName returns the table name of this model
+func (r Receipt) TableName() string {
+	return "transaction_receipts"
+}
+
+// Log represents a receipt log
+type Log struct {
+	TxHash          []byte
+	BlockNumber     int64
+	ContractAddress []byte
+	// The sha3 of the event method
+	EventName []byte
+	// Indexed parameters of event. At most 3 topics.
+	Topic1 []byte
+	Topic2 []byte
+	Topic3 []byte
+	Data   []byte
+}
+
+// TableName returns the table name of this model
+func (l Log) TableName() string {
+	return "receipt_logs"
+}
+
+// TotalDifficulty represents total difficulty for this block
 type TotalDifficulty struct {
 	Block int64
 	Hash  []byte
 	Td    string
+}
+
+// TableName returns the table name of this model
+func (t TotalDifficulty) TableName() string {
+	return "total_difficulty"
 }
 
 // Account represents the state of externally owned accounts in Ethereum at given block
@@ -84,6 +124,11 @@ type Account struct {
 	Nonce       int64
 }
 
+// TableName returns the table name of this model
+func (a Account) TableName() string {
+	return "accounts"
+}
+
 // ERC20 represents the ERC20 contract
 type ERC20 struct {
 	BlockNumber int64
@@ -92,6 +137,11 @@ type ERC20 struct {
 	TotalSupply string
 	Decimals    int
 	Name        string
+}
+
+// TableName returns the table name of this model
+func (e ERC20) TableName() string {
+	return "erc20"
 }
 
 // ERC20Storage represents the contract storage

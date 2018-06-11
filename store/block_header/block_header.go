@@ -21,11 +21,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-const (
-	TableName   = "block_headers"
-	TableNameTd = "total_difficulty"
-)
-
 //go:generate mockery -name Store
 
 type Store interface {
@@ -39,8 +34,7 @@ type Store interface {
 }
 
 type store struct {
-	db   *gorm.DB
-	tdDb *gorm.DB
+	db *gorm.DB
 }
 
 func NewWithDB(db *gorm.DB) Store {
@@ -50,13 +44,12 @@ func NewWithDB(db *gorm.DB) Store {
 // newWithDB news a new store, for testing use
 func newWithDB(db *gorm.DB) Store {
 	return &store{
-		db:   db.Table(TableName),
-		tdDb: db.Table(TableNameTd),
+		db: db,
 	}
 }
 
 func (t *store) InsertTd(data *model.TotalDifficulty) error {
-	return t.tdDb.Create(data).Error
+	return t.db.Create(data).Error
 }
 
 func (t *store) Insert(data *model.Header) error {
@@ -69,7 +62,7 @@ func (t *store) Delete(from, to int64) error {
 
 func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {
 	result = &model.TotalDifficulty{}
-	err = t.tdDb.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 

@@ -36,6 +36,15 @@ func makeReceipt(blockNumber int64, txHex string) *model.Receipt {
 		ContractAddress:   common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
 		GasUsed:           31000,
 		BlockNumber:       blockNumber,
+		Logs: []*model.Log{
+			{
+				TxHash:          common.HexToBytes(txHex),
+				BlockNumber:     blockNumber,
+				ContractAddress: common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+				EventName:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A8222"),
+				Data:            common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A8223"),
+			},
+		},
 	}
 }
 
@@ -63,7 +72,8 @@ var _ = Describe("Receipt Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Table(TableName).Delete(&model.Transaction{})
+		db.Delete(&model.Receipt{})
+		db.Delete(&model.Log{})
 	})
 
 	It("should insert", func() {
@@ -105,7 +115,6 @@ var _ = Describe("Receipt Database Test", func() {
 
 		receipt, err = store.FindReceipt(common.HexToBytes("0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b"))
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		Expect(*receipt).Should(Equal(model.Receipt{}))
 	})
 
 	It("delete from a block number", func() {
