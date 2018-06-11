@@ -21,10 +21,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-const (
-	TableName = "transaction_receipts"
-)
-
 //go:generate mockery -name Store
 type Store interface {
 	Insert(data *model.Receipt) error
@@ -38,21 +34,54 @@ type store struct {
 
 func NewWithDB(db *gorm.DB) Store {
 	return &store{
-		db: db.Table(TableName),
+		db: db,
 	}
 }
 
 func (r *store) Insert(data *model.Receipt) error {
-	return r.db.Create(data).Error
+	// TODO: may need db transaction protection,
+	// but mysql doesn't support nested db transaction
+	// Insert receipt
+	if err := r.db.Create(data).Error; err != nil {
+		return err
+	}
+	// Insert logs
+	for _, l := range data.Logs {
+		if err := r.db.Create(l).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (r *store) Delete(from, to int64) (err error) {
-	err = r.db.Delete(model.Receipt{}, "block_number >= ? AND block_number <= ?", from, to).Error
-	return
+func (r *store) Delete(from, to int64) error {
+	// Delete receipt
+	err := r.db.Delete(model.Receipt{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	if err != nil {
+		return err
+	}
+	// Delete logs
+	err = r.db.Delete(model.Log{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *store) FindReceipt(hash []byte) (result *model.Receipt, err error) {
-	result = &model.Receipt{}
-	err = r.db.Where("BINARY tx_hash = ?", hash).Limit(1).Find(result).Error
-	return
+func (r *store) FindReceipt(hash []byte) (*model.Receipt, error) {
+	// Find receipt
+	receipt := &model.Receipt{}
+	err := r.db.Where("BINARY tx_hash = ?", hash).Limit(1).Find(receipt).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Find logs
+	logs := []*model.Log{}
+	err = r.db.Where("BINARY tx_hash = ?", hash).Find(&logs).Error
+	if err != nil {
+		return nil, err
+	}
+	receipt.Logs = logs
+	return receipt, nil
 }

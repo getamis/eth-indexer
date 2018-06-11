@@ -27,9 +27,6 @@ import (
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
-	"github.com/getamis/eth-indexer/store/block_header"
-	"github.com/getamis/eth-indexer/store/transaction"
-	"github.com/getamis/eth-indexer/store/transaction_receipt"
 	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
@@ -84,11 +81,11 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		// Clean all data
-		db.Table(block_header.TableName).Delete(&model.Header{})
-		db.Table(transaction.TableName).Delete(&model.Transaction{})
-		db.Table(transaction_receipt.TableName).Delete(&model.Receipt{})
-		db.Table(account.NameAccounts).Delete(&model.Account{})
-		db.Table(account.NameERC20).Delete(&model.ERC20{})
+		db.Delete(&model.Header{})
+		db.Delete(&model.Transaction{})
+		db.Delete(&model.Receipt{})
+		db.Delete(&model.Account{})
+		db.Delete(&model.ERC20{})
 		db.DropTable(model.ERC20Storage{
 			Address: erc20.Address,
 		})
@@ -106,6 +103,18 @@ var _ = Describe("Manager Test", func() {
 			{
 				&types.Receipt{
 					TxHash: gethCommon.HexToHash("0x01"),
+					Logs: []*types.Log{
+						{
+							Address: gethCommon.HexToAddress("0x000001"),
+							Topics: []gethCommon.Hash{
+								gethCommon.HexToHash("0x000011"),
+								gethCommon.HexToHash("0x000012"),
+								gethCommon.HexToHash("0x000013"),
+								gethCommon.HexToHash("0x000014"),
+							},
+							Data: []byte("data"),
+						},
+					},
 				},
 			},
 			{

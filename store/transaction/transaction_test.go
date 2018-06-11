@@ -66,7 +66,7 @@ var _ = Describe("Transaction Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Table(TableName).Delete(&model.Transaction{})
+		db.Delete(&model.Transaction{})
 	})
 
 	It("should insert", func() {

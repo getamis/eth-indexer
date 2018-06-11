@@ -30,7 +30,7 @@ class InitializeIndexerTables < ActiveRecord::Migration[5.2]
       t.integer :gas_limit, :limit => 8, :null => false
       t.string :amount, :limit => 32, :null => false
       t.binary :payload, :limit => 1.megabyte, :null => false
-      t.integer :block_number, :limit => 8, :null => false, :default => 0
+      t.integer :block_number, :limit => 8, :null => false
     end
     add_index :transactions, :hash, :unique => true
     add_index :transactions, :block_hash
@@ -44,7 +44,7 @@ class InitializeIndexerTables < ActiveRecord::Migration[5.2]
       t.binary :tx_hash, :limit => 32, :null => false
       t.binary :contract_address, :limit => 20
       t.integer :gas_used, :limit => 8, :null => false
-      t.integer :block_number, :limit => 8, :null => false, :default => 0
+      t.integer :block_number, :limit => 8, :null => false
     end
     add_index :transaction_receipts, :tx_hash, :unique => true
     add_index :transaction_receipts, :block_number

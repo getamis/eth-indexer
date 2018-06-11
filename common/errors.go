@@ -36,6 +36,8 @@ var (
 	ErrInconsistentStates = errors.New("inconsistent states")
 	// ErrInvalidTD is returned when a block has invalid TD
 	ErrInvalidTD = errors.New("invalid TD")
+	// ErrInvalidReceiptLog returns if it's a invalid receipt log
+	ErrInvalidReceiptLog = errors.New("invalid receipt log")
 )
 
 // DuplicateError checks whether it's a duplicate key error

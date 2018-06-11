@@ -70,19 +70,19 @@ var _ = Describe("Account Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Table(NameStateBlocks).Delete(&model.Header{})
+		db.Delete(&model.Header{})
 
 		// Drop erc20 contract storage table
 		codes := []model.ERC20{}
-		db.Table(NameERC20).Find(&codes)
+		db.Find(&codes)
 		for _, code := range codes {
 			db.DropTable(model.ERC20Storage{
 				Address: code.Address,
 			})
 		}
 
-		db.Table(NameERC20).Delete(&model.Header{})
-		db.Table(NameAccounts).Delete(&model.Header{})
+		db.Delete(&model.ERC20{})
+		db.Delete(&model.Account{})
 	})
 
 	Context("InsertAccount()", func() {

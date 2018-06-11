@@ -22,12 +22,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-const (
-	NameStateBlocks = "state_blocks"
-	NameERC20       = "erc20"
-	NameAccounts    = "accounts"
-)
-
 //go:generate mockery -name Store
 
 type Store interface {
@@ -60,7 +54,7 @@ func NewWithDB(db *gorm.DB) Store {
 
 func (t *store) InsertERC20(code *model.ERC20) error {
 	// Insert contract code
-	if err := t.db.Table(NameERC20).Create(code).Error; err != nil {
+	if err := t.db.Create(code).Error; err != nil {
 		return err
 	}
 	// Create a table for this contract
@@ -74,7 +68,7 @@ func (t *store) InsertERC20Storage(storage *model.ERC20Storage) error {
 }
 
 func (t *store) InsertAccount(account *model.Account) error {
-	return t.db.Table(NameAccounts).Create(account).Error
+	return t.db.Create(account).Error
 }
 
 func (t *store) LastSyncERC20Storage(address common.Address, blockNr int64) (int64, error) {
@@ -89,28 +83,28 @@ func (t *store) LastSyncERC20Storage(address common.Address, blockNr int64) (int
 }
 
 func (t *store) DeleteAccounts(from, to int64) error {
-	return t.db.Table(NameAccounts).Delete(model.Account{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	return t.db.Delete(model.Account{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }
 
 func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error) {
 	result = &model.Account{}
 	if len(blockNr) == 0 {
-		err = t.db.Table(NameAccounts).Where("BINARY address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("BINARY address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
 	} else {
-		err = t.db.Table(NameAccounts).Where("BINARY address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("BINARY address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
 	}
 	return
 }
 
 func (t *store) FindERC20(address common.Address) (result *model.ERC20, err error) {
 	result = &model.ERC20{}
-	err = t.db.Table(NameERC20).Where("BINARY address = ?", address.Bytes()).Limit(1).Find(result).Error
+	err = t.db.Where("BINARY address = ?", address.Bytes()).Limit(1).Find(result).Error
 	return
 }
 
 func (t *store) ListERC20() (results []model.ERC20, err error) {
 	results = []model.ERC20{}
-	err = t.db.Table(NameERC20).Find(&results).Error
+	err = t.db.Find(&results).Error
 	return
 }
 

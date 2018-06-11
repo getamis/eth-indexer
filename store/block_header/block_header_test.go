@@ -71,7 +71,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Table(TableName).Delete(&model.Header{})
+		db.Delete(&model.Header{})
 	})
 
 	It("should get header by hash", func() {

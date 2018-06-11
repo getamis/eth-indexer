@@ -21,10 +21,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-const (
-	TableName = "transactions"
-)
-
 //go:generate mockery -name Store
 type Store interface {
 	Insert(data *model.Transaction) error
@@ -39,7 +35,7 @@ type store struct {
 
 func NewWithDB(db *gorm.DB) Store {
 	return &store{
-		db: db.Table(TableName),
+		db: db,
 	}
 }
 
