@@ -51,6 +51,8 @@ const (
 
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
+	// Init the store manager to load the erc20 list
+	Init() error
 	// FindERC20 finds the erc20 code
 	FindERC20(address gethCommon.Address) (*model.ERC20, error)
 	// InsertERC20 inserts the erc20 code
@@ -73,19 +75,23 @@ type manager struct {
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB) (Manager, error) {
-	list, err := account.NewWithDB(db).ListERC20()
+func NewManager(db *gorm.DB) Manager {
+	return &manager{
+		db: db,
+	}
+}
+
+func (m *manager) Init() error {
+	list, err := account.NewWithDB(m.db).ListERC20()
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+		return err
 	}
 	erc20List := make(map[string]model.ERC20)
 	for _, e := range list {
 		erc20List[common.BytesToHex(e.Address)] = e
 	}
-	return &manager{
-		db:        db,
-		erc20List: erc20List,
-	}, nil
+	m.erc20List = erc20List
+	return nil
 }
 
 func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
@@ -169,6 +175,7 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
+	blockNumber := block.Number().Int64()
 
 	// Insert blocks, txs and receipts
 	err = headerStore.Insert(common.Header(block))
@@ -187,8 +194,8 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 		}
 	}
 
-	for _, r := range receipts {
-		r, err := common.Receipt(block, r)
+	for _, receipt := range receipts {
+		r, err := common.Receipt(block, receipt)
 		if err != nil {
 			return err
 		}
@@ -197,10 +204,21 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 		if err != nil {
 			return err
 		}
+
+		// Insert erc20 events
+		events, err := m.erc20Events(blockNumber, receipt.TxHash, r.Logs)
+		if err != nil {
+			return err
+		}
+		for _, e := range events {
+			err := accountStore.InsertERC20Transfer(e)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// Insert accounts
-	blockNumber := block.Number().Int64()
 	for addr, account := range dump.Accounts {
 		err := insertAccount(accountStore, blockNumber, addr, account)
 		if err != nil {
@@ -282,7 +300,14 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	}
 
 	for hexAddr := range m.erc20List {
+		// Delete storage
 		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
+		if err != nil {
+			return
+		}
+
+		// Delete erc20 events
+		err = accountStore.DeleteERC20Transfer(gethCommon.HexToAddress(hexAddr), from, to)
 		if err != nil {
 			return
 		}

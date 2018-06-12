@@ -79,6 +79,9 @@ var _ = Describe("Account Database Test", func() {
 			db.DropTable(model.ERC20Storage{
 				Address: code.Address,
 			})
+			db.DropTable(model.ERC20Transfer{
+				Address: code.Address,
+			})
 		}
 
 		db.Delete(&model.ERC20{})
@@ -326,6 +329,56 @@ var _ = Describe("Account Database Test", func() {
 				Expect(err).Should(Succeed())
 				Expect(s).Should(Equal(storage1))
 			}
+		})
+	})
+
+	Context("InsertERC20Transfer() & DeleteERC20Transfer()", func() {
+		It("deletes the right transfer", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			addr := gethCommon.HexToAddress(hexAddr)
+			data := makeERC20(hexAddr)
+			err := store.InsertERC20(data)
+			Expect(err).Should(Succeed())
+
+			event1 := &model.ERC20Transfer{
+				Address:     addr.Bytes(),
+				BlockNumber: 101,
+				TxHash:      common.HexToBytes("0x01"),
+				From:        common.HexToBytes("0x02"),
+				To:          common.HexToBytes("0x03"),
+				Value:       "1000000",
+			}
+			err = store.InsertERC20Transfer(event1)
+			Expect(err).Should(Succeed())
+
+			event2 := &model.ERC20Transfer{
+				Address:     addr.Bytes(),
+				BlockNumber: 106,
+				TxHash:      common.HexToBytes("0x11"),
+				From:        common.HexToBytes("0x12"),
+				To:          common.HexToBytes("0x13"),
+				Value:       "1000000",
+			}
+
+			err = store.InsertERC20Transfer(event2)
+			Expect(err).Should(Succeed())
+
+			event3 := &model.ERC20Transfer{
+				Address:     addr.Bytes(),
+				BlockNumber: 110,
+				TxHash:      common.HexToBytes("0x21"),
+				From:        common.HexToBytes("0x22"),
+				To:          common.HexToBytes("0x23"),
+				Value:       "1000000",
+			}
+			err = store.InsertERC20Transfer(event3)
+			Expect(err).Should(Succeed())
+
+			err = store.DeleteERC20Transfer(addr, int64(105), int64(110))
+			Expect(err).Should(Succeed())
 		})
 	})
 })
