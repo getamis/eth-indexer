@@ -4,7 +4,7 @@ ENV HOST localhost
 ENV PORT 3306
 ENV USERNAME root
 ENV PASSWORD my-secret-pw
-ENV DATABASE eth-db
+ENV DATABASE ethdb
 
 RUN apt-get update && \
     apt-get install -y unixodbc-dev \
