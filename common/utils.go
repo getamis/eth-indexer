@@ -177,8 +177,8 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 			case 3:
 				log.Topic3 = l.Topics[i].Bytes()
 			}
-			logs = append(logs, log)
 		}
+		logs = append(logs, log)
 	}
 	r.Logs = logs
 	return r, nil

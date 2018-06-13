@@ -89,6 +89,9 @@ var _ = Describe("Manager Test", func() {
 		db.DropTable(model.ERC20Storage{
 			Address: erc20.Address,
 		})
+		db.DropTable(model.ERC20Transfer{
+			Address: erc20.Address,
+		})
 
 		// Init initial states
 		blocks = []*types.Block{
@@ -113,6 +116,16 @@ var _ = Describe("Manager Test", func() {
 								gethCommon.HexToHash("0x000014"),
 							},
 							Data: []byte("data"),
+						},
+						{
+							Address: gethCommon.BytesToAddress(erc20.Address),
+							// transfer 99,900 tokens from 0x36928500bc1dcd7af6a2b4008875cc336b927d57 to 0xc6cde7c39eb2f0f0095f41570af89efc2c1ea828
+							Topics: []gethCommon.Hash{
+								gethCommon.BytesToHash(sha3TransferEvent),
+								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
+								gethCommon.HexToHash("0x000000000000000000000000c6cde7c39eb2f0f0095f41570af89efc2c1ea828"),
+							},
+							Data: []byte("0000000000000000000000000000000000000000000000000000001742810700"),
 						},
 					},
 				},
@@ -150,7 +163,8 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager, err = NewManager(db)
+		manager = NewManager(db)
+		err = manager.Init()
 		Expect(err).Should(BeNil())
 
 		err = manager.InsertERC20(erc20)
@@ -217,7 +231,8 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			// Reload manager
-			manager, err = NewManager(db)
+			manager = NewManager(db)
+			err = manager.Init()
 			Expect(err).Should(BeNil())
 
 			// Force update blocks

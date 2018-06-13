@@ -90,7 +90,7 @@ func (idx *indexer) Init(ctx context.Context, addresses []string, numbers []int)
 		}
 	}
 
-	return nil
+	return idx.manager.Init()
 }
 
 // SyncToTarget syncs the blocks fromBlock to targetBlock. In this function, we are NOT checking reorg and inserting TD. We force to INSERT blocks.

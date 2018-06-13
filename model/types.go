@@ -147,7 +147,7 @@ func (e ERC20) TableName() string {
 // ERC20Storage represents the contract storage
 type ERC20Storage struct {
 	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"index;unique_index:idx_block_number_key_hash"`
+	BlockNumber int64  `gorm:"size:8;index;unique_index:idx_block_number_key_hash"`
 	Key         []byte `gorm:"column:key_hash;size:32;unique_index:idx_block_number_key_hash"`
 	Value       []byte `gorm:"size:32"`
 }
@@ -160,4 +160,24 @@ func (s ERC20Storage) TableName() string {
 // ERC20ContractTableName returns its contract table
 func ERC20ContractTableName(address []byte) string {
 	return "erc20_" + hexutil.Encode(address)
+}
+
+// ERC20Transfer represents the transfer event in erc20
+type ERC20Transfer struct {
+	Address     []byte `gorm:"-"`
+	BlockNumber int64  `gorm:"size:8;index"`
+	TxHash      []byte `gorm:"size:32;index"`
+	From        []byte `gorm:"size:20;index"`
+	To          []byte `gorm:"size:20;index"`
+	Value       string `gorm:"size:32"`
+}
+
+// TableName retruns the table name of this erc20 contract
+func (s ERC20Transfer) TableName() string {
+	return ERC20TransferTableName(s.Address)
+}
+
+// ERC20TransferTableName returns its contract table
+func ERC20TransferTableName(address []byte) string {
+	return "erc20_transfer_" + hexutil.Encode(address)
 }

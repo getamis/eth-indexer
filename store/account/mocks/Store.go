@@ -38,6 +38,20 @@ func (_m *Store) DeleteERC20Storage(address common.Address, from int64, to int64
 	return r0
 }
 
+// DeleteERC20Transfer provides a mock function with given fields: address, from, to
+func (_m *Store) DeleteERC20Transfer(address common.Address, from int64, to int64) error {
+	ret := _m.Called(address, from, to)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(common.Address, int64, int64) error); ok {
+		r0 = rf(address, from, to)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FindAccount provides a mock function with given fields: address, blockNr
 func (_m *Store) FindAccount(address common.Address, blockNr ...int64) (*model.Account, error) {
 	_va := make([]interface{}, len(blockNr))
@@ -149,6 +163,20 @@ func (_m *Store) InsertERC20Storage(storage *model.ERC20Storage) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*model.ERC20Storage) error); ok {
 		r0 = rf(storage)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// InsertERC20Transfer provides a mock function with given fields: event
+func (_m *Store) InsertERC20Transfer(event *model.ERC20Transfer) error {
+	ret := _m.Called(event)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*model.ERC20Transfer) error); ok {
+		r0 = rf(event)
 	} else {
 		r0 = ret.Error(0)
 	}

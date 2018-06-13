@@ -36,6 +36,10 @@ type Store interface {
 	DeleteERC20Storage(address common.Address, from, to int64) error
 	LastSyncERC20Storage(address common.Address, blockNr int64) (result int64, err error)
 
+	// ERC 20 transfer events
+	InsertERC20Transfer(event *model.ERC20Transfer) error
+	DeleteERC20Transfer(address common.Address, from, to int64) error
+
 	// Accounts
 	InsertAccount(account *model.Account) error
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
@@ -58,9 +62,18 @@ func (t *store) InsertERC20(code *model.ERC20) error {
 		return err
 	}
 	// Create a table for this contract
-	return t.db.CreateTable(model.ERC20Storage{
+	if err := t.db.CreateTable(model.ERC20Storage{
 		Address: code.Address,
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+	// Create erc20 transfer event table
+	if err := t.db.CreateTable(model.ERC20Transfer{
+		Address: code.Address,
+	}).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (t *store) InsertERC20Storage(storage *model.ERC20Storage) error {
@@ -121,4 +134,14 @@ func (t *store) DeleteERC20Storage(address common.Address, from, to int64) error
 	return t.db.Table(model.ERC20Storage{
 		Address: address.Bytes(),
 	}.TableName()).Delete(model.ERC20Storage{}, "block_number >= ? AND block_number <= ?", from, to).Error
+}
+
+func (t *store) InsertERC20Transfer(event *model.ERC20Transfer) error {
+	return t.db.Create(event).Error
+}
+
+func (t *store) DeleteERC20Transfer(address common.Address, from, to int64) error {
+	return t.db.Table(model.ERC20Transfer{
+		Address: address.Bytes(),
+	}.TableName()).Delete(model.ERC20Transfer{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }

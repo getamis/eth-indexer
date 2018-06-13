@@ -110,11 +110,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		manager, err := store.NewManager(db)
-		if err != nil {
-			return err
-		}
-		indexer := indexer.New(ethClient, manager)
+		indexer := indexer.New(ethClient, store.NewManager(db))
 		if err := indexer.Init(ctx, erc20Addresses, erc20BlockNumber); err != nil {
 			return err
 		}

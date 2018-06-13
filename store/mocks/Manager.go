@@ -83,6 +83,20 @@ func (_m *Manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 	return r0, r1
 }
 
+// Init provides a mock function with given fields:
+func (_m *Manager) Init() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // InsertERC20 provides a mock function with given fields: code
 func (_m *Manager) InsertERC20(code *model.ERC20) error {
 	ret := _m.Called(code)
