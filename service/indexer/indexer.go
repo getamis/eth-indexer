@@ -28,14 +28,15 @@ import (
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
-	"github.com/getamis/eth-indexer/service"
 	"github.com/getamis/eth-indexer/store"
 	"github.com/getamis/sirius/log"
 )
 
 var (
-	//ErrInconsistentLength returns if the length of ERC20 addresses and block numbers is
+	//ErrInconsistentLength returns if the length of ERC20 addresses and block numbers are not eqaul
 	ErrInconsistentLength = errors.New("inconsistent length")
+	//ErrInvalidAddress returns if invalid ERC20 address is detected
+	ErrInvalidAddress = errors.New("invalid address")
 )
 
 // New news an indexer service
@@ -62,7 +63,7 @@ func (idx *indexer) Init(ctx context.Context, addresses []string, numbers []int)
 
 	for i, addr := range addresses {
 		if !ethCommon.IsHexAddress(addr) {
-			return service.ErrInvalidAddress
+			return ErrInvalidAddress
 		}
 		address := ethCommon.HexToAddress(addr)
 
