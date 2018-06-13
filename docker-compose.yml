@@ -11,8 +11,8 @@ services:
     command: "--gcmode=archive --syncmode=full --wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
     restart: always
     depends_on:
-      - ws-database
-  ws-database:
+      - idx-database
+  idx-database:
     image: mysql:5.7
     ports:
       - "3306:3306"
@@ -22,28 +22,28 @@ services:
       - MYSQL_DATABASE=ethdb
     volumes:
       - ${MYSQL_DATA_PATH}:/var/lib/mysql
-  ws-migration:
+  idx-migration:
     build:
       context: ./migration
     command: ["rake", "db:migrate"]
     restart: on-failure
     depends_on:
-      - ws-database
+      - idx-database
     environment:
       - RAILS_ENV=customized
-      - HOST=ws-database
+      - HOST=idx-database
       - PORT=3306
       - DATABASE=ethdb
       - USERNAME=root
       - PASSWORD=my-secret-pw
-  ws-indexer:
+  indexer:
     build:
       context: .
-      dockerfile: ./cmd/service/Dockerfile
+      dockerfile: ./cmd/Dockerfile
     command:
       - indexer
       - --db.host
-      - ws-database
+      - idx-database
       - --eth.host
       - geth
       # Mithril Token
@@ -58,5 +58,5 @@ services:
       - "4634748"
     restart: on-failure
     depends_on:
-      - ws-database
-      - ws-migration
+      - idx-database
+      - idx-migration
