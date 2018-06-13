@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/getamis/eth-indexer/cmd/service/erc20"
 	"github.com/getamis/eth-indexer/cmd/service/indexer"
 	"github.com/spf13/cobra"
 )
@@ -48,5 +47,4 @@ func Execute() {
 
 func init() {
 	RootCmd.AddCommand(indexer.ServerCmd)
-	RootCmd.AddCommand(erc20.Cmd)
 }
