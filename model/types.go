@@ -181,3 +181,17 @@ func (s ERC20Transfer) TableName() string {
 func ERC20TransferTableName(address []byte) string {
 	return "erc20_transfer_" + hexutil.Encode(address)
 }
+
+// ETHTransfer represents the transfer event in ether
+type ETHTransfer struct {
+	BlockNumber int64  `gorm:"size:8;index"`
+	TxHash      []byte `gorm:"size:32;index"`
+	From        []byte `gorm:"size:20;index"`
+	To          []byte `gorm:"size:20;index"`
+	Value       string `gorm:"size:32"`
+}
+
+// TableName retruns the table name of this erc20 contract
+func (e ETHTransfer) TableName() string {
+	return "eth_transfer"
+}
