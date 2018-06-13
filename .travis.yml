@@ -20,15 +20,42 @@ jobs:
       script:
         - go get -u gopkg.in/alecthomas/gometalinter.v2
         - gometalinter.v2 --install
-        - gometalinter.v2 --exclude="(vendor/.*|service/pb/.*|.*/mocks/.*)" --disable-all --deadline=10m --enable=vet --enable=gofmt --enable=misspell --enable=goconst --enable=unconvert --enable=gosimple --min-occurrences=6 ./...
+        - gometalinter.v2 --exclude="(vendor/.*|.*/mocks/.*)" --disable-all --deadline=10m --enable=vet --enable=gofmt --enable=misspell --enable=goconst --enable=unconvert --enable=gosimple --min-occurrences=6 ./...
     - stage: Build
       script: make clean all
       if: branch = develop AND type IN (pull_request)
     - stage: Unit test
       script:
         - docker pull mysql:5.7
-        - make migration-docker
+        - make migration-docker -e DOCKER_IMAGE_TAG=latest
         - make test
       if: branch = develop AND type IN (pull_request)
+    - stage: Develop Release
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin quay.io/amis
+        - make eth-indexer-docker
+        - make eth-indexer-docker.push
+        - make migration-docker
+        - make migration-docker.push
+        - make eth-indexer-docker -e DOCKER_IMAGE_TAG=latest
+        - make eth-indexer-docker.push -e DOCKER_IMAGE_TAG=latest
+        - make migration-docker -e DOCKER_IMAGE_TAG=latest
+        - make migration-docker.push -e DOCKER_IMAGE_TAG=latest
+      if: branch = develop AND (NOT type IN (pull_request))
+    - stage: Staging Release
+      script:
+        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin quay.io/amis
+        - make eth-indexer-docker
+        - make eth-indexer-docker.push
+        - make migration-docker
+        - make migration-docker.push
+      if: tag =~ ^v
+      env: DOCKER_IMAGE_TAG="$TRAVIS_TAG"
+      deploy:
+        provider: releases
+        api_key: "$GITHUB_OAUTH_TOKEN"
+        skip_cleanup: true
+        on:
+          tags: true
 after_success:
   - bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
