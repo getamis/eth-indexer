@@ -129,7 +129,7 @@ var ServerCmd = &cobra.Command{
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
 		} else {
 			ch := make(chan *types.Header)
-			err = indexer.Listen(ctx, ch)
+			err = indexer.Listen(ctx, ch, fromBlock)
 		}
 
 		// Ignore if listener is stopped by signal

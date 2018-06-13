@@ -111,7 +111,7 @@ func (idx *indexer) SyncToTarget(ctx context.Context, fromBlock, targetBlock int
 	return nil
 }
 
-func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
+func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -126,7 +126,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 		select {
 		case head := <-ch:
 			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
-			err = idx.sync(childCtx, head.Number.Int64())
+			err = idx.sync(childCtx, fromBlock, head.Number.Int64())
 			if err != nil {
 				log.Error("Failed to sync to header from ethereum", "number", head.Number, "err", err)
 				return err
@@ -140,7 +140,7 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header) error {
 	}
 }
 
-func (idx *indexer) getLocalState(ctx context.Context) (header *model.Header, currentTd *big.Int, err error) {
+func (idx *indexer) getLocalState(ctx context.Context, from int64) (header *model.Header, currentTd *big.Int, err error) {
 	// Get latest header from db
 	header, err = idx.manager.LatestHeader()
 	if err != nil {
@@ -156,7 +156,19 @@ func (idx *indexer) getLocalState(ctx context.Context) (header *model.Header, cu
 			log.Error("Failed to get latest header from db", "err", err)
 			return
 		}
-	} else {
+	}
+
+	// Ensure the from block is lager than current block
+	if from-1 > header.Number {
+		block, err := idx.client.BlockByNumber(ctx, big.NewInt(from-1))
+		if err != nil {
+			log.Error("Failed to get block", "number", from, "err", err)
+			return nil, nil, err
+		}
+		header = common.Header(block)
+	}
+
+	if header.Number >= 0 {
 		currentTd, err = idx.getTd(ctx, header.Hash)
 		if err != nil {
 			log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
@@ -166,15 +178,17 @@ func (idx *indexer) getLocalState(ctx context.Context) (header *model.Header, cu
 	return
 }
 
-func (idx *indexer) sync(ctx context.Context, to int64) error {
+func (idx *indexer) sync(ctx context.Context, from int64, to int64) error {
 	// Update existing blocks from ethereum to db
 	var err error
-	idx.currentHeader, idx.currentTD, err = idx.getLocalState(ctx)
+	idx.currentHeader, idx.currentTD, err = idx.getLocalState(ctx, from)
 	if err != nil {
 		return err
 	}
 
-	from := idx.currentHeader.Number + 1
+	// Ensure the from block is lager than current block
+	from = idx.currentHeader.Number + 1
+
 	if from > to {
 		// Only check `to` block
 		from = to
@@ -257,9 +271,10 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mod
 	var newBlocks []*types.Block
 	var receipts [][]*types.Receipt
 	var dumps []*state.DirtyDump
+	var events [][]*types.TransferLog
 	for i := len(blocks) - 1; i >= 0; i-- {
 		block := blocks[i]
-		receipt, dump, err := idx.getBlockData(ctx, block)
+		receipt, dump, event, err := idx.getBlockData(ctx, block)
 		if err != nil {
 			log.Error("Failed to get receipts and state data", "err", err)
 			return nil, nil, err
@@ -267,8 +282,9 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mod
 		newBlocks = append(newBlocks, block)
 		receipts = append(receipts, receipt)
 		dumps = append(dumps, dump)
+		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(newBlocks, receipts, dumps, mode)
+	err := idx.manager.UpdateBlocks(newBlocks, receipts, dumps, events, mode)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -351,7 +367,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 }
 
 // getBlockData returns the receipts generated in the given block, and state diff since last block
-func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *state.DirtyDump, error) {
+func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *state.DirtyDump, []*types.TransferLog, error) {
 	blockNumber := block.Number().Int64()
 	logger := log.New("number", blockNumber)
 
@@ -359,23 +375,23 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	receipts, err := idx.client.TransactionReceipts(ctx, block.Transactions())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
+	// Get state dump
 	dump := &state.DirtyDump{}
 	isGenesis := blockNumber == 0
 	if isGenesis {
 		d, err := idx.client.DumpBlock(ctx, 0)
 		if err != nil {
 			logger.Error("Failed to get state from ethereum", "err", err)
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		dump.Root = d.Root
 		dump.Accounts = make(map[string]state.DirtyDumpAccount)
 		for addr, acc := range d.Accounts {
 			dump.Accounts[addr] = state.DirtyDumpAccount{
-				Balance: acc.Balance,
-				Nonce:   acc.Nonce,
+				Balance: &acc.Balance,
 				Storage: acc.Storage,
 			}
 		}
@@ -384,9 +400,16 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 		dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, block.Number().Uint64())
 		if err != nil {
 			logger.Error("Failed to get modified accounts from ethereum", "err", err)
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
-	return receipts, dump, nil
+	// Get Eth transfer events
+	events, err := idx.client.GetTransferLogs(ctx, block.Hash())
+	if err != nil {
+		logger.Error("Failed to get eth transfer events from ethereum", "err", err)
+		return nil, nil, nil, err
+	}
+
+	return receipts, dump, events, nil
 }
