@@ -19,6 +19,7 @@ package eth
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -28,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -344,8 +346,22 @@ func NewPrivateDebugAPI(config *params.ChainConfig, eth *Ethereum) *PrivateDebug
 
 // Preimage is a debug API function that returns the preimage for a sha3 hash, if known.
 func (api *PrivateDebugAPI) Preimage(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
-	db := core.PreimageTable(api.eth.ChainDb())
-	return db.Get(hash.Bytes())
+	if preimage := rawdb.ReadPreimage(api.eth.ChainDb(), hash); preimage != nil {
+		return preimage, nil
+	}
+	return nil, errors.New("unknown preimage")
+}
+
+// GetTransferLogs is a debug API function that returns the transfer logs for a block hash, if known.
+func (api *PrivateDebugAPI) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error) {
+	number := rawdb.ReadHeaderNumber(api.eth.ChainDb(), hash)
+	if number == nil {
+		return nil, errors.New("unknown transfer logs")
+	}
+	if transferLogs := rawdb.ReadTransferLogs(api.eth.ChainDb(), hash, *number); transferLogs != nil {
+		return transferLogs, nil
+	}
+	return nil, errors.New("unknown transfer logs")
 }
 
 // GetBadBLocks returns a list of the last 'bad blocks' that the client has seen on the network
@@ -470,9 +486,7 @@ func GetDirtyStorage(config *params.ChainConfig, blockchain *core.BlockChain, nu
 		return nil, err
 	}
 
-	stateDB.StartDirtyStorage()
 	defer func() {
-		stateDB.StopDirtyStorage()
 		if err == nil {
 			stateErr := blockchain.WriteDirtyDump(hash, dump)
 			if stateErr != nil {

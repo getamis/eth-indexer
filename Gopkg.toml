@@ -27,7 +27,7 @@
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "feature/get_modified_accounts"
+  branch = "balance_in_block_level"
 
 [[constraint]]
   branch = "develop"
