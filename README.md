@@ -8,10 +8,10 @@ eth-indexer is an Ethereum blockchain indexer project to crawl blocks, transacti
 
 ## Getting Started
 
-There are few docker images in the project:
+There are 3 main components in the project:
 1. geth: modified geth to get state difference per block/address
-2. ws-database: MySQL to store all indexed data
-3. ws-indexer: indexer to crawl from geth then push to database
+2. idx-database: MySQL to store all indexed data
+3. indexer: indexer to crawl from geth then push to database
 
 ### Prerequisites
 

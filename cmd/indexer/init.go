@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the eth-indexer library. If not, see <http://www.gnu.org/licenses/>.
 
-package indexer
+package main
 
 import (
 	"fmt"
