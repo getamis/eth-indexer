@@ -1,0 +1,20 @@
+eth:
+  protocol: ws
+  host: geth
+  port: 8546
+db:
+  driver: mysql
+  host: idx-database
+  port: 3306
+  name: ethdb
+  user: root
+  password: my-secret-pw
+sync:
+  targetBlock: 0
+  fromBlock: 0
+pprof:
+  enable: false
+  port: 8000
+  address: "0.0.0.0"
+functions:
+  erc20token: true
