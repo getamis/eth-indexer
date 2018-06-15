@@ -54,6 +54,8 @@ type EthClient interface {
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
+	// Get ETH transfer logs
+	GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error)
 	Close()
 }
 
@@ -174,6 +176,12 @@ func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (
 		erc20.Name = name
 	}
 	return erc20, nil
+}
+
+func (c *client) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error) {
+	r := []*types.TransferLog{}
+	err := c.rpc.CallContext(ctx, &r, "debug_getTransferLogs", hash.Hex())
+	return r, err
 }
 
 func (c *client) Close() {

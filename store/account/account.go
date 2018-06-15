@@ -40,6 +40,10 @@ type Store interface {
 	InsertERC20Transfer(event *model.ERC20Transfer) error
 	DeleteERC20Transfer(address common.Address, from, to int64) error
 
+	// ETH transfer events
+	InsertETHTransfer(event *model.ETHTransfer) error
+	DeleteETHTransfer(from, to int64) error
+
 	// Accounts
 	InsertAccount(account *model.Account) error
 	FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error)
@@ -144,4 +148,11 @@ func (t *store) DeleteERC20Transfer(address common.Address, from, to int64) erro
 	return t.db.Table(model.ERC20Transfer{
 		Address: address.Bytes(),
 	}.TableName()).Delete(model.ERC20Transfer{}, "block_number >= ? AND block_number <= ?", from, to).Error
+}
+
+func (t *store) InsertETHTransfer(event *model.ETHTransfer) error {
+	return t.db.Create(event).Error
+}
+func (t *store) DeleteETHTransfer(from, to int64) error {
+	return t.db.Delete(model.ETHTransfer{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }

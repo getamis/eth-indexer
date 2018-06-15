@@ -27,7 +27,7 @@
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "feature/get_modified_accounts"
+  branch = "feature/indexer_diff_1.8.10"
 
 [[constraint]]
   branch = "develop"

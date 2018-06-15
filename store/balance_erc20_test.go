@@ -98,7 +98,9 @@ var _ = Describe("DB ERC 20 Test", func() {
 		storages = make(map[string]*model.ERC20Storage)
 		for addrStr, account := range dump.Accounts {
 			if contractAddr == common.HexToAddress(addrStr) {
-				c, _ := sim.CodeAt(context.Background(), contractAddr, nil)
+				c, err := sim.CodeAt(context.Background(), contractAddr, nil)
+				Expect(err).Should(BeNil())
+
 				code = &model.ERC20{
 					Address: contractAddr.Bytes(),
 					Code:    c,
@@ -168,10 +170,8 @@ var _ = Describe("DB ERC 20 Test", func() {
 			Expect(db.err).Should(Equal(ErrNotSelf))
 		})
 		It("GetNonce()", func() {
-			Expect(db.GetNonce(contractAddr)).Should(Equal(uint64(db.account.Nonce)))
+			Expect(db.GetNonce(contractAddr)).Should(BeZero())
 			Expect(db.err).Should(BeNil())
-			Expect(db.GetNonce(notSelfAddr)).Should(BeZero())
-			Expect(db.err).Should(Equal(ErrNotSelf))
 		})
 		It("GetCodeHash()", func() {
 			Expect(db.GetCodeHash(contractAddr)).Should(Equal(crypto.Keccak256Hash(db.code.Code)))

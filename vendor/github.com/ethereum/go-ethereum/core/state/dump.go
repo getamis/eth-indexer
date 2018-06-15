@@ -19,6 +19,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -53,7 +54,7 @@ func (self *StateDB) RawDump() Dump {
 			panic(err)
 		}
 
-		obj := newObject(nil, common.BytesToAddress(addr), data, nil)
+		obj := newObject(nil, common.BytesToAddress(addr), data)
 		account := DumpAccount{
 			Balance:  data.Balance.String(),
 			Nonce:    data.Nonce,
@@ -85,29 +86,146 @@ type DirtyDump struct {
 	Accounts map[string]DirtyDumpAccount `json:"accounts"`
 }
 
-type DirtyDumpAccount struct {
-	Balance string            `json:"balance"`
-	Nonce   uint64            `json:"nonce"`
-	Storage map[string]string `json:"storage"`
-}
-
-// DumpDirty dumps the dirty storage diff
-func (self *StateDB) DumpDirty() *DirtyDump {
-	dump := &DirtyDump{
-		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+func newDirtyDump(trie Trie) *DirtyDump {
+	return &DirtyDump{
+		Root:     fmt.Sprintf("%x", trie.Hash()),
 		Accounts: make(map[string]DirtyDumpAccount),
 	}
+}
 
-	for addr, storage := range self.dirtyStorage {
-		account := DirtyDumpAccount{
-			Balance: self.GetBalance(addr).String(),
-			Nonce:   self.GetNonce(addr),
-			Storage: make(map[string]string),
-		}
-		for key, value := range storage {
-			account.Storage[common.Bytes2Hex(key.Bytes())] = common.Bytes2Hex(value.Bytes())
-		}
-		dump.Accounts[common.Bytes2Hex(addr.Bytes())] = account
+func (d *DirtyDump) Copy() *DirtyDump {
+	cpy := &DirtyDump{
+		Root:     d.Root,
+		Accounts: make(map[string]DirtyDumpAccount),
 	}
-	return dump
+	for account, dirty := range d.Accounts {
+		storage := make(map[string]string)
+		for key, val := range dirty.Storage {
+			storage[key] = val
+		}
+		cpy.Accounts[account] = DirtyDumpAccount{
+			Balance: dirty.Balance,
+			Storage: storage,
+		}
+	}
+	return cpy
+}
+
+// EncodeRLP implements rlp.Encoder.
+func (d *DirtyDump) EncodeRLP(w io.Writer) error {
+	dirtyDumpRLP := dirtyDumpRLP{
+		Root:     d.Root,
+		Accounts: make([]dirtyDumpAccountRLP, 0),
+	}
+	for account, dirtyDumpAccount := range d.Accounts {
+		accountRLP := dirtyDumpAccountRLP{
+			Account: account,
+			Balance: dirtyDumpAccount.Balance,
+		}
+		if len(dirtyDumpAccount.Storage) > 0 {
+			accountRLP.Storage = make([]dirtyStorageRLP, 0)
+			for key, val := range dirtyDumpAccount.Storage {
+				accountRLP.Storage = append(accountRLP.Storage, dirtyStorageRLP{Key: key, Value: val})
+			}
+		}
+		dirtyDumpRLP.Accounts = append(dirtyDumpRLP.Accounts, accountRLP)
+	}
+	return rlp.Encode(w, &dirtyDumpRLP)
+}
+
+// DecodeRLP implements rlp.Decoder.
+func (d *DirtyDump) DecodeRLP(s *rlp.Stream) error {
+	var dec dirtyDumpRLP
+	if err := s.Decode(&dec); err != nil {
+		return err
+	}
+	d.Root = dec.Root
+	d.Accounts = make(map[string]DirtyDumpAccount)
+	for _, accountRLP := range dec.Accounts {
+		account := DirtyDumpAccount{
+			Balance: accountRLP.Balance,
+		}
+		if len(accountRLP.Storage) > 0 {
+			account.Storage = make(map[string]string)
+			for _, storageRLP := range accountRLP.Storage {
+				account.Storage[storageRLP.Key] = storageRLP.Value
+			}
+		}
+		d.Accounts[accountRLP.Account] = account
+	}
+	return nil
+}
+
+// DirtyDumpAccount records the changed balance and storage for an account.
+type DirtyDumpAccount struct {
+	Balance string            `json:"balance,omitempty"`
+	Storage map[string]string `json:"storage,omitempty"`
+}
+
+// DumpDirty return the dirty storage diff.
+func (self *StateDB) DumpDirty() *DirtyDump {
+	return self.dirtyDump
+}
+
+// dumpDirtySnapshot dumps the balances and dirty storage for each dirty accounts in current state.
+func (self *StateDB) dumpDirtySnapshot() {
+	for addr, change := range calcDirties(self.journal.entries) {
+		account, exist := self.dirtyDump.Accounts[common.Bytes2Hex(addr.Bytes())]
+		if !exist {
+			account = DirtyDumpAccount{Storage: make(map[string]string)}
+		}
+
+		if change.balanceChange > 0 {
+			account.Balance = self.GetBalance(addr).String()
+		}
+
+		if len(change.storageChange) > 0 {
+			for key := range change.storageChange {
+				value := self.GetState(addr, key)
+				account.Storage[common.Bytes2Hex(key.Bytes())] = common.Bytes2Hex(value.Bytes())
+			}
+		}
+		self.dirtyDump.Accounts[common.Bytes2Hex(addr.Bytes())] = account
+	}
+}
+
+// dirtyDiff records how many balance changes and changed keys of storage for one account.
+type dirtyDiff struct {
+	balanceChange int
+	storageChange map[common.Hash]struct{}
+}
+
+// calcDirties calculates balance change and storage change by account.
+func calcDirties(dirtyEntry []journalEntry) map[common.Address]*dirtyDiff {
+	dirties := make(map[common.Address]*dirtyDiff)
+	for _, entry := range dirtyEntry {
+		if addr := entry.dirtied(); addr != nil {
+			if dirties[*addr] == nil {
+				dirties[*addr] = &dirtyDiff{storageChange: make(map[common.Hash]struct{})}
+			}
+			switch v := entry.(type) {
+			case balanceChange:
+				dirties[*addr].balanceChange++
+			case storageChange:
+				dirties[*addr].storageChange[v.key] = struct{}{}
+			}
+		}
+	}
+	return dirties
+}
+
+type dirtyDumpRLP struct {
+	Root     string
+	Accounts []dirtyDumpAccountRLP
+}
+
+type dirtyDumpAccountRLP struct {
+	Account string
+	Balance string
+	Storage []dirtyStorageRLP
+}
+
+type dirtyStorageRLP struct {
+	Key   string
+	Value string
 }

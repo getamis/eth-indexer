@@ -40,6 +40,7 @@ var _ = Describe("Manager Test", func() {
 		blocks   []*types.Block
 		receipts [][]*types.Receipt
 		dumps    []*state.DirtyDump
+		events   [][]*types.TransferLog
 		manager  Manager
 	)
 
@@ -161,6 +162,30 @@ var _ = Describe("Manager Test", func() {
 				},
 			},
 		}
+		events = [][]*types.TransferLog{
+			{
+				{
+					From:   gethCommon.HexToAddress("0x01"),
+					To:     gethCommon.HexToAddress("0x02"),
+					Value:  big.NewInt(100),
+					TxHash: gethCommon.HexToHash("0x03"),
+				},
+				{
+					From:   gethCommon.HexToAddress("0x04"),
+					To:     gethCommon.HexToAddress("0x05"),
+					Value:  big.NewInt(200),
+					TxHash: gethCommon.HexToHash("0x06"),
+				},
+			},
+			{
+				{
+					From:   gethCommon.HexToAddress("0x07"),
+					To:     gethCommon.HexToAddress("0x08"),
+					Value:  big.NewInt(300),
+					TxHash: gethCommon.HexToHash("0x09"),
+				},
+			},
+		}
 
 		var err error
 		manager = NewManager(db)
@@ -174,7 +199,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
+		err = manager.UpdateBlocks(blocks, receipts, dumps, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 	})
 
@@ -190,7 +215,7 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeSync)
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, events, ModeSync)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
@@ -209,7 +234,7 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, ModeReOrg)
+			err := manager.UpdateBlocks(newBlocks, receipts, dumps, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
@@ -236,7 +261,7 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			// Force update blocks
-			err = manager.UpdateBlocks(blocks, receipts, dumps, ModeForceSync)
+			err = manager.UpdateBlocks(blocks, receipts, dumps, events, ModeForceSync)
 			Expect(err).Should(BeNil())
 
 			// Got blocks 0
@@ -264,7 +289,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(blocks, receipts, dumps, ModeReOrg)
+			err := manager.UpdateBlocks(blocks, receipts, dumps, events, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})

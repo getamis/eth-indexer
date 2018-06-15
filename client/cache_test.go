@@ -40,7 +40,7 @@ var _ = Describe("Cache Test", func() {
 	block := types.NewBlockWithHeader(
 		&types.Header{
 			Number:     big.NewInt(100),
-			Root:       common.StringToHash("12345678900"),
+			Root:       common.HexToHash("12345678900"),
 			Difficulty: td,
 		},
 	)

@@ -71,10 +71,35 @@ class InitializeIndexerTables < ActiveRecord::Migration[5.2]
       t.binary :address, :limit => 20, :null => false
       t.integer :block_number, :limit => 8, :null => false
       t.string :balance, :limit => 32, :null => false
-      t.integer :nonce, :limit => 8, :null => false
     end
     add_index :accounts, :address
     add_index :accounts, [:address, :block_number], :unique => true
 
+    create_table :receipt_logs do |t|
+      t.binary :tx_hash, :limit => 32, :null => false
+      t.integer :block_number, :limit => 8, :null => false
+      t.binary :contract_address, :limit => 20, :null => false
+      t.binary :event_name, :limit => 32, :null => false
+      t.binary :topic1, :limit => 32, :null => true
+      t.binary :topic2, :limit => 32, :null => true
+      t.binary :topic3, :limit => 32, :null => true
+      t.binary :data, :limit => 1.megabyte, :null => false
+    end
+    add_index :receipt_logs, :tx_hash
+    add_index :receipt_logs, :block_number
+    add_index :receipt_logs, [:block_number, :contract_address]
+    add_index :receipt_logs, [:block_number, :contract_address, :event_name], :name => 'index_receipt_logs_on_nae'
+
+    create_table :eth_transfer do |t|
+      t.binary :tx_hash, :limit => 32, :null => false
+      t.integer :block_number, :limit => 8, :null => false
+      t.binary :from, :limit => 20, :null => false
+      t.binary :to, :limit => 20, :null => false
+      t.string :value, :limit => 32, :null => false
+    end
+    add_index :eth_transfer, :tx_hash
+    add_index :eth_transfer, :block_number
+    add_index :eth_transfer, :from
+    add_index :eth_transfer, :to
   end
 end

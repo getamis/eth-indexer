@@ -205,6 +205,29 @@ func (_m *EthClient) GetTotalDifficulty(ctx context.Context, hash common.Hash) (
 	return r0, r1
 }
 
+// GetTransferLogs provides a mock function with given fields: ctx, hash
+func (_m *EthClient) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 []*types.TransferLog
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) []*types.TransferLog); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.TransferLog)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ModifiedAccountStatesByNumber provides a mock function with given fields: ctx, num
 func (_m *EthClient) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {
 	ret := _m.Called(ctx, num)

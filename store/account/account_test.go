@@ -42,7 +42,6 @@ func makeAccount(blockNum int64, hexAddr string) *model.Account {
 		BlockNumber: blockNum,
 		Address:     common.HexToBytes(hexAddr),
 		Balance:     "987654321098765432109876543210",
-		Nonce:       12345,
 	}
 }
 
@@ -86,6 +85,7 @@ var _ = Describe("Account Database Test", func() {
 
 		db.Delete(&model.ERC20{})
 		db.Delete(&model.Account{})
+		db.Delete(&model.ETHTransfer{})
 	})
 
 	Context("InsertAccount()", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Account Database Test", func() {
 			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
 
 			// non-existent account address
-			account, err = store.FindAccount(gethCommon.StringToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			account, err = store.FindAccount(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})
@@ -226,7 +226,7 @@ var _ = Describe("Account Database Test", func() {
 			Expect(reflect.DeepEqual(*code, *data2)).Should(BeTrue())
 
 			// non-existent contract address
-			code, err = store.FindERC20(gethCommon.StringToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			code, err = store.FindERC20(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})
@@ -378,6 +378,46 @@ var _ = Describe("Account Database Test", func() {
 			Expect(err).Should(Succeed())
 
 			err = store.DeleteERC20Transfer(addr, int64(105), int64(110))
+			Expect(err).Should(Succeed())
+		})
+	})
+
+	Context("InsertETHTransfer() & DeleteETHTransfer()", func() {
+		It("deletes the right transfer", func() {
+			store := NewWithDB(db)
+
+			event1 := &model.ETHTransfer{
+				BlockNumber: 101,
+				TxHash:      common.HexToBytes("0x01"),
+				From:        common.HexToBytes("0x02"),
+				To:          common.HexToBytes("0x03"),
+				Value:       "1000000",
+			}
+			err := store.InsertETHTransfer(event1)
+			Expect(err).Should(Succeed())
+
+			event2 := &model.ETHTransfer{
+				BlockNumber: 106,
+				TxHash:      common.HexToBytes("0x11"),
+				From:        common.HexToBytes("0x12"),
+				To:          common.HexToBytes("0x13"),
+				Value:       "1000000",
+			}
+
+			err = store.InsertETHTransfer(event2)
+			Expect(err).Should(Succeed())
+
+			event3 := &model.ETHTransfer{
+				BlockNumber: 110,
+				TxHash:      common.HexToBytes("0x21"),
+				From:        common.HexToBytes("0x22"),
+				To:          common.HexToBytes("0x23"),
+				Value:       "1000000",
+			}
+			err = store.InsertETHTransfer(event3)
+			Expect(err).Should(Succeed())
+
+			err = store.DeleteETHTransfer(int64(105), int64(110))
 			Expect(err).Should(Succeed())
 		})
 	})

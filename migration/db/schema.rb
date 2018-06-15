@@ -10,13 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_06_08_083123) do
+ActiveRecord::Schema.define(version: 2018_03_13_051512) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
     t.bigint "block_number", null: false
     t.string "balance", limit: 32, null: false
-    t.bigint "nonce", null: false
     t.index ["address", "block_number"], name: "index_accounts_on_address_and_block_number", unique: true
     t.index ["address"], name: "index_accounts_on_address"
   end
@@ -50,6 +49,18 @@ ActiveRecord::Schema.define(version: 2018_06_08_083123) do
     t.bigint "decimals"
     t.index ["address"], name: "index_erc20_on_address", unique: true
     t.index ["block_number"], name: "index_erc20_on_block_number"
+  end
+
+  create_table "eth_transfer", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
+    t.binary "tx_hash", limit: 32, null: false
+    t.bigint "block_number", null: false
+    t.binary "from", limit: 20, null: false
+    t.binary "to", limit: 20, null: false
+    t.string "value", limit: 32, null: false
+    t.index ["block_number"], name: "index_eth_transfer_on_block_number"
+    t.index ["from"], name: "index_eth_transfer_on_from"
+    t.index ["to"], name: "index_eth_transfer_on_to"
+    t.index ["tx_hash"], name: "index_eth_transfer_on_tx_hash"
   end
 
   create_table "receipt_logs", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
