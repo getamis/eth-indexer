@@ -19,7 +19,6 @@ package rawdb
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -60,7 +59,7 @@ func ReadDirtyDump(db DatabaseReader, root common.Hash) (*state.DirtyDump, error
 		return nil, err
 	}
 	result := &state.DirtyDump{}
-	err = json.Unmarshal(data, result)
+	err = rlp.DecodeBytes(data, result)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,7 @@ func ReadDirtyDump(db DatabaseReader, root common.Hash) (*state.DirtyDump, error
 
 // WriteDirtyDump stores the dirty dump for the given block
 func WriteDirtyDump(db DatabaseWriter, hash common.Hash, dump *state.DirtyDump) error {
-	data, err := json.MarshalIndent(dump, "", "    ")
+	data, err := rlp.EncodeToBytes(dump)
 	if err != nil {
 		return err
 	}

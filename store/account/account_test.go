@@ -42,7 +42,6 @@ func makeAccount(blockNum int64, hexAddr string) *model.Account {
 		BlockNumber: blockNum,
 		Address:     common.HexToBytes(hexAddr),
 		Balance:     "987654321098765432109876543210",
-		Nonce:       12345,
 	}
 }
 
@@ -138,7 +137,7 @@ var _ = Describe("Account Database Test", func() {
 			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
 
 			// non-existent account address
-			account, err = store.FindAccount(gethCommon.StringToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			account, err = store.FindAccount(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})
@@ -227,7 +226,7 @@ var _ = Describe("Account Database Test", func() {
 			Expect(reflect.DeepEqual(*code, *data2)).Should(BeTrue())
 
 			// non-existent contract address
-			code, err = store.FindERC20(gethCommon.StringToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			code, err = store.FindERC20(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})

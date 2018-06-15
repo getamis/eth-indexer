@@ -391,7 +391,7 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 		dump.Accounts = make(map[string]state.DirtyDumpAccount)
 		for addr, acc := range d.Accounts {
 			dump.Accounts[addr] = state.DirtyDumpAccount{
-				Balance: &acc.Balance,
+				Balance: acc.Balance,
 				Storage: acc.Storage,
 			}
 		}

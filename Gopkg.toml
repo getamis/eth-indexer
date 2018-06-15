@@ -27,7 +27,7 @@
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "balance_in_block_level"
+  branch = "feature/indexer_diff_1.8.10"
 
 [[constraint]]
   branch = "develop"

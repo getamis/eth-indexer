@@ -221,8 +221,8 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 	// Insert accounts
 	for addr, account := range dump.Accounts {
 		// If the account balance is changed in this tx
-		if account.Balance != nil {
-			err := insertAccount(accountStore, blockNumber, addr, *account.Balance)
+		if account.Balance != "" {
+			err := insertAccount(accountStore, blockNumber, addr, account.Balance)
 			if err != nil {
 				return err
 			}

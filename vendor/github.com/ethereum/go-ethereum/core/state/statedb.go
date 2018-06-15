@@ -497,7 +497,7 @@ func (self *StateDB) Copy() *StateDB {
 		transferLogs:      make(map[common.Hash][]*types.TransferLog),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		dirtyDump:         newDirtyDump(self.trie),
+		dirtyDump:         self.dirtyDump.Copy(),
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range self.journal.dirties {
@@ -531,10 +531,6 @@ func (self *StateDB) Copy() *StateDB {
 		state.transferLogs[hash] = make([]*types.TransferLog, len(transferLogs))
 		copy(state.transferLogs[hash], transferLogs)
 	}
-	for account, dirty := range self.dirtyDump.Accounts {
-		state.dirtyDump.Accounts[account] = dirty.deepCopy()
-	}
-
 	return state
 }
 

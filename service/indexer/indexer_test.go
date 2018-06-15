@@ -399,10 +399,10 @@ var _ = Describe("Indexer Test", func() {
 					Root: "root",
 					Accounts: map[string]state.DirtyDumpAccount{
 						"0001": {
-							Balance: &balance,
+							Balance: balance,
 						},
 						"0002": {
-							Balance: &balance,
+							Balance: balance,
 						},
 					},
 				}}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
