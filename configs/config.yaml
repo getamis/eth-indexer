@@ -6,7 +6,7 @@ db:
   driver: mysql
   host: ws-database
   port: 3306
-  name: eth-db
+  name: ethdb
   user: root
   password: my-secret-pw
 sync:
