@@ -148,13 +148,13 @@ func (_m *Manager) LatestHeader() (*model.Header, error) {
 	return r0, r1
 }
 
-// UpdateBlocks provides a mock function with given fields: blocks, receipts, dumps, mode
-func (_m *Manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, mode int) error {
-	ret := _m.Called(blocks, receipts, dumps, mode)
+// UpdateBlocks provides a mock function with given fields: blocks, receipts, dumps, events, mode
+func (_m *Manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode int) error {
+	ret := _m.Called(blocks, receipts, dumps, events, mode)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]*types.Block, [][]*types.Receipt, []*state.DirtyDump, int) error); ok {
-		r0 = rf(blocks, receipts, dumps, mode)
+	if rf, ok := ret.Get(0).(func([]*types.Block, [][]*types.Receipt, []*state.DirtyDump, [][]*types.TransferLog, int) error); ok {
+		r0 = rf(blocks, receipts, dumps, events, mode)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -121,7 +121,6 @@ type Account struct {
 	BlockNumber int64
 	Address     []byte
 	Balance     string
-	Nonce       int64
 }
 
 // TableName returns the table name of this model

@@ -142,7 +142,7 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 	// Construct receipt model
 	r := &model.Receipt{
 		Root:              receipt.PostState,
-		Status:            receipt.Status,
+		Status:            uint(receipt.Status),
 		CumulativeGasUsed: int64(receipt.CumulativeGasUsed),
 		Bloom:             receipt.Bloom.Bytes(),
 		TxHash:            receipt.TxHash.Bytes(),
@@ -182,4 +182,15 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 	}
 	r.Logs = logs
 	return r, nil
+}
+
+// EthTransferEvent converts eth transfer log to eth tranfer event
+func EthTransferEvent(b *types.Block, log *types.TransferLog) *model.ETHTransfer {
+	return &model.ETHTransfer{
+		BlockNumber: b.Number().Int64(),
+		TxHash:      log.TxHash.Bytes(),
+		From:        log.From.Bytes(),
+		To:          log.To.Bytes(),
+		Value:       log.Value.String(),
+	}
 }

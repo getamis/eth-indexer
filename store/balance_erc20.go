@@ -71,8 +71,9 @@ func (contractDB) AddLog(*types.Log)                                            
 func (contractDB) AddPreimage(hash ethCommon.Hash, images []byte)                              {}
 func (contractDB) ForEachStorage(addr ethCommon.Address, f func(ethCommon.Hash, ethCommon.Hash) bool) {
 }
-func (contractDB) AddRefund(fund uint64) {}
-func (contractDB) GetRefund() uint64     { return 0 }
+func (contractDB) AddRefund(fund uint64)             {}
+func (contractDB) GetRefund() uint64                 { return 0 }
+func (contractDB) AddTransferLog(*types.TransferLog) {}
 
 // self checks whether the address is the contract address.
 func (db *contractDB) self(addr ethCommon.Address) bool {
@@ -106,9 +107,6 @@ func (db *contractDB) GetBalance(addr ethCommon.Address) *big.Int {
 	return ethCommon.Big0
 }
 func (db *contractDB) GetNonce(addr ethCommon.Address) uint64 {
-	if db.mustBeSelf(addr) {
-		return uint64(db.account.Nonce)
-	}
 	return 0
 }
 func (db *contractDB) GetCodeHash(addr ethCommon.Address) ethCommon.Hash {
