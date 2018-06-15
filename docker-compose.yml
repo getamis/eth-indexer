@@ -42,21 +42,10 @@ services:
       dockerfile: ./cmd/Dockerfile
     command:
       - indexer
-      - --db.host
       - idx-database
-      - --eth.host
       - geth
-      # Mithril Token
-      - --erc20.addresses
-      - "0x3893b9422Cd5D70a81eDeFfe3d5A1c6A978310BB"
-      - --erc20.block-numbers
-      - "5039624"
-      # USDT Token
-      - --erc20.addresses
-      - "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-      - --erc20.block-numbers
-      - "4634748"
     restart: on-failure
     depends_on:
       - idx-database
       - idx-migration
+      - geth
