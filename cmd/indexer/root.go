@@ -162,23 +162,21 @@ func init() {
 		fmt.Println("The config file does not exist. Run ServerCmd.Flags().")
 
 		// eth-client flags
-		ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocolFlag, "ws", "The eth-client protocol")
-		ServerCmd.Flags().StringVar(&ethHost, flags.EthHostFlag, "127.0.0.1", "The eth-client host")
-		ServerCmd.Flags().IntVar(&ethPort, flags.EthPortFlag, 8546, "The eth-client port")
+		ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocol, "ws", "The eth-client protocol")
+		ServerCmd.Flags().StringVar(&ethHost, flags.EthHost, "127.0.0.1", "The eth-client host")
+		ServerCmd.Flags().IntVar(&ethPort, flags.EthPort, 8546, "The eth-client port")
 
 		// Database flags
-		ServerCmd.Flags().StringVar(&dbDriver, flags.DbDriverFlag, "mysql", "The database driver")
-		ServerCmd.Flags().StringVar(&dbHost, flags.DbHostFlag, "", "The database host")
-		ServerCmd.Flags().IntVar(&dbPort, flags.DbPortFlag, 3306, "The database port")
-		ServerCmd.Flags().StringVar(&dbName, flags.DbNameFlag, "ethdb", "The database name")
-		ServerCmd.Flags().StringVar(&dbUser, flags.DbUserFlag, "root", "The database username to login")
-		ServerCmd.Flags().StringVar(&dbPassword, flags.DbPasswordFlag, "my-secret-pw", "The database password to login")
+		ServerCmd.Flags().StringVar(&dbDriver, flags.DbDriver, "mysql", "The database driver")
+		ServerCmd.Flags().StringVar(&dbHost, flags.DbHost, "", "The database host")
+		ServerCmd.Flags().IntVar(&dbPort, flags.DbPort, 3306, "The database port")
+		ServerCmd.Flags().StringVar(&dbName, flags.DbName, "ethdb", "The database name")
+		ServerCmd.Flags().StringVar(&dbUser, flags.DbUser, "root", "The database username to login")
+		ServerCmd.Flags().StringVar(&dbPassword, flags.DbPassword, "my-secret-pw", "The database password to login")
 
 		// Syncing related flags
-		ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlockFlag, 0, "The block number to sync to initially")
-		ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlockFlag, 0, "The init block number to sync to initially")
-		//ServerCmd.Flags().StringArrayVar(&erc20Addresses, "erc20.addresses", []string{}, "The addresses of erc20 token contracts")
-		//ServerCmd.Flags().IntSliceVar(&erc20BlockNumber, "erc20.block-numbers", []int{}, "The block numbers as the erc20 contract is deployed")
+		ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlock, 0, "The block number to sync to initially")
+		ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlock, 0, "The init block number to sync to initially")
 
 		// Profling flags
 		ServerCmd.Flags().BoolVar(&profiling, "pprof", false, "Enable the pprof HTTP server")
@@ -201,20 +199,20 @@ func initConfig() {
 
 func loadFlagToVar() {
 	// flags for ethereum service
-	ethProtocol = viper.GetString(flags.EthProtocolFlag)
-	ethHost = viper.GetString(flags.EthHostFlag)
-	ethPort = viper.GetInt(flags.EthPortFlag)
+	ethProtocol = viper.GetString(flags.EthProtocol)
+	ethHost = viper.GetString(flags.EthHost)
+	ethPort = viper.GetInt(flags.EthPort)
 
 	// flags for database
-	dbDriver = viper.GetString(flags.DbDriverFlag)
-	dbHost = viper.GetString(flags.DbHostFlag)
-	dbPort = viper.GetInt(flags.DbPortFlag)
-	dbName = viper.GetString(flags.DbNameFlag)
-	dbUser = viper.GetString(flags.DbUserFlag)
-	dbPassword = viper.GetString(flags.DbPasswordFlag)
+	dbDriver = viper.GetString(flags.DbDriver)
+	dbHost = viper.GetString(flags.DbHost)
+	dbPort = viper.GetInt(flags.DbPort)
+	dbName = viper.GetString(flags.DbName)
+	dbUser = viper.GetString(flags.DbUser)
+	dbPassword = viper.GetString(flags.DbPassword)
 
 	// flags for syncing
-	targetBlock = viper.GetInt64(flags.SyncTargetBlockFlag)
+	targetBlock = viper.GetInt64(flags.SyncTargetBlock)
 
 	//flag for pprof
 	profiling = viper.GetBool(flags.PprofEnable)
