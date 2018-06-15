@@ -39,6 +39,7 @@ services:
   indexer:
     build:
       context: .
+<<<<<<< Updated upstream
       dockerfile: ./cmd/Dockerfile
     command:
       - indexer
