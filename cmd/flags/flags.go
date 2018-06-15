@@ -45,4 +45,9 @@ const (
 	// flags for metrics
 	MetricsHostFlag = "metrics.host"
 	MetricsPortFlag = "metrics.port"
+
+	//flags for pprof
+	PprofEnable  = "pprof"
+	PprofPort    = "pprof.port"
+	PprofAddress = "pprof.address"
 )
