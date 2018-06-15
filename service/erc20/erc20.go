@@ -40,13 +40,12 @@ var (
 
 // LoadTokenFromConfig is the function to return addresses and blocks from config file
 func LoadTokenFromConfig() ([]string, []int64, error) {
-
 	for _, v := range list {
 		data, _ := json.Marshal(v)
 		result := make(map[string]string)
 		err := json.Unmarshal(data, &result)
 		if err != nil {
-
+			return nil, nil, err
 		}
 
 		addr := result["address"]
