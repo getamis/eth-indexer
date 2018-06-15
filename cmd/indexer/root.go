@@ -108,9 +108,13 @@ var ServerCmd = &cobra.Command{
 		indexer := indexer.New(ethClient, store.NewManager(db))
 		erc20Addresses, erc20BlockNumbers, err := erc20.LoadTokenFromConfig()
 		if err != nil {
+			log.Error("Fail to load ERC20Token List from Config File", "err", err)
 			return err
 		}
+		log.Debug("erc20Addresses Successfully Loaded")
+
 		if err := indexer.Init(ctx, erc20Addresses, erc20BlockNumbers); err != nil {
+			log.Error("Fail to write ERC20Token List into db", "err", err)
 			return err
 		}
 
