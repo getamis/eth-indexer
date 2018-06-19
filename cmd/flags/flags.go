@@ -17,32 +17,38 @@
 package flags
 
 const (
-	ConfigFileFlag = "config"
-
 	// flag names for server
 	Host = "host"
 	Port = "port"
 
 	// flag names for ethereum service
-	EthFlag         = "eth"
-	EthProtocolFlag = "eth.protocol"
-	EthHostFlag     = "eth.host"
-	EthPortFlag     = "eth.port"
+	Eth         = "eth"
+	EthProtocol = "eth.protocol"
+	EthHost     = "eth.host"
+	EthPort     = "eth.port"
 
 	// flag names for database
-	DbDriverFlag   = "db.driver"
-	DbHostFlag     = "db.host"
-	DbPortFlag     = "db.port"
-	DbNameFlag     = "db.name"
-	DbUserFlag     = "db.user"
-	DbPasswordFlag = "db.password"
+	DbDriver   = "db.driver"
+	DbHost     = "db.host"
+	DbPort     = "db.port"
+	DbName     = "db.name"
+	DbUser     = "db.user"
+	DbPassword = "db.password"
 
 	// flags for syncing
-	SyncTargetBlockFlag      = "sync.targetBlock"
-	SyncGetMissingBlocksFlag = "sync.getMissingBlocks"
-	SyncFromBlockFlag        = "sync.fromBlock"
+	SyncTargetBlock      = "sync.targetBlock"
+	SyncGetMissingBlocks = "sync.getMissingBlocks"
+	SyncFromBlock        = "sync.fromBlock"
 
 	// flags for metrics
-	MetricsHostFlag = "metrics.host"
-	MetricsPortFlag = "metrics.port"
+	MetricsHost = "metrics.host"
+	MetricsPort = "metrics.port"
+
+	// flags for pprof
+	PprofEnable = "pprof"
+	PprofPort   = "pprof.port"
+	PprofHost   = "pprof.host"
+
+	// flags for enabled functions
+	SubscribeErc20token = "functions.erc20token"
 )

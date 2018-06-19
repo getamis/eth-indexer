@@ -55,7 +55,7 @@ type indexer struct {
 }
 
 // Init ensures all tables for erc20 contracts are created
-func (idx *indexer) Init(ctx context.Context, addresses []string, numbers []int) error {
+func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string, numbers []int64) error {
 	if len(addresses) != len(numbers) {
 		log.Error("Inconsistent array length", "addrs", len(addresses), "numbers", len(numbers))
 		return ErrInconsistentLength
