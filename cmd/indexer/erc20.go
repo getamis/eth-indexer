@@ -18,10 +18,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"strconv"
 
+	"github.com/getamis/sirius/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,7 +39,7 @@ var (
 
 var vp = viper.New()
 
-// LoadTokenFromConfig is the function to return addresses and blocks from config file
+// LoadTokensFromConfig is the function to return addresses and blocks from config file
 func LoadTokensFromConfig() ([]string, []int64, error) {
 	for _, v := range list {
 		data, _ := json.Marshal(v)
@@ -70,8 +69,7 @@ func initErc20TokenConfig() {
 	vp.AddConfigPath(erc20tokenCfgFilePath)
 
 	if err := vp.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
+		log.Crit("Can not load config file", "err", err)
 	}
 
 	list = vp.GetStringMap(erc20tokenCfgFileName)

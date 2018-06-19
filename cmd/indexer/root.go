@@ -66,7 +66,7 @@ var (
 
 	// flags for profiling
 	profiling  bool
-	profilAddr string
+	profilHost string
 	profilPort int
 
 	// flags for functions
@@ -79,8 +79,6 @@ var ServerCmd = &cobra.Command{
 	Short: "blockchain data indexer",
 	Long:  `blockchain data indexer`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		loadFlagToVar()
-
 		// eth-client
 		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
 		if err != nil {
@@ -127,7 +125,7 @@ var ServerCmd = &cobra.Command{
 			// run `go tool pprof build/bin/service http://127.0.0.1:8000/debug/pprof/profile\?seconds\=60`
 			// Start profiling
 			go func() {
-				url := fmt.Sprintf("%s:%d", profilAddr, profilPort)
+				url := fmt.Sprintf("%s:%d", profilHost, profilPort)
 				log.Info("Starting profiling", "url", url)
 				http.ListenAndServe(url, nil)
 			}()
@@ -153,8 +151,7 @@ var ServerCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := ServerCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
+		log.Crit("ServerCmd Execution failed", "err", err)
 	}
 }
 
@@ -164,8 +161,7 @@ func init() {
 
 	// Take cfgFile as the first priority to load and only enable flags when cfgFile does not exists.
 	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
-		fmt.Println("The config file does not exist. Run ServerCmd.Flags().")
-
+		log.Debug("The config file does not exist. Run ServerCmd.Flags().")
 		// eth-client flags
 		ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocol, "ws", "The eth-client protocol")
 		ServerCmd.Flags().StringVar(&ethHost, flags.EthHost, "127.0.0.1", "The eth-client host")
@@ -186,7 +182,7 @@ func init() {
 		// Profling flags
 		ServerCmd.Flags().BoolVar(&profiling, "pprof", false, "Enable the pprof HTTP server")
 		ServerCmd.Flags().IntVar(&profilPort, "pprof.port", 8000, "pprof HTTP server listening port")
-		ServerCmd.Flags().StringVar(&profilAddr, "pprof.address", "0.0.0.0", "pprof HTTP server listening interface")
+		ServerCmd.Flags().StringVar(&profilHost, "pprof.host", "0.0.0.0", "pprof HTTP server listening interface")
 	} else {
 		cobra.OnInitialize(initConfig)
 	}
@@ -197,9 +193,9 @@ func initConfig() {
 	viper.SetConfigName(cfgFileName)
 	viper.AddConfigPath(cfgFilePath)
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Println("Can't read config:", err)
-		os.Exit(1)
+		log.Crit("Can not load config file", "err", err)
 	}
+	loadFlagToVar()
 }
 
 func loadFlagToVar() {
@@ -222,7 +218,7 @@ func loadFlagToVar() {
 	//flag for pprof
 	profiling = viper.GetBool(flags.PprofEnable)
 	profilPort = viper.GetInt(flags.PprofPort)
-	profilAddr = viper.GetString(flags.PprofAddress)
+	profilHost = viper.GetString(flags.PprofHost)
 
 	// flags for enabled functions
 	subscribeErc20token = viper.GetBool(flags.SubscribeErc20token)

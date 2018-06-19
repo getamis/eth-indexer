@@ -45,9 +45,9 @@ const (
 	MetricsPort = "metrics.port"
 
 	// flags for pprof
-	PprofEnable  = "pprof"
-	PprofPort    = "pprof.port"
-	PprofAddress = "pprof.address"
+	PprofEnable = "pprof"
+	PprofPort   = "pprof.port"
+	PprofHost   = "pprof.host"
 
 	// flags for enabled functions
 	SubscribeErc20token = "functions.erc20token"
