@@ -51,11 +51,5 @@ jobs:
         - make migration-docker.push
       if: tag =~ ^v
       env: DOCKER_IMAGE_TAG="$TRAVIS_TAG"
-      deploy:
-        provider: releases
-        api_key: "$GITHUB_OAUTH_TOKEN"
-        skip_cleanup: true
-        on:
-          tags: true
 after_success:
   - bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
