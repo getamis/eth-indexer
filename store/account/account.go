@@ -106,16 +106,16 @@ func (t *store) DeleteAccounts(from, to int64) error {
 func (t *store) FindAccount(address common.Address, blockNr ...int64) (result *model.Account, err error) {
 	result = &model.Account{}
 	if len(blockNr) == 0 {
-		err = t.db.Where("BINARY address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
 	} else {
-		err = t.db.Where("BINARY address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
 	}
 	return
 }
 
 func (t *store) FindERC20(address common.Address) (result *model.ERC20, err error) {
 	result = &model.ERC20{}
-	err = t.db.Where("BINARY address = ?", address.Bytes()).Limit(1).Find(result).Error
+	err = t.db.Where("address = ?", address.Bytes()).Limit(1).Find(result).Error
 	return
 }
 
@@ -129,7 +129,7 @@ func (t *store) FindERC20Storage(address common.Address, key common.Hash, blockN
 	result = &model.ERC20Storage{}
 	err = t.db.Table(model.ERC20Storage{
 		Address: address.Bytes(),
-	}.TableName()).Where("BINARY key_hash = ? AND block_number <= ?", key.Bytes(), blockNr).Order("block_number DESC").Limit(1).Find(result).Error
+	}.TableName()).Where("key_hash = ? AND block_number <= ?", key.Bytes(), blockNr).Order("block_number DESC").Limit(1).Find(result).Error
 	result.Address = address.Bytes()
 	return
 }

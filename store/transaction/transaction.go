@@ -50,11 +50,11 @@ func (t *store) Delete(from, to int64) (err error) {
 
 func (t *store) FindTransaction(hash []byte) (result *model.Transaction, err error) {
 	result = &model.Transaction{}
-	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 
 func (t *store) FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error) {
-	err = t.db.Where("BINARY block_hash = ?", blockHash).Find(&result).Error
+	err = t.db.Where("block_hash = ?", blockHash).Find(&result).Error
 	return
 }

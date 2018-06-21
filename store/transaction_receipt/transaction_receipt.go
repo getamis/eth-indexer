@@ -71,14 +71,14 @@ func (r *store) Delete(from, to int64) error {
 func (r *store) FindReceipt(hash []byte) (*model.Receipt, error) {
 	// Find receipt
 	receipt := &model.Receipt{}
-	err := r.db.Where("BINARY tx_hash = ?", hash).Limit(1).Find(receipt).Error
+	err := r.db.Where("tx_hash = ?", hash).Limit(1).Find(receipt).Error
 	if err != nil {
 		return nil, err
 	}
 
 	// Find logs
 	logs := []*model.Log{}
-	err = r.db.Where("BINARY tx_hash = ?", hash).Find(&logs).Error
+	err = r.db.Where("tx_hash = ?", hash).Find(&logs).Error
 	if err != nil {
 		return nil, err
 	}
