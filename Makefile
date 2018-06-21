@@ -28,6 +28,7 @@ coverage.txt:
 	@touch $@
 
 test: coverage.txt FORCE
+	@$(MAKE) migration-docker -e DOCKER_IMAGE_TAG=latest
 	@for d in `go list ./... | grep -v vendor | grep -v mock`; do		\
 		go test -v -coverprofile=profile.out -covermode=atomic $$d;	\
 		if [ $$? -eq 0 ]; then						\
