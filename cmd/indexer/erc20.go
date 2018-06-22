@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	erc20tokenCfgFileName string = "erc20"
-	erc20tokenCfgFileType string = "yaml"
-	erc20tokenCfgFilePath string = "./configs"
+	erc20tokenCfgFileName = "erc20"
+	erc20tokenCfgFileType = "yaml"
+	erc20tokenCfgFilePath = "./configs"
 )
 
 var (

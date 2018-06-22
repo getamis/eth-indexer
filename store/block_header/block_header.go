@@ -62,7 +62,7 @@ func (t *store) Delete(from, to int64) error {
 
 func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {
 	result = &model.TotalDifficulty{}
-	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 
@@ -74,7 +74,7 @@ func (t *store) FindBlockByNumber(blockNumber int64) (result *model.Header, err 
 
 func (t *store) FindBlockByHash(hash []byte) (result *model.Header, err error) {
 	result = &model.Header{}
-	err = t.db.Where("BINARY hash = ?", hash).Limit(1).Find(result).Error
+	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
 	return
 }
 
