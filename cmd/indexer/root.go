@@ -35,14 +35,12 @@ import (
 )
 
 const (
-	cfgFileName string = "config"
-	cfgFileType string = "yaml"
-	cfgFilePath string = "./configs"
+	cfgFileName = "config"
+	cfgFileType = "yaml"
+	cfgFilePath = "./configs"
 )
 
 var (
-	configFile string
-
 	// flags for ethereum service
 	ethProtocol string
 	ethHost     string
@@ -59,10 +57,6 @@ var (
 	// flags for syncing
 	targetBlock int64
 	fromBlock   int64
-
-	// flags for erc20
-	erc20Addresses    []string
-	erc20BlockNumbers []int64
 
 	// flags for profiling
 	profiling  bool
@@ -131,6 +125,7 @@ var ServerCmd = &cobra.Command{
 			}()
 		}
 
+		log.Info("Starting eth-indexer")
 		if targetBlock > 0 {
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
 		} else {
@@ -180,9 +175,9 @@ func init() {
 		ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlock, 0, "The init block number to sync to initially")
 
 		// Profling flags
-		ServerCmd.Flags().BoolVar(&profiling, "pprof", false, "Enable the pprof HTTP server")
-		ServerCmd.Flags().IntVar(&profilPort, "pprof.port", 8000, "pprof HTTP server listening port")
-		ServerCmd.Flags().StringVar(&profilHost, "pprof.host", "0.0.0.0", "pprof HTTP server listening interface")
+		ServerCmd.Flags().BoolVar(&profiling, flags.PprofEnable, false, "Enable the pprof HTTP server")
+		ServerCmd.Flags().IntVar(&profilPort, flags.PprofPort, 8000, "pprof HTTP server listening port")
+		ServerCmd.Flags().StringVar(&profilHost, flags.PprofHost, "0.0.0.0", "pprof HTTP server listening interface")
 
 		// erc20 flags
 		ServerCmd.Flags().BoolVar(&subscribeErc20token, flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
