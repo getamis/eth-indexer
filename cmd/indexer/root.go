@@ -183,6 +183,9 @@ func init() {
 		ServerCmd.Flags().BoolVar(&profiling, "pprof", false, "Enable the pprof HTTP server")
 		ServerCmd.Flags().IntVar(&profilPort, "pprof.port", 8000, "pprof HTTP server listening port")
 		ServerCmd.Flags().StringVar(&profilHost, "pprof.host", "0.0.0.0", "pprof HTTP server listening interface")
+
+		// erc20 flags
+		ServerCmd.Flags().BoolVar(&subscribeErc20token, flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
 	} else {
 		cobra.OnInitialize(initConfig)
 	}
