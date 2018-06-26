@@ -55,8 +55,9 @@ var (
 	dbPassword string
 
 	// flags for syncing
-	targetBlock int64
-	fromBlock   int64
+	targetBlock   int64
+	fromBlock     int64
+	onlySubscribe bool
 
 	// flags for profiling
 	profiling  bool
@@ -99,7 +100,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexer := indexer.New(ethClient, store.NewManager(db))
+		indexer := indexer.New(ethClient, store.NewManager(db, onlySubscribe))
 
 		if subscribeErc20token {
 			erc20Addresses, erc20BlockNumbers, err := LoadTokensFromConfig()
@@ -125,7 +126,7 @@ var ServerCmd = &cobra.Command{
 			}()
 		}
 
-		log.Info("Starting eth-indexer")
+		log.Info("Starting eth-indexer", "from", fromBlock, "target", targetBlock)
 		if targetBlock > 0 {
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
 		} else {
@@ -170,6 +171,7 @@ func init() {
 	// Syncing related flags
 	ServerCmd.Flags().Int64(flags.SyncTargetBlock, 0, "The block number to sync to initially")
 	ServerCmd.Flags().Int64(flags.SyncFromBlock, 0, "The init block number to sync to initially")
+	ServerCmd.Flags().Bool(flags.SyncOnlySubscribe, true, "Enable to only index subscribed accounts")
 
 	// Profling flags
 	ServerCmd.Flags().Bool(flags.PprofEnable, false, "Enable the pprof HTTP server")
@@ -212,6 +214,7 @@ func assignVarFromViper() {
 	// flags for syncing
 	targetBlock = viper.GetInt64(flags.SyncTargetBlock)
 	fromBlock = viper.GetInt64(flags.SyncFromBlock)
+	onlySubscribe = viper.GetBool(flags.SyncOnlySubscribe)
 
 	//flag for pprof
 	profiling = viper.GetBool(flags.PprofEnable)

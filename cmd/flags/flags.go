@@ -36,8 +36,9 @@ const (
 	DbPassword = "db.password"
 
 	// flags for syncing
-	SyncTargetBlock = "sync.targetBlock"
-	SyncFromBlock   = "sync.fromBlock"
+	SyncTargetBlock   = "sync.targetBlock"
+	SyncFromBlock     = "sync.fromBlock"
+	SyncOnlySubscribe = "sync.onlySubscribe"
 
 	// flags for metrics
 	MetricsHost = "metrics.host"
