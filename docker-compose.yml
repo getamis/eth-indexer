@@ -42,10 +42,10 @@ services:
       dockerfile: ./cmd/Dockerfile
     command:
       - indexer
-      - idx-database
-      - geth
     restart: on-failure
     depends_on:
       - idx-database
       - idx-migration
       - geth
+    volumes:
+      - ./configs:/configs
