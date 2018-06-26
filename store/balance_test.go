@@ -61,7 +61,7 @@ var _ = Describe("DB Eth Balance Test", func() {
 		accountBalance, _ := new(big.Int).SetString(account.Balance, 10)
 		It("latest block", func() {
 			mockHdrStore.On("FindLatestBlock").Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", addr, header.Number).Return(account, nil).Once()
+			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(account, nil).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, -1)
 			Expect(err).Should(BeNil())
 			Expect(expBalance).Should(Equal(accountBalance))
@@ -69,7 +69,7 @@ var _ = Describe("DB Eth Balance Test", func() {
 		})
 		It("certain block", func() {
 			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", addr, header.Number).Return(account, nil).Once()
+			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(account, nil).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(BeNil())
 			Expect(expBalance).Should(Equal(accountBalance))
@@ -95,7 +95,7 @@ var _ = Describe("DB Eth Balance Test", func() {
 		})
 		It("failed to find account", func() {
 			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", addr, header.Number).Return(nil, unknownErr).Once()
+			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(nil, unknownErr).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(Equal(unknownErr))
 			Expect(expBalance).Should(BeNil())

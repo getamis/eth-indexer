@@ -45,7 +45,7 @@ func (srv *serviceManager) GetBalance(ctx context.Context, address gethCommon.Ad
 	blockNumber = big.NewInt(hdr.Number)
 
 	// Find account
-	account, err := srv.FindAccount(address, hdr.Number)
+	account, err := srv.FindAccount(model.ETHAddress, address, hdr.Number)
 	if err != nil {
 		logger.Error("Failed to find account", "err", err)
 		return nil, nil, err

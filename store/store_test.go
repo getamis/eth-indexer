@@ -17,6 +17,7 @@
 package store
 
 import (
+	"context"
 	"math/big"
 	"os"
 	"testing"
@@ -33,10 +34,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var (
+	mysql *test.MySQLContainer
+	db    *gorm.DB
+)
+
 var _ = Describe("Manager Test", func() {
 	var (
-		mysql    *test.MySQLContainer
-		db       *gorm.DB
 		blocks   []*types.Block
 		receipts [][]*types.Receipt
 		dumps    []*state.DirtyDump
@@ -68,32 +72,18 @@ var _ = Describe("Manager Test", func() {
 
 		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
 	})
+	// ERC20 contract
+	erc20 := &model.ERC20{
+		Address:     gethCommon.HexToAddress("1234567890").Bytes(),
+		Code:        []byte("1333"),
+		BlockNumber: 0,
+	}
 
 	AfterSuite(func() {
 		mysql.Stop()
 	})
 
 	BeforeEach(func() {
-		// ERC20 contract
-		erc20 := &model.ERC20{
-			Address:     gethCommon.HexToAddress("1234567890").Bytes(),
-			Code:        []byte("1333"),
-			BlockNumber: 0,
-		}
-
-		// Clean all data
-		db.Delete(&model.Header{})
-		db.Delete(&model.Transaction{})
-		db.Delete(&model.Receipt{})
-		db.Delete(&model.Account{})
-		db.Delete(&model.ERC20{})
-		db.DropTable(model.ERC20Storage{
-			Address: erc20.Address,
-		})
-		db.DropTable(model.ERC20Transfer{
-			Address: erc20.Address,
-		})
-
 		// Init initial states
 		blocks = []*types.Block{
 			types.NewBlockWithHeader(&types.Header{
@@ -126,7 +116,7 @@ var _ = Describe("Manager Test", func() {
 								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
 								gethCommon.HexToHash("0x000000000000000000000000c6cde7c39eb2f0f0095f41570af89efc2c1ea828"),
 							},
-							Data: []byte("0000000000000000000000000000000000000000000000000000001742810700"),
+							Data: gethCommon.Hex2Bytes("0000000000000000000000000000000000000000000000000000001742810700"),
 						},
 					},
 				},
@@ -188,8 +178,8 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db)
-		err = manager.Init()
+		manager = NewManager(db, false)
+		err = manager.Init(nil)
 		Expect(err).Should(BeNil())
 
 		err = manager.InsertERC20(erc20)
@@ -199,8 +189,26 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
 		Expect(err).Should(BeNil())
+	})
+
+	AfterEach(func() {
+		// Clean all data
+		db.Delete(&model.Header{})
+		db.Delete(&model.Transaction{})
+		db.Delete(&model.Receipt{})
+		db.Delete(&model.Account{})
+		db.Delete(&model.ERC20{})
+		db.DropTable(model.ERC20Storage{
+			Address: erc20.Address,
+		})
+		db.DropTable(model.Transfer{
+			Address: erc20.Address,
+		})
+		db.DropTable(model.Transfer{
+			Address: newErc20.Address,
+		})
 	})
 
 	Context("UpdateBlocks()", func() {
@@ -215,7 +223,7 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, events, ModeSync)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, receipts, dumps, events, ModeSync)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
@@ -234,7 +242,7 @@ var _ = Describe("Manager Test", func() {
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}),
 			}
-			err := manager.UpdateBlocks(newBlocks, receipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, receipts, dumps, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
@@ -256,12 +264,12 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			// Reload manager
-			manager = NewManager(db)
-			err = manager.Init()
+			manager = NewManager(db, false)
+			err = manager.Init(nil)
 			Expect(err).Should(BeNil())
 
 			// Force update blocks
-			err = manager.UpdateBlocks(blocks, receipts, dumps, events, ModeForceSync)
+			err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeForceSync)
 			Expect(err).Should(BeNil())
 
 			// Got blocks 0
@@ -289,7 +297,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(blocks, receipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
