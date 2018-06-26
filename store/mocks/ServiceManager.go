@@ -13,6 +13,34 @@ type ServiceManager struct {
 	mock.Mock
 }
 
+// AddSubscriptions provides a mock function with given fields: group, addrs
+func (_m *ServiceManager) AddSubscriptions(group int64, addrs []common.Address) error {
+	ret := _m.Called(group, addrs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, []common.Address) error); ok {
+		r0 = rf(group, addrs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteSubscriptions provides a mock function with given fields: group, addrs
+func (_m *ServiceManager) DeleteSubscriptions(group int64, addrs []common.Address) error {
+	ret := _m.Called(group, addrs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, []common.Address) error); ok {
+		r0 = rf(group, addrs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // FindBlockByHash provides a mock function with given fields: hash
 func (_m *ServiceManager) FindBlockByHash(hash []byte) (*model.Header, error) {
 	ret := _m.Called(hash)
@@ -185,6 +213,36 @@ func (_m *ServiceManager) GetERC20Balance(ctx context.Context, contractAddress c
 	var r2 error
 	if rf, ok := ret.Get(2).(func(context.Context, common.Address, common.Address, int64) error); ok {
 		r2 = rf(ctx, contractAddress, address, blockNr)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// GetSubscriptions provides a mock function with given fields: group, page, limit
+func (_m *ServiceManager) GetSubscriptions(group int64, page uint64, limit uint64) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(group, page, limit)
+
+	var r0 []*model.Subscription
+	if rf, ok := ret.Get(0).(func(int64, uint64, uint64) []*model.Subscription); ok {
+		r0 = rf(group, page, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Subscription)
+		}
+	}
+
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(int64, uint64, uint64) uint64); ok {
+		r1 = rf(group, page, limit)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(int64, uint64, uint64) error); ok {
+		r2 = rf(group, page, limit)
 	} else {
 		r2 = ret.Error(2)
 	}

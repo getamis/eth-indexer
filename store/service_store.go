@@ -27,6 +27,7 @@ import (
 	"github.com/getamis/eth-indexer/model"
 	accStore "github.com/getamis/eth-indexer/store/account"
 	bhStore "github.com/getamis/eth-indexer/store/block_header"
+	subStore "github.com/getamis/eth-indexer/store/subscription"
 	txStore "github.com/getamis/eth-indexer/store/transaction"
 )
 
@@ -42,6 +43,11 @@ type ServiceManager interface {
 	// Transaction store
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
+
+	// Subscription store
+	AddSubscriptions(group int64, addrs []common.Address) error
+	DeleteSubscriptions(group int64, addrs []common.Address) error
+	GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error)
 
 	// GetBalance returns the amount of wei for the given address in the state of the
 	// given block number. If blockNr < 0, the given block is the latest block.
@@ -59,18 +65,55 @@ type ServiceManager interface {
 type accountStore = accStore.Store
 type blockHeaderStore = bhStore.Store
 type transactionStore = txStore.Store
+type subscriptionStore = subStore.Store
 
 type serviceManager struct {
 	accountStore
 	blockHeaderStore
 	transactionStore
+	subscriptionStore
 }
 
 // NewServiceManager news a service manager to serve data for RPC services.
 func NewServiceManager(db *gorm.DB) ServiceManager {
 	return &serviceManager{
-		accountStore:     accStore.NewWithDB(db),
-		blockHeaderStore: bhStore.NewWithDB(db),
-		transactionStore: txStore.NewWithDB(db),
+		accountStore:      accStore.NewWithDB(db),
+		blockHeaderStore:  bhStore.NewWithDB(db),
+		transactionStore:  txStore.NewWithDB(db),
+		subscriptionStore: subStore.NewWithDB(db),
 	}
+}
+
+func (srv *serviceManager) AddSubscriptions(group int64, addrs []common.Address) (err error) {
+	if len(addrs) == 0 {
+		return nil
+	}
+	subs := make([]*model.Subscription, len(addrs))
+	for i, addr := range addrs {
+		subs[i] = &model.Subscription{
+			Group:   group,
+			Address: addr.Bytes(),
+		}
+	}
+	return srv.subscriptionStore.BatchInsert(subs)
+}
+
+func (srv *serviceManager) DeleteSubscriptions(group int64, addrs []common.Address) error {
+	if len(addrs) == 0 {
+		return nil
+	}
+	addrByes := make([][]byte, len(addrs))
+	for i, addr := range addrs {
+		addrByes[i] = addr.Bytes()
+	}
+	return srv.subscriptionStore.BatchDelete(group, addrByes)
+}
+
+func (srv *serviceManager) GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error) {
+	return srv.subscriptionStore.FindByGroup(group, &model.QueryParameters{
+		Page:    page,
+		Limit:   limit,
+		OrderBy: "created_at",
+		Order:   "asc",
+	})
 }

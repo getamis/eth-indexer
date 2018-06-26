@@ -10,6 +10,20 @@ type Store struct {
 	mock.Mock
 }
 
+// BatchDelete provides a mock function with given fields: groupID, addrs
+func (_m *Store) BatchDelete(groupID int64, addrs [][]byte) error {
+	ret := _m.Called(groupID, addrs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, [][]byte) error); ok {
+		r0 = rf(groupID, addrs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Find provides a mock function with given fields: blockNumber
 func (_m *Store) Find(blockNumber int64) ([]*model.Subscription, error) {
 	ret := _m.Called(blockNumber)
@@ -54,6 +68,36 @@ func (_m *Store) FindByAddresses(addrs [][]byte) ([]*model.Subscription, error) 
 	}
 
 	return r0, r1
+}
+
+// FindByGroup provides a mock function with given fields: groupID, queryConfig
+func (_m *Store) FindByGroup(groupID int64, queryConfig *model.QueryConfig) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(groupID, queryConfig)
+
+	var r0 []*model.Subscription
+	if rf, ok := ret.Get(0).(func(int64, *model.QueryConfig) []*model.Subscription); ok {
+		r0 = rf(groupID, queryConfig)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Subscription)
+		}
+	}
+
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(int64, *model.QueryConfig) uint64); ok {
+		r1 = rf(groupID, queryConfig)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(int64, *model.QueryConfig) error); ok {
+		r2 = rf(groupID, queryConfig)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // FindTotalBalance provides a mock function with given fields: blockNumber, token, group

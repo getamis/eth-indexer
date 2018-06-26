@@ -25,7 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/model"
-	subscriptionStore "github.com/getamis/eth-indexer/store/subscription"
+	subsStore "github.com/getamis/eth-indexer/store/subscription"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -87,14 +87,12 @@ var _ = Describe("Subscription Test", func() {
 			},
 		}
 		// Insert subscription
-		subStore := subscriptionStore.NewWithDB(db)
-		for _, sub := range subs {
-			err := subStore.Insert(sub)
-			Expect(err).Should(BeNil())
-		}
+		subStore := subsStore.NewWithDB(db)
+		err := subStore.BatchInsert(subs)
+		Expect(err).Should(BeNil())
 
 		// Insert ERC20 total balance
-		err := subStore.InsertTotalBalance(&model.TotalBalance{
+		err = subStore.InsertTotalBalance(&model.TotalBalance{
 			Token:       erc20.Address,
 			BlockNumber: 99,
 			Group:       1,
