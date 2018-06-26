@@ -76,7 +76,7 @@ var _ = Describe("Indexer Test", func() {
 			addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 			numbers := []int64{1, 2}
 			ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-			mockStoreManager.On("Init").Return(nil).Once()
+			mockStoreManager.On("Init", idx.client).Return(nil).Once()
 			// The first erc20 is not found
 			mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
 			erc20 := &model.ERC20{
@@ -100,7 +100,7 @@ var _ = Describe("Indexer Test", func() {
 				addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 				numbers := []int64{1, 2}
 				ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-				mockStoreManager.On("Init").Return(unknownErr).Once()
+				mockStoreManager.On("Init", idx.client).Return(unknownErr).Once()
 				// The first erc20 is not found
 				mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
 				erc20 := &model.ERC20{
@@ -221,7 +221,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 				mockEthClient.On("TransactionReceipts", mock.Anything, block.Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeForceSync).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeForceSync).Return(nil).Once()
 			}
 
 			err := idx.SyncToTarget(context.Background(), 1, targetBlock)
@@ -266,7 +266,7 @@ var _ = Describe("Indexer Test", func() {
 					mockEthClient.On("TransactionReceipts", mock.Anything, blocks[i].Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+					mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
 				}
 
 				mockStoreManager.On("LatestHeader").Return(&model.Header{
@@ -331,7 +331,7 @@ var _ = Describe("Indexer Test", func() {
 						mockEthClient.On("TransactionReceipts", mock.Anything, blocks[i].Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 						mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 						mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-						mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+						mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
 					}
 				}
 
@@ -395,7 +395,7 @@ var _ = Describe("Indexer Test", func() {
 					},
 				}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{{
+				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{{
 					Root: "root",
 					Accounts: map[string]state.DirtyDumpAccount{
 						"0001": {
@@ -424,7 +424,7 @@ var _ = Describe("Indexer Test", func() {
 					mockEthClient.On("TransactionReceipts", mock.Anything, blocks[i].Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+					mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
 				}
 
 				mockStoreManager.On("LatestHeader").Return(nil, gorm.ErrRecordNotFound).Once()
@@ -474,7 +474,7 @@ var _ = Describe("Indexer Test", func() {
 					mockEthClient.On("TransactionReceipts", mock.Anything, blocks[i].Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
 					mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-					mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+					mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
 				}
 				mockStoreManager.On("LatestHeader").Return(&model.Header{
 					Number: 10,
@@ -623,7 +623,7 @@ var _ = Describe("Indexer Test", func() {
 					10, parent, strconv.Itoa(10)}, nil).Once()
 				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(unknownErr).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(unknownErr).Once()
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
@@ -887,7 +887,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("TransactionReceipts", mock.Anything, blocks[i].Transactions()).Return([]*types.Receipt{receipt}, nil).Once()
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", []*types.Block{blocks[i]}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[i]}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
 			}
 			// state diff for the new blocks
 			for i := int64(15); i <= 18; i++ {
@@ -895,7 +895,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump, nilDirtyDump, nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, store.ModeReOrg).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump, nilDirtyDump, nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, store.ModeReOrg).Return(nil).Once()
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
@@ -992,7 +992,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", newBlocks[15:17], [][]*types.Receipt{{receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs}, store.ModeReOrg).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:17], [][]*types.Receipt{{receipt}, {receipt}}, []*state.DirtyDump{nilDirtyDump, nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs}, store.ModeReOrg).Return(nil).Once()
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
