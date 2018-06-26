@@ -25,6 +25,7 @@ import (
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -41,6 +42,8 @@ var (
 //go:generate mockery -name EthClient
 
 type EthClient interface {
+	Balancer
+
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
@@ -56,6 +59,8 @@ type EthClient interface {
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	// Get ETH transfer logs
 	GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error)
+	BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error)
+	BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockNumber *big.Int) ([][]byte, error)
 	Close()
 }
 
@@ -182,6 +187,99 @@ func (c *client) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*type
 	r := []*types.TransferLog{}
 	err := c.rpc.CallContext(ctx, &r, "debug_getTransferLogs", hash.Hex())
 	return r, err
+}
+
+func (c *client) BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error) {
+	lens := len(accounts)
+	if lens == 0 {
+		return nil, nil
+	}
+
+	blockNumStr := hexutil.EncodeBig(blockNumber)
+	// Construct batch requests
+	method := "eth_getBalance"
+	reqs := make([]rpc.BatchElem, lens)
+	for i, account := range accounts {
+		var result hexutil.Big
+		reqs[i] = rpc.BatchElem{
+			Method: method,
+			Args:   []interface{}{account, blockNumStr},
+			Result: &result,
+		}
+	}
+
+	// Batch calls
+	err := c.rpc.BatchCallContext(ctx, reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure all requests are ok
+	balances := make([]*big.Int, lens)
+	for i, req := range reqs {
+		if req.Error != nil {
+			return nil, req.Error
+		}
+		balances[i] = (*big.Int)(req.Result.(*hexutil.Big))
+	}
+	return balances, nil
+}
+
+func (c *client) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockNumber *big.Int) ([][]byte, error) {
+	lens := len(msgs)
+	if lens == 0 {
+		return nil, nil
+	}
+
+	blockNumStr := hexutil.EncodeBig(blockNumber)
+	// Construct batch requests
+	method := "eth_call"
+	reqs := make([]rpc.BatchElem, lens)
+	for i, msg := range msgs {
+		var hex hexutil.Bytes
+		reqs[i] = rpc.BatchElem{
+			Method: method,
+			Args:   []interface{}{toCallArg(msg), blockNumStr},
+			Result: &hex,
+		}
+
+	}
+
+	// Batch calls
+	err := c.rpc.BatchCallContext(ctx, reqs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure all requests are ok
+	results := make([][]byte, lens)
+	for i, req := range reqs {
+		if req.Error != nil {
+			return nil, req.Error
+		}
+		results[i] = []byte(*req.Result.(*hexutil.Bytes))
+	}
+	return results, nil
+}
+
+func toCallArg(msg *ethereum.CallMsg) interface{} {
+	arg := map[string]interface{}{
+		"from": msg.From,
+		"to":   msg.To,
+	}
+	if len(msg.Data) > 0 {
+		arg["data"] = hexutil.Bytes(msg.Data)
+	}
+	if msg.Value != nil {
+		arg["value"] = (*hexutil.Big)(msg.Value)
+	}
+	if msg.Gas != 0 {
+		arg["gas"] = hexutil.Uint64(msg.Gas)
+	}
+	if msg.GasPrice != nil {
+		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
+	}
+	return arg
 }
 
 func (c *client) Close() {
