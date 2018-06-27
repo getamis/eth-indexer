@@ -59,6 +59,9 @@ type ServiceManager interface {
 	// Noted that the return block number may be different from the input one because
 	// we don't have state in the input one.
 	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (*decimal.Decimal, *big.Int, error)
+
+	// Subscriptions store
+	FindTotalBalance(blockNumber int64, token common.Address, group int64) (result *model.TotalBalance, err error)
 }
 
 type accountStore = accStore.Store
