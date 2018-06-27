@@ -27,6 +27,7 @@ import (
 	"github.com/getamis/eth-indexer/model"
 	accStore "github.com/getamis/eth-indexer/store/account"
 	bhStore "github.com/getamis/eth-indexer/store/block_header"
+	sbStore "github.com/getamis/eth-indexer/store/subscription"
 	txStore "github.com/getamis/eth-indexer/store/transaction"
 )
 
@@ -54,23 +55,29 @@ type ServiceManager interface {
 	// Noted that the return block number may be different from the input one because
 	// we don't have state in the input one.
 	GetERC20Balance(ctx context.Context, contractAddress, address common.Address, blockNr int64) (*decimal.Decimal, *big.Int, error)
+
+	// Subscriptions store
+	FindTotalBalance(blockNumber int64, token common.Address, group int64) (result *model.TotalBalance, err error)
 }
 
 type accountStore = accStore.Store
 type blockHeaderStore = bhStore.Store
 type transactionStore = txStore.Store
+type subscriptionsStore = sbStore.Store
 
 type serviceManager struct {
 	accountStore
 	blockHeaderStore
 	transactionStore
+	subscriptionsStore
 }
 
 // NewServiceManager news a service manager to serve data for RPC services.
 func NewServiceManager(db *gorm.DB) ServiceManager {
 	return &serviceManager{
-		accountStore:     accStore.NewWithDB(db),
-		blockHeaderStore: bhStore.NewWithDB(db),
-		transactionStore: txStore.NewWithDB(db),
+		accountStore:       accStore.NewWithDB(db),
+		blockHeaderStore:   bhStore.NewWithDB(db),
+		transactionStore:   txStore.NewWithDB(db),
+		subscriptionsStore: sbStore.NewWithDB(db),
 	}
 }
