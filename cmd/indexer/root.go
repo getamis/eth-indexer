@@ -71,7 +71,7 @@ var (
 var ServerCmd = &cobra.Command{
 	Use:   "indexer",
 	Short: "blockchain data indexer",
-	Long:  `blockchain data indexer`,
+	Long:  `Blockchain data indexer. You can setup the options value via configs/config.yaml file or pass by flags.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// eth-client
 		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
@@ -151,52 +151,51 @@ func Execute() {
 }
 
 func init() {
-	root, _ := os.Getwd()
-	cfgFile := root + "/" + cfgFilePath + "/" + cfgFileName + "." + cfgFileType
+	// Take cfgFile as default to load
+	cobra.OnInitialize(initViper)
 
-	// Take cfgFile as the first priority to load and only enable flags when cfgFile does not exists.
-	if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
-		log.Debug("The config file does not exist. Run ServerCmd.Flags().")
-		// eth-client flags
-		ServerCmd.Flags().StringVar(&ethProtocol, flags.EthProtocol, "ws", "The eth-client protocol")
-		ServerCmd.Flags().StringVar(&ethHost, flags.EthHost, "127.0.0.1", "The eth-client host")
-		ServerCmd.Flags().IntVar(&ethPort, flags.EthPort, 8546, "The eth-client port")
+	// eth-client flags
+	ServerCmd.Flags().String(flags.EthProtocol, "ws", "The eth-client protocol")
+	ServerCmd.Flags().String(flags.EthHost, "127.0.0.1", "The eth-client host")
+	ServerCmd.Flags().Int(flags.EthPort, 8546, "The eth-client port")
 
-		// Database flags
-		ServerCmd.Flags().StringVar(&dbDriver, flags.DbDriver, "mysql", "The database driver")
-		ServerCmd.Flags().StringVar(&dbHost, flags.DbHost, "", "The database host")
-		ServerCmd.Flags().IntVar(&dbPort, flags.DbPort, 3306, "The database port")
-		ServerCmd.Flags().StringVar(&dbName, flags.DbName, "ethdb", "The database name")
-		ServerCmd.Flags().StringVar(&dbUser, flags.DbUser, "root", "The database username to login")
-		ServerCmd.Flags().StringVar(&dbPassword, flags.DbPassword, "my-secret-pw", "The database password to login")
+	// Database flags
+	ServerCmd.Flags().String(flags.DbDriver, "mysql", "The database driver")
+	ServerCmd.Flags().String(flags.DbHost, "", "The database host")
+	ServerCmd.Flags().Int(flags.DbPort, 3306, "The database port")
+	ServerCmd.Flags().String(flags.DbName, "ethdb", "The database name")
+	ServerCmd.Flags().String(flags.DbUser, "root", "The database username to login")
+	ServerCmd.Flags().String(flags.DbPassword, "my-secret-pw", "The database password to login")
 
-		// Syncing related flags
-		ServerCmd.Flags().Int64Var(&targetBlock, flags.SyncTargetBlock, 0, "The block number to sync to initially")
-		ServerCmd.Flags().Int64Var(&fromBlock, flags.SyncFromBlock, 0, "The init block number to sync to initially")
+	// Syncing related flags
+	ServerCmd.Flags().Int64(flags.SyncTargetBlock, 0, "The block number to sync to initially")
+	ServerCmd.Flags().Int64(flags.SyncFromBlock, 0, "The init block number to sync to initially")
 
-		// Profling flags
-		ServerCmd.Flags().BoolVar(&profiling, flags.PprofEnable, false, "Enable the pprof HTTP server")
-		ServerCmd.Flags().IntVar(&profilPort, flags.PprofPort, 8000, "pprof HTTP server listening port")
-		ServerCmd.Flags().StringVar(&profilHost, flags.PprofHost, "0.0.0.0", "pprof HTTP server listening interface")
+	// Profling flags
+	ServerCmd.Flags().Bool(flags.PprofEnable, false, "Enable the pprof HTTP server")
+	ServerCmd.Flags().Int(flags.PprofPort, 8000, "pprof HTTP server listening port")
+	ServerCmd.Flags().String(flags.PprofHost, "0.0.0.0", "pprof HTTP server listening interface")
 
-		// erc20 flags
-		ServerCmd.Flags().BoolVar(&subscribeErc20token, flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
-	} else {
-		cobra.OnInitialize(initConfig)
-	}
+	// erc20 flags
+	ServerCmd.Flags().Bool(flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
 }
 
-func initConfig() {
+func initViper() {
 	viper.SetConfigType(cfgFileType)
 	viper.SetConfigName(cfgFileName)
 	viper.AddConfigPath(cfgFilePath)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Crit("Can not load config file", "err", err)
+		log.Info("No config file to load as default.", "info", err)
 	}
-	loadFlagToVar()
+
+	// Viper uses the following precedence order. Each item takes precedence over the item below it: 1st. flag. 2nd.config
+	viper.BindPFlags(ServerCmd.Flags())
+
+	// assign variables from Viper
+	assignVarFromViper()
 }
 
-func loadFlagToVar() {
+func assignVarFromViper() {
 	// flags for ethereum service
 	ethProtocol = viper.GetString(flags.EthProtocol)
 	ethHost = viper.GetString(flags.EthHost)
@@ -212,6 +211,7 @@ func loadFlagToVar() {
 
 	// flags for syncing
 	targetBlock = viper.GetInt64(flags.SyncTargetBlock)
+	fromBlock = viper.GetInt64(flags.SyncFromBlock)
 
 	//flag for pprof
 	profiling = viper.GetBool(flags.PprofEnable)
