@@ -94,6 +94,7 @@ ActiveRecord::Schema.define(version: 2018_06_20_072545) do
     t.binary "token", limit: 20, null: false
     t.bigint "group", null: false
     t.string "balance", limit: 32, null: false
+    t.string "tx_fee", limit: 32, null: false
     t.index ["block_number", "token", "group"], name: "index_total_balances_on_block_number_and_token_and_group", unique: true
     t.index ["block_number"], name: "index_total_balances_on_block_number"
     t.index ["group"], name: "index_total_balances_on_group"

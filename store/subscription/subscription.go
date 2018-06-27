@@ -94,6 +94,7 @@ func (t *store) FindTotalBalance(blockNumber int64, token common.Address, group 
 				Token:       token.Bytes(),
 				Group:       group,
 				Balance:     "0",
+				TxFee:       "0",
 			}, nil
 		}
 		return nil, err

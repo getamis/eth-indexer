@@ -22,6 +22,7 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
@@ -39,6 +40,10 @@ type subscription struct {
 	accountStore      account.Store
 	balancer          client.Balancer
 
+	// Used to calculate transaction fee
+	receipts []*types.Receipt
+	txs      []*model.Transaction
+
 	//
 	newSubs     map[gethCommon.Address]*model.Subscription
 	newBalances map[gethCommon.Address]map[gethCommon.Address]*big.Int
@@ -46,6 +51,8 @@ type subscription struct {
 
 func newSubscription(blockNumber int64,
 	erc20List map[string]*model.ERC20,
+	receipts []*types.Receipt,
+	txs []*model.Transaction,
 	subscriptionStore subscriptionStore.Store,
 	accountStore account.Store,
 	balancer client.Balancer) *subscription {
@@ -61,6 +68,8 @@ func newSubscription(blockNumber int64,
 		subscriptionStore: subscriptionStore,
 		accountStore:      accountStore,
 		balancer:          balancer,
+		receipts:          receipts,
+		txs:               txs,
 	}
 }
 
@@ -133,6 +142,7 @@ func (s *subscription) init(ctx context.Context) error {
 func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (err error) {
 	// Update total balance for new subscriptions, map[group][token]balance
 	totalBalances := make(map[int64]map[gethCommon.Address]*big.Int)
+	totalFees := make(map[int64]*big.Int)
 	for _, sub := range s.newSubs {
 		if totalBalances[sub.Group] == nil {
 			totalBalances[sub.Group] = make(map[gethCommon.Address]*big.Int)
@@ -155,12 +165,18 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	defer func() {
 		for group, addrs := range totalBalances {
 			for token, d := range addrs {
-				err = s.subscriptionStore.InsertTotalBalance(&model.TotalBalance{
+				tb := &model.TotalBalance{
 					Token:       token.Bytes(),
 					BlockNumber: s.blockNumber,
 					Group:       group,
+					TxFee:       "0",
 					Balance:     d.String(),
-				})
+				}
+
+				if f, ok := totalFees[group]; ok && token == model.ETHAddress {
+					tb.TxFee = f.String()
+				}
+				err = s.subscriptionStore.InsertTotalBalance(tb)
 				if err != nil {
 					return
 				}
@@ -195,8 +211,18 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 		return
 	}
 
+	// Calculate tx fee
+	fees := make(map[gethCommon.Address]*big.Int)
+	// Assume the tx and receipt are in the same order
+	for i, tx := range s.txs {
+		r := s.receipts[i]
+		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
+		fees[gethCommon.BytesToAddress(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+	}
+
 	// Insert events if it's a subscribed account
 	addrDiff := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+	feeDiff := make(map[gethCommon.Address]*big.Int)
 	contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
 	for _, sub := range subs {
 		for _, e := range events {
@@ -216,21 +242,33 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 			}
 			d, _ := new(big.Int).SetString(e.Value, 10)
 			if bytes.Equal(e.From, sub.Address) {
-				if addrDiff[contractAddr][gethCommon.BytesToAddress(e.From)] == nil {
-					addrDiff[contractAddr][gethCommon.BytesToAddress(e.From)] = new(big.Int).Neg(d)
-					contractsAddrs[contractAddr][gethCommon.BytesToAddress(e.From)] = struct{}{}
+				from := gethCommon.BytesToAddress(e.From)
+				if addrDiff[contractAddr][from] == nil {
+					addrDiff[contractAddr][from] = new(big.Int).Neg(d)
+					contractsAddrs[contractAddr][from] = struct{}{}
 				} else {
-					addrDiff[contractAddr][gethCommon.BytesToAddress(e.From)] = new(big.Int).Add(addrDiff[contractAddr][gethCommon.BytesToAddress(e.From)], new(big.Int).Neg(d))
+					addrDiff[contractAddr][from] = new(big.Int).Add(addrDiff[contractAddr][from], new(big.Int).Neg(d))
+				}
+
+				// Add fee if it's a ETH event
+				if f, ok := fees[gethCommon.BytesToAddress(e.TxHash)]; bytes.Equal(e.Address, model.ETHBytes) && ok {
+					if feeDiff[from] == nil {
+						feeDiff[from] = new(big.Int).Set(f)
+					} else {
+						feeDiff[from] = new(big.Int).Add(feeDiff[from], f)
+					}
 				}
 			}
 			if bytes.Equal(e.To, sub.Address) {
-				if addrDiff[contractAddr][gethCommon.BytesToAddress(e.To)] == nil {
-					addrDiff[contractAddr][gethCommon.BytesToAddress(e.To)] = d
-					contractsAddrs[contractAddr][gethCommon.BytesToAddress(e.To)] = struct{}{}
+				to := gethCommon.BytesToAddress(e.To)
+				if addrDiff[contractAddr][to] == nil {
+					addrDiff[contractAddr][to] = d
+					contractsAddrs[contractAddr][to] = struct{}{}
 				} else {
-					addrDiff[contractAddr][gethCommon.BytesToAddress(e.To)] = new(big.Int).Add(addrDiff[contractAddr][gethCommon.BytesToAddress(e.To)], d)
+					addrDiff[contractAddr][to] = new(big.Int).Add(addrDiff[contractAddr][to], d)
 				}
 			}
+
 		}
 	}
 
@@ -282,6 +320,15 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 				tb, _ = new(big.Int).SetString(b.Balance, 10)
 			}
 			totalBalances[sub.Group][token] = new(big.Int).Add(tb, d)
+
+			if f, ok := feeDiff[addr]; ok && token == model.ETHAddress {
+				if totalFees[sub.Group] == nil {
+					totalFees[sub.Group] = new(big.Int).Set(f)
+				} else {
+					totalFees[sub.Group] = new(big.Int).Add(f, totalFees[sub.Group])
+				}
+				totalBalances[sub.Group][token] = new(big.Int).Sub(totalBalances[sub.Group][token], f)
+			}
 		}
 	}
 

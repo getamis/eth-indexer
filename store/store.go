@@ -197,11 +197,13 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert txs
+	var txs []*model.Transaction
 	for _, t := range block.Transactions() {
 		tx, err := common.Transaction(block, t)
 		if err != nil {
 			return err
 		}
+		txs = append(txs, tx)
 		err = txStore.Insert(tx)
 		if err != nil {
 			return err
@@ -236,7 +238,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 
 	// Insert erc20 balance & events
 	if m.onlySubscribed {
-		sub := newSubscription(blockNumber, m.erc20List, subscriptionStore, accountStore, m.balancer)
+		sub := newSubscription(blockNumber, m.erc20List, receipts, txs, subscriptionStore, accountStore, m.balancer)
 		err := sub.init(ctx)
 		if err != nil {
 			return err

@@ -15,6 +15,7 @@ class AddSubscriptionTable < ActiveRecord::Migration[5.2]
       t.binary :token, :limit => 20, :null => false
       t.integer :group, :limit => 8, :null => false
       t.string :balance, :limit => 32, :null => false
+      t.string :tx_fee, :limit => 32, :null => false
     end
     add_index :total_balances, :block_number
     add_index :total_balances, :token

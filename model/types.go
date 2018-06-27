@@ -171,6 +171,7 @@ type TotalBalance struct {
 	BlockNumber int64
 	Group       int64
 	Balance     string
+	TxFee       string
 }
 
 // TableName retruns the table name of this model
