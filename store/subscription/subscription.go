@@ -31,7 +31,6 @@ type Store interface {
 	Find(blockNumber int64) (result []*model.Subscription, err error)
 	FindByAddresses(addrs [][]byte) (result []*model.Subscription, err error)
 	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
-	BatchDelete(groupID int64, addrs [][]byte) (err error)
 
 	// Total balance
 	InsertTotalBalance(data *model.TotalBalance) error
@@ -150,9 +149,4 @@ func (t *store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*mod
 		return nil, 0, err
 	}
 	return result, total, nil
-}
-
-func (t *store) BatchDelete(groupID int64, addrs [][]byte) (err error) {
-	db := t.db.Where("`group` = ?", groupID).Where("address in (?)", addrs)
-	return db.Delete(&model.Subscription{}).Error
 }

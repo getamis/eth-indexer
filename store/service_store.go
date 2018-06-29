@@ -46,7 +46,6 @@ type ServiceManager interface {
 
 	// Subscription store
 	AddSubscriptions(group int64, addrs []common.Address) error
-	DeleteSubscriptions(group int64, addrs []common.Address) error
 	GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error)
 
 	// GetBalance returns the amount of wei for the given address in the state of the
@@ -96,17 +95,6 @@ func (srv *serviceManager) AddSubscriptions(group int64, addrs []common.Address)
 		}
 	}
 	return srv.subscriptionStore.BatchInsert(subs)
-}
-
-func (srv *serviceManager) DeleteSubscriptions(group int64, addrs []common.Address) error {
-	if len(addrs) == 0 {
-		return nil
-	}
-	addrByes := make([][]byte, len(addrs))
-	for i, addr := range addrs {
-		addrByes[i] = addr.Bytes()
-	}
-	return srv.subscriptionStore.BatchDelete(group, addrByes)
 }
 
 func (srv *serviceManager) GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error) {
