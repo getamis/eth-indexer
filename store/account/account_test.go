@@ -111,7 +111,7 @@ var _ = Describe("Account Database Test", func() {
 			// Insert code to create table
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			erc20 := makeERC20(hexAddr)
-			err := store.InsertERC20(erc20, true)
+			err := store.InsertERC20(erc20)
 			Expect(err).Should(Succeed())
 
 			data := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
@@ -170,7 +170,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			addr := gethCommon.HexToAddress(hexAddr)
 			erc20 := makeERC20(hexAddr)
-			err := store.InsertERC20(erc20, true)
+			err := store.InsertERC20(erc20)
 			Expect(err).Should(Succeed())
 
 			data1 := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
@@ -244,7 +244,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			addr := gethCommon.HexToAddress(hexAddr)
 			erc20 := makeERC20(hexAddr)
-			err := store.InsertERC20(erc20, true)
+			err := store.InsertERC20(erc20)
 			Expect(err).Should(Succeed())
 
 			data1 := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
@@ -320,7 +320,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			addr := gethCommon.HexToAddress(hexAddr)
 			erc20 := makeERC20(hexAddr)
-			err := store.InsertERC20(erc20, true)
+			err := store.InsertERC20(erc20)
 			Expect(err).Should(Succeed())
 
 			event1 := &model.Transfer{
@@ -367,18 +367,18 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data, false)
+			err := store.InsertERC20(data)
 			Expect(err).Should(Succeed())
 			Expect(db.HasTable(model.ERC20Storage{
 				Address: data.Address,
 			})).Should(BeTrue())
 
-			err = store.InsertERC20(data, false)
+			err = store.InsertERC20(data)
 			Expect(err).ShouldNot(BeNil())
 
 			// Insert another code at different block number should not alter the original block number
 			data2 := makeERC20(hexAddr)
-			err = store.InsertERC20(data2, false)
+			err = store.InsertERC20(data2)
 			Expect(err).ShouldNot(BeNil())
 
 			code, err := store.FindERC20(gethCommon.BytesToAddress(data.Address))
@@ -396,14 +396,14 @@ var _ = Describe("Account Database Test", func() {
 			store := NewWithDB(db)
 
 			data1 := makeERC20("0xB287a379e6caCa6732E50b88D23c290aA990A892")
-			err := store.InsertERC20(data1, false)
+			err := store.InsertERC20(data1)
 			Expect(err).Should(Succeed())
 			Expect(db.HasTable(model.ERC20Storage{
 				Address: data1.Address,
 			})).Should(BeTrue())
 
 			data2 := makeERC20("0xC287a379e6caCa6732E50b88D23c290aA990A892")
-			err = store.InsertERC20(data2, false)
+			err = store.InsertERC20(data2)
 			Expect(err).Should(Succeed())
 			Expect(db.HasTable(model.ERC20Storage{
 				Address: data2.Address,
@@ -431,7 +431,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			addr := gethCommon.HexToAddress(hexAddr)
 			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data, false)
+			err := store.InsertERC20(data)
 			Expect(err).Should(Succeed())
 
 			storage1 := &model.ERC20Storage{
@@ -474,7 +474,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
 			addr := gethCommon.HexToAddress(hexAddr)
 			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data, false)
+			err := store.InsertERC20(data)
 			Expect(err).Should(Succeed())
 
 			storage1 := &model.ERC20Storage{

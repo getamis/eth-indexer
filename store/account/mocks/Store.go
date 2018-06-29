@@ -172,13 +172,13 @@ func (_m *Store) InsertAccount(_a0 *model.Account) error {
 	return r0
 }
 
-// InsertERC20 provides a mock function with given fields: code, onlySubscribe
-func (_m *Store) InsertERC20(code *model.ERC20, onlySubscribe bool) error {
-	ret := _m.Called(code, onlySubscribe)
+// InsertERC20 provides a mock function with given fields: code
+func (_m *Store) InsertERC20(code *model.ERC20) error {
+	ret := _m.Called(code)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.ERC20, bool) error); ok {
-		r0 = rf(code, onlySubscribe)
+	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
+		r0 = rf(code)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -12,7 +12,6 @@ db:
 sync:
   targetBlock: 0
   fromBlock: 0
-  onlySubscribe: true
 pprof:
   enable: false
   port: 8000

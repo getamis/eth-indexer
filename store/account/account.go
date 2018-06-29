@@ -26,7 +26,7 @@ import (
 
 type Store interface {
 	// ERC 20
-	InsertERC20(code *model.ERC20, onlySubscribe bool) error
+	InsertERC20(code *model.ERC20) error
 	FindERC20(address common.Address) (result *model.ERC20, err error)
 	ListERC20() ([]*model.ERC20, error)
 
@@ -57,26 +57,26 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) InsertERC20(code *model.ERC20, onlySubscribe bool) error {
+func (t *store) InsertERC20(code *model.ERC20) error {
 	// Insert contract code
 	if err := t.db.Create(code).Error; err != nil {
 		return err
 	}
-	if onlySubscribe {
-		// Create a account table for this contract
-		if err := t.db.CreateTable(model.Account{
-			ContractAddress: code.Address,
-		}).Error; err != nil {
-			return err
-		}
-	} else {
-		// Create a table for this contract
-		if err := t.db.CreateTable(model.ERC20Storage{
-			Address: code.Address,
-		}).Error; err != nil {
-			return err
-		}
+
+	// Create a account table for this contract
+	if err := t.db.CreateTable(model.Account{
+		ContractAddress: code.Address,
+	}).Error; err != nil {
+		return err
 	}
+
+	// Create a storage diff table for this contract
+	if err := t.db.CreateTable(model.ERC20Storage{
+		Address: code.Address,
+	}).Error; err != nil {
+		return err
+	}
+
 	// Create erc20 transfer event table
 	if err := t.db.CreateTable(model.Transfer{
 		Address: code.Address,

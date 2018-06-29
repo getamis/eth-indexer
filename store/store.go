@@ -73,17 +73,15 @@ type Manager interface {
 }
 
 type manager struct {
-	db             *gorm.DB
-	erc20List      map[string]*model.ERC20
-	onlySubscribed bool
-	balancer       client.Balancer
+	db        *gorm.DB
+	erc20List map[string]*model.ERC20
+	balancer  client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB, onlySubscribed bool) Manager {
+func NewManager(db *gorm.DB) Manager {
 	return &manager{
-		db:             db,
-		onlySubscribed: onlySubscribed,
+		db: db,
 	}
 }
 
@@ -157,11 +155,9 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 			return
 		}
 
-		if !m.onlySubscribed {
-			err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
-			if err != nil {
-				return
-			}
+		err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
+		if err != nil {
+			return
 		}
 	}
 	return
@@ -237,37 +233,17 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert erc20 balance & events
-	if m.onlySubscribed {
-		sub := newSubscription(blockNumber, m.erc20List, receipts, txs, subscriptionStore, accountStore, m.balancer)
-		err := sub.init(ctx)
-		if err != nil {
-			return err
-		}
-
-		err = sub.insert(ctx, events)
-		if err != nil {
-			return err
-		}
-	} else {
-		// Insert balance
-		for addr, account := range dump.Accounts {
-			// If the account balance is changed in this tx
-			if account.Balance != "" {
-				err := insertAccount(accountStore, blockNumber, addr, account.Balance)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		// Insert events
-		for _, e := range events {
-			err := accountStore.InsertTransfer(e)
-			if err != nil {
-				return err
-			}
-		}
+	sub := newSubscription(blockNumber, m.erc20List, receipts, txs, subscriptionStore, accountStore, m.balancer)
+	err = sub.init(ctx)
+	if err != nil {
+		return err
 	}
+
+	err = sub.insert(ctx, events)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -332,26 +308,22 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		return
 	}
 
-	if m.onlySubscribed {
-		err = subscriptionStore.Reset(from, to)
-		if err != nil {
-			return
-		}
+	err = subscriptionStore.Reset(from, to)
+	if err != nil {
+		return
 	}
 
 	for hexAddr := range m.erc20List {
-		if m.onlySubscribed {
-			// Delete erc20 balances
-			err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
-			if err != nil {
-				return
-			}
-		} else {
-			// Delete storage
-			err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
-			if err != nil {
-				return
-			}
+		// Delete erc20 balances
+		err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
+		if err != nil {
+			return
+		}
+
+		// Delete storage diff
+		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
+		if err != nil {
+			return
 		}
 
 		// Delete erc20 events
@@ -365,7 +337,7 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 
 func (m *manager) InsertERC20(code *model.ERC20) error {
 	accountStore := account.NewWithDB(m.db)
-	return accountStore.InsertERC20(code, m.onlySubscribed)
+	return accountStore.InsertERC20(code)
 }
 
 func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {

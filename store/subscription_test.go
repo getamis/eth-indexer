@@ -32,11 +32,12 @@ import (
 
 var _ = Describe("Subscription Test", func() {
 	var (
-		blocks       []*types.Block
-		receipts     [][]*types.Receipt
-		dumps        []*state.DirtyDump
-		events       [][]*types.TransferLog
-		manager      Manager
+		blocks   []*types.Block
+		receipts [][]*types.Receipt
+		dumps    []*state.DirtyDump
+		events   [][]*types.TransferLog
+		manager  Manager
+
 		mockBalancer *mocks.Balancer
 	)
 
@@ -59,6 +60,7 @@ var _ = Describe("Subscription Test", func() {
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
+		db.Delete(&model.Subscription{})
 		db.Delete(&model.ERC20{})
 		db.DropTable(model.Transfer{
 			Address: erc20.Address,
@@ -255,7 +257,7 @@ var _ = Describe("Subscription Test", func() {
 		}
 
 		ctx := context.Background()
-		manager = NewManager(db, true)
+		manager = NewManager(db)
 
 		err = manager.InsertERC20(erc20)
 		Expect(err).Should(BeNil())

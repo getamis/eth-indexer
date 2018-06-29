@@ -178,7 +178,7 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db, false)
+		manager = NewManager(db)
 		err = manager.Init(nil)
 		Expect(err).Should(BeNil())
 
@@ -202,6 +202,15 @@ var _ = Describe("Manager Test", func() {
 		db.Delete(&model.ERC20{})
 		db.DropTable(model.ERC20Storage{
 			Address: erc20.Address,
+		})
+		db.DropTable(model.ERC20Storage{
+			Address: newErc20.Address,
+		})
+		db.DropTable(model.Account{
+			ContractAddress: erc20.Address,
+		})
+		db.DropTable(model.Account{
+			ContractAddress: newErc20.Address,
 		})
 		db.DropTable(model.Transfer{
 			Address: erc20.Address,
@@ -264,7 +273,7 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			// Reload manager
-			manager = NewManager(db, false)
+			manager = NewManager(db)
 			err = manager.Init(nil)
 			Expect(err).Should(BeNil())
 
