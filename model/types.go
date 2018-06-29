@@ -17,7 +17,18 @@
 package model
 
 import (
+	"bytes"
+	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+)
+
+var (
+	// ETHAddress represents ether type in address type
+	ETHAddress = common.BytesToAddress([]byte("ETH"))
+	// ETHBytes represents ether type in bytes array type
+	ETHBytes = ETHAddress.Bytes()
 )
 
 // Header represents the header of a block
@@ -116,16 +127,56 @@ func (t TotalDifficulty) TableName() string {
 	return "total_difficulty"
 }
 
-// Account represents the state of externally owned accounts in Ethereum at given block
+// Account represents the either ERC20 or ETH balances of externally owned accounts in Ethereum at given block
+// The account is considered an eth account and insert to account table if ContractAddress is ETHBytes, or
+// considered an erc20 account and insert to erc20_balance_{ContractAddress} table.
 type Account struct {
-	BlockNumber int64
-	Address     []byte
-	Balance     string
+	ContractAddress []byte `gorm:"-"`
+	BlockNumber     int64  `gorm:"size:8;index;unique_index:idx_block_number_address"`
+	Address         []byte `gorm:"size:20;index;unique_index:idx_block_number_address"`
+	Balance         string `gorm:"size:32"`
 }
 
 // TableName returns the table name of this model
 func (a Account) TableName() string {
-	return "accounts"
+	if bytes.Equal(a.ContractAddress, ETHBytes) {
+		return "accounts"
+	}
+	return "erc20_balance_" + hexutil.Encode(a.ContractAddress)
+}
+
+// Transfer represents the transfer event in either ether or ERC20 tokens
+// The event is considered an eth transfer event and insert to eth_transfer table if Address is ETHBytes, or
+// considered an erc20 transfer event and insert to erc20_transfer_{Address} table.
+type Transfer struct {
+	Address     []byte `gorm:"-"`
+	BlockNumber int64  `gorm:"size:8;index"`
+	TxHash      []byte `gorm:"size:32;index"`
+	From        []byte `gorm:"size:20;index"`
+	To          []byte `gorm:"size:20;index"`
+	Value       string `gorm:"size:32"`
+}
+
+// TableName retruns the table name of this model
+func (e Transfer) TableName() string {
+	if bytes.Equal(e.Address, ETHBytes) {
+		return "eth_transfer"
+	}
+	return "erc20_transfer_" + hexutil.Encode(e.Address)
+}
+
+// TotalBalance represents the total balance of subscription accounts in different group
+type TotalBalance struct {
+	Token       []byte
+	BlockNumber int64
+	Group       int64
+	Balance     string
+	TxFee       string
+}
+
+// TableName retruns the table name of this model
+func (s TotalBalance) TableName() string {
+	return "total_balances"
 }
 
 // ERC20 represents the ERC20 contract
@@ -153,44 +204,20 @@ type ERC20Storage struct {
 
 // TableName retruns the table name of this erc20 contract
 func (s ERC20Storage) TableName() string {
-	return ERC20ContractTableName(s.Address)
+	return "erc20_" + hexutil.Encode(s.Address)
 }
 
-// ERC20ContractTableName returns its contract table
-func ERC20ContractTableName(address []byte) string {
-	return "erc20_" + hexutil.Encode(address)
-}
-
-// ERC20Transfer represents the transfer event in erc20
-type ERC20Transfer struct {
-	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"size:8;index"`
-	TxHash      []byte `gorm:"size:32;index"`
-	From        []byte `gorm:"size:20;index"`
-	To          []byte `gorm:"size:20;index"`
-	Value       string `gorm:"size:32"`
+// Subscription represents the Subscription model
+type Subscription struct {
+	ID          int64
+	BlockNumber int64
+	Group       int64
+	Address     []byte
+	CreatedAt   time.Time `deepequal:"-"`
+	UpdatedAt   time.Time `deepequal:"-"`
 }
 
 // TableName retruns the table name of this erc20 contract
-func (s ERC20Transfer) TableName() string {
-	return ERC20TransferTableName(s.Address)
-}
-
-// ERC20TransferTableName returns its contract table
-func ERC20TransferTableName(address []byte) string {
-	return "erc20_transfer_" + hexutil.Encode(address)
-}
-
-// ETHTransfer represents the transfer event in ether
-type ETHTransfer struct {
-	BlockNumber int64  `gorm:"size:8;index"`
-	TxHash      []byte `gorm:"size:32;index"`
-	From        []byte `gorm:"size:20;index"`
-	To          []byte `gorm:"size:20;index"`
-	Value       string `gorm:"size:32"`
-}
-
-// TableName retruns the table name of this erc20 contract
-func (e ETHTransfer) TableName() string {
-	return "eth_transfer"
+func (s Subscription) TableName() string {
+	return "subscriptions"
 }

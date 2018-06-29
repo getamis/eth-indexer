@@ -125,7 +125,7 @@ var ServerCmd = &cobra.Command{
 			}()
 		}
 
-		log.Info("Starting eth-indexer")
+		log.Info("Starting eth-indexer", "from", fromBlock, "target", targetBlock)
 		if targetBlock > 0 {
 			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
 		} else {

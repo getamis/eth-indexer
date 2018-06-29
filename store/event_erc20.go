@@ -34,7 +34,7 @@ var (
 	sha3TransferEvent = common.HexToBytes("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 )
 
-func (m *manager) erc20Events(blockNumber int64, txHash gethCommon.Hash, logs []*model.Log) (events []*model.ERC20Transfer, err error) {
+func (m *manager) erc20Events(blockNumber int64, txHash gethCommon.Hash, logs []*model.Log) (events []*model.Transfer, err error) {
 	// Parse the logs
 	for _, l := range logs {
 		// Insert transfer event if the contract address is in our erc20 list and it's a transfer event
@@ -48,7 +48,7 @@ func (m *manager) erc20Events(blockNumber int64, txHash gethCommon.Hash, logs []
 			}
 
 			// Convert to model.ERC20Transfer
-			events = append(events, &model.ERC20Transfer{
+			events = append(events, &model.Transfer{
 				Address:     l.ContractAddress,
 				BlockNumber: blockNumber,
 				TxHash:      txHash.Bytes(),

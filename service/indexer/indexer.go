@@ -91,7 +91,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 		}
 	}
 
-	return idx.manager.Init()
+	return idx.manager.Init(idx.client)
 }
 
 // SyncToTarget syncs the blocks fromBlock to targetBlock. In this function, we are NOT checking reorg and inserting TD. We force to INSERT blocks.
@@ -284,7 +284,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mod
 		dumps = append(dumps, dump)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(newBlocks, receipts, dumps, events, mode)
+	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, dumps, events, mode)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
