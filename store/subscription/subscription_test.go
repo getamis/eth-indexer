@@ -19,6 +19,7 @@ package subscription
 import (
 	"os"
 	"testing"
+	"time"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/common"
@@ -66,11 +67,11 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert new subscription")
-			err := store.Insert(data1)
+			err := store.BatchInsert([]*model.Subscription{data1})
 			Expect(err).Should(Succeed())
 
 			By("failed to subscription again")
-			err = store.Insert(data1)
+			err = store.BatchInsert([]*model.Subscription{data1})
 			Expect(err).ShouldNot(BeNil())
 
 			data2 := &model.Subscription{
@@ -79,7 +80,7 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert another new subscription")
-			err = store.Insert(data2)
+			err = store.BatchInsert([]*model.Subscription{data2})
 			Expect(err).Should(Succeed())
 
 			By("Update subscriptions")
@@ -112,10 +113,8 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			for _, d := range data {
-				err := store.Insert(d)
-				Expect(err).Should(Succeed())
-			}
+			err := store.BatchInsert(data)
+			Expect(err).Should(Succeed())
 
 			res, err := store.Find(data1.BlockNumber)
 			Expect(err).Should(Succeed())
@@ -150,10 +149,9 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			for _, d := range data {
-				err := store.Insert(d)
-				Expect(err).Should(Succeed())
-			}
+			err := store.BatchInsert(data)
+			Expect(err).Should(Succeed())
+
 			res, err := store.FindByAddresses([][]byte{
 				data0.Address,
 				data1.Address,
@@ -192,6 +190,76 @@ var _ = Describe("Database Test", func() {
 			})
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeZero())
+		})
+
+		Context("FindByGroup", func() {
+			var (
+				store   Store
+				groupID int64
+			)
+
+			BeforeEach(func() {
+				store = NewWithDB(db)
+				groupID = time.Now().UnixNano()
+			})
+
+			It("should get subscriptions by group id", func() {
+				subs := []*model.Subscription{
+					{
+						Group:   groupID,
+						Address: common.HexToBytes("0xdfbba377a6d55d26d7dc6acd28279dc1f31308ed"),
+					},
+					{
+						Group:   groupID,
+						Address: common.HexToBytes("0x52384b72f5582996d30f493ffc8518f6dc93f7c8"),
+					},
+				}
+
+				By("Should be successful to insert", func() {
+					err := store.BatchInsert(subs)
+					Expect(err).Should(Succeed())
+				})
+
+				By("Should be successful to get subscriptions with page 1", func() {
+					result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
+						Page:    1,
+						Limit:   1,
+						OrderBy: "created_at",
+						Order:   "asc",
+					})
+					Expect(err).Should(Succeed())
+					Expect(total).Should(Equal(uint64(len(subs))))
+					Expect(len(result)).Should(Equal(1))
+					Expect(result[0].Group).Should(Equal(groupID))
+					Expect(result[0].Address).Should(Equal(subs[0].Address))
+				})
+
+				By("Should be successful to get subscriptions with page 2", func() {
+					result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
+						Page:    2,
+						Limit:   1,
+						OrderBy: "created_at",
+						Order:   "asc",
+					})
+					Expect(err).Should(Succeed())
+					Expect(total).Should(Equal(uint64(len(subs))))
+					Expect(len(result)).Should(Equal(1))
+					Expect(result[0].Group).Should(Equal(groupID))
+					Expect(result[0].Address).Should(Equal(subs[1].Address))
+				})
+			})
+
+			It("should get empty subscriptions if group id doesn't exist", func() {
+				result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
+					Page:    1,
+					Limit:   1,
+					OrderBy: "created_at",
+					Order:   "asc",
+				})
+				Expect(err).Should(Succeed())
+				Expect(total).Should(Equal(uint64(0)))
+				Expect(len(result)).Should(Equal(0))
+			})
 		})
 	})
 

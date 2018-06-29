@@ -27,7 +27,7 @@ import (
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
-	subscriptionStore "github.com/getamis/eth-indexer/store/subscription"
+	subStore "github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/sirius/log"
 )
 
@@ -36,7 +36,7 @@ type subscription struct {
 	blockNumber int64
 	// tokenList includes ETH and erc20 tokens
 	tokenList         map[gethCommon.Address]struct{}
-	subscriptionStore subscriptionStore.Store
+	subscriptionStore subStore.Store
 	accountStore      account.Store
 	balancer          client.Balancer
 
@@ -53,7 +53,7 @@ func newSubscription(blockNumber int64,
 	erc20List map[string]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
-	subscriptionStore subscriptionStore.Store,
+	subscriptionStore subStore.Store,
 	accountStore account.Store,
 	balancer client.Balancer) *subscription {
 	tokenList := make(map[gethCommon.Address]struct{}, len(erc20List)+1)

@@ -28,7 +28,7 @@ import (
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	header "github.com/getamis/eth-indexer/store/block_header"
-	subscriptionStore "github.com/getamis/eth-indexer/store/subscription"
+	subStore "github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/eth-indexer/store/transaction"
 	receipt "github.com/getamis/eth-indexer/store/transaction_receipt"
 	"github.com/getamis/sirius/log"
@@ -183,7 +183,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
-	subscriptionStore := subscriptionStore.NewWithDB(dbTx)
+	subscriptionStore := subStore.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
 
 	// Insert blocks
@@ -289,7 +289,7 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
-	subscriptionStore := subscriptionStore.NewWithDB(dbTx)
+	subscriptionStore := subStore.NewWithDB(dbTx)
 
 	err = headerStore.Delete(from, to)
 	if err != nil {

@@ -18,16 +18,19 @@ package subscription
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
+
+	"github.com/getamis/eth-indexer/model"
 )
 
 //go:generate mockery -name Store
 type Store interface {
-	Insert(data *model.Subscription) error
+	BatchInsert(subs []*model.Subscription) error
 	UpdateBlockNumber(data *model.Subscription) error
 	Find(blockNumber int64) (result []*model.Subscription, err error)
 	FindByAddresses(addrs [][]byte) (result []*model.Subscription, err error)
+	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
 
 	// Total balance
 	InsertTotalBalance(data *model.TotalBalance) error
@@ -46,8 +49,25 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) Insert(data *model.Subscription) error {
-	return t.db.Create(data).Error
+func (t *store) BatchInsert(subs []*model.Subscription) (err error) {
+	dbTx := t.db.Begin()
+	defer func() {
+		if err != nil {
+			dbTx.Rollback()
+			return
+		}
+		err = dbTx.Commit().Error
+		if err != nil {
+			log.Error("Failed to commit db", "err", err)
+		}
+	}()
+	for _, sub := range subs {
+		err := dbTx.Create(sub).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *store) UpdateBlockNumber(data *model.Subscription) error {
@@ -110,4 +130,23 @@ func (t *store) Reset(from, to int64) error {
 	}
 	// Delete total balances
 	return t.db.Delete(model.TotalBalance{}, "block_number >= ? AND block_number <= ?", from, to).Error
+}
+
+func (t *store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	filter := &model.Subscription{
+		Group: groupID,
+	}
+	db := t.db.Model(&model.Subscription{}).Where(filter)
+	var total uint64
+	err := db.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	start := (query.Page - 1) * query.Limit
+	var result []*model.Subscription
+	err = db.Offset(start).Limit(query.Limit).Order(query.OrderString()).Find(&result).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	return result, total, nil
 }
