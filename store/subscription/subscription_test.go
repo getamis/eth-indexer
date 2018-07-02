@@ -82,16 +82,6 @@ var _ = Describe("Database Test", func() {
 			By("insert another new subscription")
 			err = store.BatchInsert([]*model.Subscription{data2})
 			Expect(err).Should(Succeed())
-
-			By("Update subscriptions")
-			data2.BlockNumber = 10000
-			err = store.UpdateBlockNumber(data2)
-			Expect(err).Should(Succeed())
-
-			subs, err := store.Find(data2.BlockNumber)
-			Expect(err).Should(Succeed())
-			Expect(len(subs)).Should(Equal(1))
-			Expect(subs[0].Address).Should(Equal(data2.Address))
 		})
 
 		It("should get subscriptions by block number", func() {
@@ -260,6 +250,39 @@ var _ = Describe("Database Test", func() {
 				Expect(total).Should(Equal(uint64(0)))
 				Expect(len(result)).Should(Equal(0))
 			})
+
+		})
+
+		It("update block number in batch", func() {
+			store := NewWithDB(db)
+			data1 := &model.Subscription{
+				BlockNumber: 100,
+				Address:     common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+			}
+			data2 := &model.Subscription{
+				BlockNumber: 100,
+				Address:     common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A893"),
+			}
+			data3 := &model.Subscription{
+				BlockNumber: 101,
+				Address:     common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A894"),
+			}
+			By("insert three new subscriptions")
+			data := []*model.Subscription{data1, data2, data3}
+			err := store.BatchInsert(data)
+			Expect(err).Should(Succeed())
+
+			res, err := store.Find(0)
+			Expect(err).Should(Succeed())
+			Expect(len(res)).Should(BeNumerically("==", 0))
+
+			err = store.BatchUpdateBlockNumber(0,
+				[][]byte{data1.Address, data2.Address, data3.Address})
+			Expect(err).Should(Succeed())
+
+			res, err = store.Find(0)
+			Expect(err).Should(Succeed())
+			Expect(len(res)).Should(BeNumerically("==", 3))
 		})
 	})
 

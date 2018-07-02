@@ -27,7 +27,7 @@ import (
 //go:generate mockery -name Store
 type Store interface {
 	BatchInsert(subs []*model.Subscription) error
-	UpdateBlockNumber(data *model.Subscription) error
+	BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error
 	Find(blockNumber int64) (result []*model.Subscription, err error)
 	FindByAddresses(addrs [][]byte) (result []*model.Subscription, err error)
 	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
@@ -70,8 +70,11 @@ func (t *store) BatchInsert(subs []*model.Subscription) (err error) {
 	return nil
 }
 
-func (t *store) UpdateBlockNumber(data *model.Subscription) error {
-	return t.db.Model(data).Update(data).Error
+func (t *store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error {
+	if len(addrs) == 0 {
+		return nil
+	}
+	return t.db.Model(model.Subscription{}).Where("address in (?)", addrs).Updates(map[string]interface{}{"block_number": blockNumber}).Error
 }
 
 func (t *store) Find(blockNumber int64) (result []*model.Subscription, err error) {
