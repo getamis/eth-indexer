@@ -106,11 +106,13 @@ func (t *store) FindTotalBalance(blockNumber int64, token common.Address, group 
 		// if not found error, hide error and return total balance = 0
 		if err == gorm.ErrRecordNotFound {
 			return &model.TotalBalance{
-				BlockNumber: blockNumber,
-				Token:       token.Bytes(),
-				Group:       group,
-				Balance:     "0",
-				TxFee:       "0",
+				BlockNumber:  blockNumber,
+				Token:        token.Bytes(),
+				Group:        group,
+				Balance:      "0",
+				TxFee:        "0",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}, nil
 		}
 		return nil, err
