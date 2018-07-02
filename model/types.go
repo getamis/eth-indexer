@@ -167,11 +167,13 @@ func (e Transfer) TableName() string {
 
 // TotalBalance represents the total balance of subscription accounts in different group
 type TotalBalance struct {
-	Token       []byte
-	BlockNumber int64
-	Group       int64
-	Balance     string
-	TxFee       string
+	Token        []byte
+	BlockNumber  int64
+	Group        int64
+	Balance      string
+	TxFee        string
+	MinerReward  string
+	UnclesReward string
 }
 
 // TableName retruns the table name of this model
