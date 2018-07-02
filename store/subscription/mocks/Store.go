@@ -10,13 +10,27 @@ type Store struct {
 	mock.Mock
 }
 
-// BatchDelete provides a mock function with given fields: groupID, addrs
-func (_m *Store) BatchDelete(groupID int64, addrs [][]byte) error {
-	ret := _m.Called(groupID, addrs)
+// BatchInsert provides a mock function with given fields: subs
+func (_m *Store) BatchInsert(subs []*model.Subscription) error {
+	ret := _m.Called(subs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]*model.Subscription) error); ok {
+		r0 = rf(subs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// BatchUpdateBlockNumber provides a mock function with given fields: blockNumber, addrs
+func (_m *Store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error {
+	ret := _m.Called(blockNumber, addrs)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int64, [][]byte) error); ok {
-		r0 = rf(groupID, addrs)
+		r0 = rf(blockNumber, addrs)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -70,13 +84,13 @@ func (_m *Store) FindByAddresses(addrs [][]byte) ([]*model.Subscription, error) 
 	return r0, r1
 }
 
-// FindByGroup provides a mock function with given fields: groupID, queryConfig
-func (_m *Store) FindByGroup(groupID int64, queryConfig *model.QueryConfig) ([]*model.Subscription, uint64, error) {
-	ret := _m.Called(groupID, queryConfig)
+// FindByGroup provides a mock function with given fields: groupID, query
+func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(groupID, query)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func(int64, *model.QueryConfig) []*model.Subscription); ok {
-		r0 = rf(groupID, queryConfig)
+	if rf, ok := ret.Get(0).(func(int64, *model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(groupID, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
@@ -84,15 +98,15 @@ func (_m *Store) FindByGroup(groupID int64, queryConfig *model.QueryConfig) ([]*
 	}
 
 	var r1 uint64
-	if rf, ok := ret.Get(1).(func(int64, *model.QueryConfig) uint64); ok {
-		r1 = rf(groupID, queryConfig)
+	if rf, ok := ret.Get(1).(func(int64, *model.QueryParameters) uint64); ok {
+		r1 = rf(groupID, query)
 	} else {
 		r1 = ret.Get(1).(uint64)
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(int64, *model.QueryConfig) error); ok {
-		r2 = rf(groupID, queryConfig)
+	if rf, ok := ret.Get(2).(func(int64, *model.QueryParameters) error); ok {
+		r2 = rf(groupID, query)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -123,20 +137,6 @@ func (_m *Store) FindTotalBalance(blockNumber int64, token common.Address, group
 	return r0, r1
 }
 
-// Insert provides a mock function with given fields: data
-func (_m *Store) Insert(data *model.Subscription) error {
-	ret := _m.Called(data)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Subscription) error); ok {
-		r0 = rf(data)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // InsertTotalBalance provides a mock function with given fields: data
 func (_m *Store) InsertTotalBalance(data *model.TotalBalance) error {
 	ret := _m.Called(data)
@@ -158,20 +158,6 @@ func (_m *Store) Reset(from int64, to int64) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int64, int64) error); ok {
 		r0 = rf(from, to)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// UpdateBlockNumber provides a mock function with given fields: data
-func (_m *Store) UpdateBlockNumber(data *model.Subscription) error {
-	ret := _m.Called(data)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Subscription) error); ok {
-		r0 = rf(data)
 	} else {
 		r0 = ret.Error(0)
 	}

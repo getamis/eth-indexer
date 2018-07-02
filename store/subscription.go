@@ -121,13 +121,14 @@ func (s *subscription) init(ctx context.Context) error {
 	}
 
 	// Update subscription table
+	var newAddrs [][]byte
 	for _, sub := range subs {
-		sub.BlockNumber = s.blockNumber
-		err = s.subscriptionStore.UpdateBlockNumber(sub)
-		if err != nil {
-			s.logger.Error("Failed to update block number", "err", err)
-			return err
-		}
+		newAddrs = append(newAddrs, sub.Address)
+	}
+	err = s.subscriptionStore.BatchUpdateBlockNumber(s.blockNumber, newAddrs)
+	if err != nil {
+		s.logger.Error("Failed to update block number", "err", err)
+		return err
 	}
 
 	// Construct the new subs in map
