@@ -84,17 +84,9 @@ func (t *store) FindByAddresses(addrs [][]byte) (result []*model.Subscription, e
 		return []*model.Subscription{}, nil
 	}
 
-	var tmp []*model.Subscription
-	err = t.db.Where("address in (?)", addrs).Find(&tmp).Error
+	err = t.db.Where("address in (?) AND block_number > 0", addrs).Find(&result).Error
 	if err != nil {
 		return
-	}
-
-	// Exclude block number is 0 (it means the subscription is not enabled)
-	for i, r := range tmp {
-		if r.BlockNumber != 0 {
-			result = append(result, tmp[i])
-		}
 	}
 	return
 }
