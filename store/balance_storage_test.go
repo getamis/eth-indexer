@@ -201,7 +201,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 		})
 	})
 
-	Context("GetERC20Balance()", func() {
+	Context("GetERC20BalanceFromStorage()", func() {
 		var mockAccountStore *accountMock.Store
 		var mockHdrStore *hdrMock.Store
 		var manager *serviceManager
@@ -226,7 +226,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 					mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 					mockHdrStore.On("FindLatestBlock").Return(header, nil).Once()
 					mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(db.account, nil).Once()
-					expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, -1)
+					expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, -1)
 					Expect(err).Should(BeNil())
 					Expect(expBalance.String()).Should(Equal(fundedBalance.String()))
 					Expect(expNumber.Int64()).Should(Equal(header.Number))
@@ -237,7 +237,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 					mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 					mockHdrStore.On("FindLatestBlock").Return(header, nil).Once()
 					mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(db.account, nil).Once()
-					expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, otherAddr, -1)
+					expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, otherAddr, -1)
 					Expect(err).Should(BeNil())
 					Expect(expBalance.IntPart()).Should(BeZero())
 					Expect(expNumber.Int64()).Should(Equal(header.Number))
@@ -249,7 +249,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 					mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 					mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
 					mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(db.account, nil).Once()
-					expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
+					expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, blockNumber)
 					Expect(err).Should(BeNil())
 					Expect(expBalance.String()).Should(Equal(fundedBalance.String()))
 					Expect(expNumber.Int64()).Should(Equal(header.Number))
@@ -260,7 +260,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 					mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 					mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
 					mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(db.account, nil).Once()
-					expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, otherAddr, blockNumber)
+					expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, otherAddr, blockNumber)
 					Expect(err).Should(BeNil())
 					Expect(expBalance.IntPart()).Should(BeZero())
 					Expect(expNumber.Int64()).Should(Equal(header.Number))
@@ -275,7 +275,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 				mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
 				mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(db.account, nil).Once()
 				mockAccountStore.On("FindERC20Storage", mock.AnythingOfType("common.Address"), mock.AnythingOfType("common.Hash"), mock.AnythingOfType("int64")).Return(nil, unknownErr).Once()
-				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
+				expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, blockNumber)
 				Expect(err).Should(Equal(unknownErr))
 				Expect(expBalance).Should(BeNil())
 				Expect(expNumber).Should(BeNil())
@@ -284,7 +284,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 				mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 				mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
 				mockAccountStore.On("FindAccount", model.ETHAddress, contractAddr, header.Number).Return(nil, unknownErr).Once()
-				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
+				expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, blockNumber)
 				Expect(err).Should(Equal(unknownErr))
 				Expect(expBalance).Should(BeNil())
 				Expect(expNumber).Should(BeNil())
@@ -292,7 +292,7 @@ var _ = Describe("DB ERC 20 Test", func() {
 			It("failed to find state block", func() {
 				mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 				mockHdrStore.On("FindBlockByNumber", blockNumber).Return(nil, unknownErr).Once()
-				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
+				expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, blockNumber)
 				Expect(err).Should(Equal(unknownErr))
 				Expect(expBalance).Should(BeNil())
 				Expect(expNumber).Should(BeNil())
@@ -300,14 +300,14 @@ var _ = Describe("DB ERC 20 Test", func() {
 			It("failed to find latest state block", func() {
 				mockAccountStore.On("FindERC20", contractAddr).Return(db.code, nil).Once()
 				mockHdrStore.On("FindLatestBlock").Return(nil, unknownErr).Once()
-				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, -1)
+				expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, -1)
 				Expect(err).Should(Equal(unknownErr))
 				Expect(expBalance).Should(BeNil())
 				Expect(expNumber).Should(BeNil())
 			})
 			It("failed to find state block", func() {
 				mockAccountStore.On("FindERC20", contractAddr).Return(db.code, unknownErr).Once()
-				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddr, fundedAddress, blockNumber)
+				expBalance, expNumber, err := manager.GetERC20BalanceFromStorage(context.Background(), contractAddr, fundedAddress, blockNumber)
 				Expect(err).Should(Equal(unknownErr))
 				Expect(expBalance).Should(BeNil())
 				Expect(expNumber).Should(BeNil())

@@ -19,7 +19,6 @@ package store
 import (
 	"context"
 	"errors"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/model"
@@ -29,15 +28,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("DB Eth Balance Test", func() {
+var _ = Describe("DB Balance Test", func() {
 	var mockAccountStore *acctMock.Store
 	var mockHdrStore *hdrMock.Store
 	var manager *serviceManager
 	var addr common.Address
 	blockNumber := int64(10)
-	header := &model.Header{
-		Number: 100,
-	}
 
 	BeforeEach(func() {
 		mockAccountStore = new(acctMock.Store)
@@ -53,53 +49,71 @@ var _ = Describe("DB Eth Balance Test", func() {
 		mockAccountStore.AssertExpectations(GinkgoT())
 	})
 
-	Context("with valid parameters", func() {
+	Context("GetBalance()", func() {
 		account := &model.Account{
 			Address: addr.Bytes(),
 			Balance: "1000",
 		}
-		accountBalance, _ := new(big.Int).SetString(account.Balance, 10)
-		It("latest block", func() {
-			mockHdrStore.On("FindLatestBlock").Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(account, nil).Once()
-			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, -1)
-			Expect(err).Should(BeNil())
-			Expect(expBalance).Should(Equal(accountBalance))
-			Expect(expNumber.Int64()).Should(Equal(header.Number))
-		})
-		It("certain block", func() {
-			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(account, nil).Once()
+
+		It("with valid parameters", func() {
+			mockAccountStore.On("FindAccount", model.ETHAddress, addr, blockNumber).Return(account, nil).Once()
 			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
 			Expect(err).Should(BeNil())
-			Expect(expBalance).Should(Equal(accountBalance))
-			Expect(expNumber.Int64()).Should(Equal(header.Number))
+			Expect(expBalance.String()).Should(Equal(account.Balance))
+			Expect(expNumber.Int64()).Should(Equal(blockNumber))
+		})
+
+		Context("with invalid parameters", func() {
+			unknownErr := errors.New("unknown error")
+			It("failed to find account", func() {
+				mockAccountStore.On("FindAccount", model.ETHAddress, addr, blockNumber).Return(account, unknownErr).Once()
+				expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
+				Expect(err).Should(Equal(unknownErr))
+				Expect(expBalance).Should(BeNil())
+				Expect(expNumber).Should(BeNil())
+			})
 		})
 	})
 
-	Context("with invalid parameters", func() {
-		unknownErr := errors.New("unknown error")
-		It("failed to find state block", func() {
-			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(nil, unknownErr).Once()
-			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
-			Expect(err).Should(Equal(unknownErr))
-			Expect(expBalance).Should(BeNil())
-			Expect(expNumber).Should(BeNil())
+	Context("GetERC20Balance()", func() {
+		contractAddress := common.HexToAddress("0x01234567890")
+		erc20 := &model.ERC20{
+			Name:     "test",
+			Address:  contractAddress.Bytes(),
+			Decimals: 18,
+		}
+		account := &model.Account{
+			ContractAddress: contractAddress.Bytes(),
+			Address:         addr.Bytes(),
+			Balance:         "1000000000000000000",
+		}
+
+		It("with valid parameters", func() {
+			mockAccountStore.On("FindERC20", contractAddress).Return(erc20, nil).Once()
+			mockAccountStore.On("FindAccount", contractAddress, addr, blockNumber).Return(account, nil).Once()
+			expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddress, addr, blockNumber)
+			Expect(err).Should(BeNil())
+			Expect(expBalance.String()).Should(Equal("1"))
+			Expect(expNumber.Int64()).Should(Equal(blockNumber))
 		})
-		It("failed to find latest state block", func() {
-			mockHdrStore.On("FindLatestBlock").Return(nil, unknownErr).Once()
-			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, -1)
-			Expect(err).Should(Equal(unknownErr))
-			Expect(expBalance).Should(BeNil())
-			Expect(expNumber).Should(BeNil())
-		})
-		It("failed to find account", func() {
-			mockHdrStore.On("FindBlockByNumber", blockNumber).Return(header, nil).Once()
-			mockAccountStore.On("FindAccount", model.ETHAddress, addr, header.Number).Return(nil, unknownErr).Once()
-			expBalance, expNumber, err := manager.GetBalance(context.Background(), addr, blockNumber)
-			Expect(err).Should(Equal(unknownErr))
-			Expect(expBalance).Should(BeNil())
-			Expect(expNumber).Should(BeNil())
+
+		Context("with invalid parameters", func() {
+			unknownErr := errors.New("unknown error")
+			It("failed to find accounts", func() {
+				mockAccountStore.On("FindERC20", contractAddress).Return(erc20, nil).Once()
+				mockAccountStore.On("FindAccount", contractAddress, addr, blockNumber).Return(nil, unknownErr).Once()
+				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddress, addr, blockNumber)
+				Expect(err).Should(Equal(unknownErr))
+				Expect(expBalance).Should(BeNil())
+				Expect(expNumber).Should(BeNil())
+			})
+			It("failed to find erc20", func() {
+				mockAccountStore.On("FindERC20", contractAddress).Return(erc20, unknownErr).Once()
+				expBalance, expNumber, err := manager.GetERC20Balance(context.Background(), contractAddress, addr, blockNumber)
+				Expect(err).Should(Equal(unknownErr))
+				Expect(expBalance).Should(BeNil())
+				Expect(expNumber).Should(BeNil())
+			})
 		})
 	})
 })
