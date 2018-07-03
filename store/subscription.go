@@ -213,12 +213,12 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Calculate tx fee
-	fees := make(map[string]*big.Int)
+	fees := make(map[gethCommon.Hash]*big.Int)
 	// Assume the tx and receipt are in the same order
 	for i, tx := range s.txs {
 		r := s.receipts[i]
 		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
-		fees[gethCommon.Bytes2Hex(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+		fees[gethCommon.BytesToHash(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
 	}
 
 	// Construct a set of subscription for membership testing
@@ -259,7 +259,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 			}
 
 			// Add fee if it's a ETH event
-			if f, ok := fees[gethCommon.Bytes2Hex(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
+			if f, ok := fees[gethCommon.BytesToHash(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
 				if feeDiff[from] == nil {
 					feeDiff[from] = new(big.Int).Set(f)
 				} else {
@@ -307,6 +307,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 		for addr, d := range addrs {
 			sub, ok := allSubs[addr]
 			if !ok {
+				s.logger.Warn("Missing address from all subscriptions", "addr", addr.Hex())
 				continue
 			}
 
