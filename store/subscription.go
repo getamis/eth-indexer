@@ -201,7 +201,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 		addrs = append(addrs, common.HexToBytes(addr))
 	}
 
-	// Get subscribed accounts whose balances are chanaged
+	// Get subscribed accounts whose balances are changed
 	subs, err := s.subscriptionStore.FindByAddresses(addrs)
 	if err != nil {
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
@@ -213,63 +213,68 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Calculate tx fee
-	fees := make(map[gethCommon.Address]*big.Int)
+	fees := make(map[gethCommon.Hash]*big.Int)
 	// Assume the tx and receipt are in the same order
 	for i, tx := range s.txs {
 		r := s.receipts[i]
 		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
-		fees[gethCommon.BytesToAddress(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+		fees[gethCommon.BytesToHash(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+	}
+
+	// Construct a set of subscription for membership testing
+	allSubs := make(map[gethCommon.Address]*model.Subscription)
+	for _, sub := range subs {
+		allSubs[gethCommon.BytesToAddress(sub.Address)] = sub
 	}
 
 	// Insert events if it's a subscribed account
 	addrDiff := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 	feeDiff := make(map[gethCommon.Address]*big.Int)
 	contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
-	for _, sub := range subs {
-		for _, e := range events {
-			if !bytes.Equal(e.From, sub.Address) && !bytes.Equal(e.To, sub.Address) {
-				continue
+	for _, e := range events {
+		_, hasFrom := allSubs[gethCommon.BytesToAddress(e.From)]
+		_, hasTo := allSubs[gethCommon.BytesToAddress(e.To)]
+		if !hasFrom && !hasTo {
+			continue
+		}
+
+		err := s.accountStore.InsertTransfer(e)
+		if err != nil {
+			s.logger.Error("Failed to insert ERC20 transfer event", "value", e.Value, "from", gethCommon.Bytes2Hex(e.From), "to", gethCommon.Bytes2Hex(e.To), "err", err)
+			return err
+		}
+		contractAddr := gethCommon.BytesToAddress(e.Address)
+		if addrDiff[contractAddr] == nil {
+			addrDiff[contractAddr] = make(map[gethCommon.Address]*big.Int)
+			contractsAddrs[contractAddr] = make(map[gethCommon.Address]struct{})
+		}
+		d, _ := new(big.Int).SetString(e.Value, 10)
+		if hasFrom {
+			from := gethCommon.BytesToAddress(e.From)
+			if addrDiff[contractAddr][from] == nil {
+				addrDiff[contractAddr][from] = new(big.Int).Neg(d)
+				contractsAddrs[contractAddr][from] = struct{}{}
+			} else {
+				addrDiff[contractAddr][from] = new(big.Int).Add(addrDiff[contractAddr][from], new(big.Int).Neg(d))
 			}
 
-			err := s.accountStore.InsertTransfer(e)
-			if err != nil {
-				s.logger.Error("Failed to insert ERC20 transfer event", "value", e.Value, "from", gethCommon.Bytes2Hex(e.From), "to", gethCommon.Bytes2Hex(e.To), "err", err)
-				return err
-			}
-			contractAddr := gethCommon.BytesToAddress(e.Address)
-			if addrDiff[contractAddr] == nil {
-				addrDiff[contractAddr] = make(map[gethCommon.Address]*big.Int)
-				contractsAddrs[contractAddr] = make(map[gethCommon.Address]struct{})
-			}
-			d, _ := new(big.Int).SetString(e.Value, 10)
-			if bytes.Equal(e.From, sub.Address) {
-				from := gethCommon.BytesToAddress(e.From)
-				if addrDiff[contractAddr][from] == nil {
-					addrDiff[contractAddr][from] = new(big.Int).Neg(d)
-					contractsAddrs[contractAddr][from] = struct{}{}
+			// Add fee if it's a ETH event
+			if f, ok := fees[gethCommon.BytesToHash(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
+				if feeDiff[from] == nil {
+					feeDiff[from] = new(big.Int).Set(f)
 				} else {
-					addrDiff[contractAddr][from] = new(big.Int).Add(addrDiff[contractAddr][from], new(big.Int).Neg(d))
-				}
-
-				// Add fee if it's a ETH event
-				if f, ok := fees[gethCommon.BytesToAddress(e.TxHash)]; bytes.Equal(e.Address, model.ETHBytes) && ok {
-					if feeDiff[from] == nil {
-						feeDiff[from] = new(big.Int).Set(f)
-					} else {
-						feeDiff[from] = new(big.Int).Add(feeDiff[from], f)
-					}
+					feeDiff[from] = new(big.Int).Add(feeDiff[from], f)
 				}
 			}
-			if bytes.Equal(e.To, sub.Address) {
-				to := gethCommon.BytesToAddress(e.To)
-				if addrDiff[contractAddr][to] == nil {
-					addrDiff[contractAddr][to] = d
-					contractsAddrs[contractAddr][to] = struct{}{}
-				} else {
-					addrDiff[contractAddr][to] = new(big.Int).Add(addrDiff[contractAddr][to], d)
-				}
+		}
+		if hasTo {
+			to := gethCommon.BytesToAddress(e.To)
+			if addrDiff[contractAddr][to] == nil {
+				addrDiff[contractAddr][to] = d
+				contractsAddrs[contractAddr][to] = struct{}{}
+			} else {
+				addrDiff[contractAddr][to] = new(big.Int).Add(addrDiff[contractAddr][to], d)
 			}
-
 		}
 	}
 
@@ -298,11 +303,11 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Add diff in total balances
-	for _, sub := range subs {
-		addr := gethCommon.BytesToAddress(sub.Address)
-		for token, addrs := range addrDiff {
-			d, ok := addrs[addr]
+	for token, addrs := range addrDiff {
+		for addr, d := range addrs {
+			sub, ok := allSubs[addr]
 			if !ok {
+				s.logger.Warn("Missing address from all subscriptions", "addr", addr.Hex())
 				continue
 			}
 
