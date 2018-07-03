@@ -73,6 +73,29 @@ func (_m *ServiceManager) FindBlockByNumber(blockNumber int64) (*model.Header, e
 	return r0, r1
 }
 
+// FindERC20 provides a mock function with given fields: address
+func (_m *ServiceManager) FindERC20(address common.Address) (*model.ERC20, error) {
+	ret := _m.Called(address)
+
+	var r0 *model.ERC20
+	if rf, ok := ret.Get(0).(func(common.Address) *model.ERC20); ok {
+		r0 = rf(address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ERC20)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FindLatestBlock provides a mock function with given fields:
 func (_m *ServiceManager) FindLatestBlock() (*model.Header, error) {
 	ret := _m.Called()
