@@ -30,21 +30,24 @@ const cacheSize = 128
 
 type cacheMiddleware struct {
 	EthClient
-	txCache    *lru.ARCCache
-	tdCache    *lru.ARCCache
-	blockCache *lru.ARCCache
+	txCache            *lru.ARCCache
+	tdCache            *lru.ARCCache
+	blockCache         *lru.ARCCache
+	blockReceiptsCache *lru.ARCCache
 }
 
 func newCacheMiddleware(client EthClient) EthClient {
 	txCache, _ := lru.NewARC(cacheSize)
 	tdCache, _ := lru.NewARC(cacheSize)
 	blockCache, _ := lru.NewARC(cacheSize)
+	blockReceiptsCache, _ := lru.NewARC(cacheSize)
 
 	return &cacheMiddleware{
-		EthClient:  client,
-		txCache:    txCache,
-		tdCache:    tdCache,
-		blockCache: blockCache,
+		EthClient:          client,
+		txCache:            txCache,
+		tdCache:            tdCache,
+		blockCache:         blockCache,
+		blockReceiptsCache: blockReceiptsCache,
 	}
 }
 
@@ -120,4 +123,25 @@ func (c *cacheMiddleware) GetTotalDifficulty(ctx context.Context, hash common.Ha
 		c.tdCache.Add(key, result)
 	}()
 	return c.EthClient.GetTotalDifficulty(ctx, hash)
+}
+
+func (c *cacheMiddleware) GetBlockReceipts(ctx context.Context, hash common.Hash) (result types.Receipts, err error) {
+	key := hash.Hex()
+	value, ok := c.blockReceiptsCache.Get(key)
+	if ok {
+		receipts, ok := value.(types.Receipts)
+		if ok {
+			return receipts, nil
+		}
+		log.Warn("Failed to convert value to types.Receipts", "hash", key)
+		c.blockReceiptsCache.Remove(key)
+	}
+
+	defer func() {
+		if err != nil {
+			return
+		}
+		c.blockReceiptsCache.Add(key, result)
+	}()
+	return c.EthClient.GetBlockReceipts(ctx, hash)
 }

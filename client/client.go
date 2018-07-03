@@ -47,7 +47,6 @@ type EthClient interface {
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
-	TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error)
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 	DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error)
@@ -57,6 +56,7 @@ type EthClient interface {
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
+	GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	// Get ETH transfer logs
 	GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error)
 	BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error)
@@ -81,42 +81,6 @@ func NewClient(url string) (EthClient, error) {
 	return newCacheMiddleware(client), nil
 }
 
-func (c *client) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
-	lens := len(txs)
-	if lens == 0 {
-		// Don't need to process this requests
-		return nil, nil
-	}
-
-	// Construct batch requests
-	method := "eth_getTransactionReceipt"
-	var reqs []rpc.BatchElem
-	receipts := make([]*types.Receipt, lens)
-	for i, tx := range txs {
-		receipts[i] = &types.Receipt{}
-		reqs = append(reqs, rpc.BatchElem{
-			Method: method,
-			Args:   []interface{}{tx.Hash()},
-			Result: receipts[i],
-		})
-	}
-
-	// Batch calls
-	err := c.rpc.BatchCallContext(ctx, reqs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Ensure all requests are ok
-	for _, req := range reqs {
-		if req.Error != nil {
-			return nil, req.Error
-		}
-	}
-
-	return receipts, nil
-}
-
 func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
 	r := &state.Dump{}
 	err := c.rpc.CallContext(ctx, r, "debug_dumpBlock", fmt.Sprintf("0x%x", blockNr))
@@ -135,6 +99,12 @@ func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big
 		return nil, ErrInvalidTDFormat
 	}
 	return td, nil
+}
+
+func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
+	var r types.Receipts
+	err := c.rpc.CallContext(ctx, &r, "debug_getBlockReceipts", hash.Hex())
+	return r, err
 }
 
 func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {

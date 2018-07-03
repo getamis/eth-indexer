@@ -369,10 +369,10 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 // getBlockData returns the receipts generated in the given block, and state diff since last block
 func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *state.DirtyDump, []*types.TransferLog, error) {
 	blockNumber := block.Number().Int64()
-	logger := log.New("number", blockNumber)
+	logger := log.New("number", blockNumber, "hash", block.Hash().Hex())
 
 	// Get receipts
-	receipts, err := idx.client.TransactionReceipts(ctx, block.Transactions())
+	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
 		return nil, nil, nil, err
