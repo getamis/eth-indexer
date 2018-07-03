@@ -44,6 +44,9 @@ type ServiceManager interface {
 	FindTransaction(hash []byte) (result *model.Transaction, err error)
 	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
 
+	// Account store
+	FindERC20(address common.Address) (result *model.ERC20, err error)
+
 	// Subscription store
 	AddSubscriptions(group int64, addrs []common.Address) error
 	GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error)
