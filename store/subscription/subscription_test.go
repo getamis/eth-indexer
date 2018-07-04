@@ -179,7 +179,7 @@ var _ = Describe("Database Test", func() {
 				data3.Address,
 			})
 			Expect(err).Should(Succeed())
-			Expect(len(res)).Should(BeZero())
+			Expect(len(res)).Should(BeNumerically("==", 3))
 		})
 
 		Context("FindByGroup", func() {
