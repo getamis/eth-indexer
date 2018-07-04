@@ -217,6 +217,9 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			// Note that we overwrite the original value if it exists, because the diff to
 			// totalBalances for a new subscription is its current balance.
 			if newSubs[addr] != nil {
+				if addrDiff[contractAddr] == nil {
+					addrDiff[contractAddr] = make(map[common.Address]*big.Int)
+				}
 				addrDiff[contractAddr][addr] = balance
 			}
 		}
