@@ -24,6 +24,11 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/contracts"
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/sirius/log"
+)
+
+const (
+	chunkSize = 200
 )
 
 //go:generate mockery -name Balancer
@@ -35,6 +40,8 @@ type Balancer interface {
 
 // BalanceOf returns the balances of ETH and multiple erc20 tokens for multiple accounts
 func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, addrs map[ethCommon.Address]map[ethCommon.Address]struct{}) (balances map[ethCommon.Address]map[ethCommon.Address]*big.Int, err error) {
+	logger := log.New("number", blockNumber.Int64())
+
 	var msgs []*ethereum.CallMsg
 	var owners []ethCommon.Address
 	// Only handle non-ETH balances
@@ -49,24 +56,35 @@ func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, addrs map[
 		}
 	}
 
-	// Get batch results
-	outputs, err := c.BatchCallContract(ctx, msgs, blockNumber)
-	if err != nil {
-		return nil, err
-	}
-
 	balances = make(map[ethCommon.Address]map[ethCommon.Address]*big.Int)
-	for i := 0; i < len(msgs); i++ {
-		balance, err := contracts.DecodeBalanceOf(outputs[i])
+
+	// Get batch results
+	lens := len(msgs)
+	for begin := 0; begin < lens; begin += chunkSize {
+		end := begin + chunkSize
+		if end > lens {
+			end = lens
+		}
+
+		chunk := msgs[begin:end]
+		logger.Info("processing ERC20 balance chunk", "total", lens, "begin", begin, "end", end)
+		outputs, err := c.BatchCallContract(ctx, chunk, blockNumber)
 		if err != nil {
 			return nil, err
 		}
 
-		contractAddr := *msgs[i].To
-		if balances[contractAddr] == nil {
-			balances[contractAddr] = make(map[ethCommon.Address]*big.Int)
+		for i := 0; i < len(chunk); i++ {
+			balance, err := contracts.DecodeBalanceOf(outputs[i])
+			if err != nil {
+				return nil, err
+			}
+
+			contractAddr := *chunk[i].To
+			if balances[contractAddr] == nil {
+				balances[contractAddr] = make(map[ethCommon.Address]*big.Int)
+			}
+			balances[contractAddr][owners[begin+i]] = balance
 		}
-		balances[contractAddr][owners[i]] = balance
 	}
 
 	// Handle ETH balances
@@ -81,22 +99,33 @@ func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, addrs map[
 
 // ethBalanceOf returns the ether balances
 func (c *client) ethBalanceOf(ctx context.Context, blockNumber *big.Int, addrs map[ethCommon.Address]struct{}) (etherBalances map[ethCommon.Address]*big.Int, err error) {
+	logger := log.New("number", blockNumber.Int64())
 	lens := len(addrs)
 	var addrList []ethCommon.Address
 	for addr := range addrs {
 		addrList = append(addrList, addr)
 	}
 
-	// Get ethers
-	ethers, err := c.BatchBalanceAt(ctx, addrList, blockNumber)
-	if err != nil {
-		return nil, err
-	}
-
 	// Construct ether balances
 	etherBalances = make(map[ethCommon.Address]*big.Int, lens)
-	for i, e := range ethers {
-		etherBalances[addrList[i]] = e
+
+	// Get ethers
+	for begin := 0; begin < lens; begin += chunkSize {
+		end := begin + chunkSize
+		if end > lens {
+			end = lens
+		}
+
+		chunk := addrList[begin:end]
+		logger.Info("processing ETH balance chunk", "total", lens, "begin", begin, "end", end)
+		ethers, err := c.BatchBalanceAt(ctx, chunk, blockNumber)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, e := range ethers {
+			etherBalances[addrList[begin+i]] = e
+		}
 	}
 	return
 }
