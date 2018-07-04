@@ -21,68 +21,68 @@ import (
 	"context"
 	"math/big"
 
-	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
-	subStore "github.com/getamis/eth-indexer/store/subscription"
+	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/sirius/log"
 )
 
-type subscription struct {
+type transferProcessor struct {
 	logger      log.Logger
 	blockNumber int64
 	// tokenList includes ETH and erc20 tokens
-	tokenList         map[gethCommon.Address]struct{}
-	subscriptionStore subStore.Store
-	accountStore      account.Store
-	balancer          client.Balancer
+	tokenList    map[common.Address]struct{}
+	subStore     subscription.Store
+	accountStore account.Store
+	balancer     client.Balancer
 
 	// Used to calculate transaction fee
 	receipts []*types.Receipt
 	txs      []*model.Transaction
 }
 
-func newSubscription(blockNumber int64,
+func newTransferProcessor(blockNumber int64,
 	erc20List map[string]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
-	subscriptionStore subStore.Store,
+	subStore subscription.Store,
 	accountStore account.Store,
-	balancer client.Balancer) *subscription {
-	tokenList := make(map[gethCommon.Address]struct{}, len(erc20List)+1)
+	balancer client.Balancer) *transferProcessor {
+	tokenList := make(map[common.Address]struct{}, len(erc20List)+1)
 	tokenList[model.ETHAddress] = struct{}{}
 	for addr := range erc20List {
-		tokenList[gethCommon.HexToAddress(addr)] = struct{}{}
+		tokenList[common.HexToAddress(addr)] = struct{}{}
 	}
-	return &subscription{
-		logger:            log.New("number", blockNumber),
-		blockNumber:       blockNumber,
-		tokenList:         tokenList,
-		subscriptionStore: subscriptionStore,
-		accountStore:      accountStore,
-		balancer:          balancer,
-		receipts:          receipts,
-		txs:               txs,
+	return &transferProcessor{
+		logger:       log.New("number", blockNumber),
+		blockNumber:  blockNumber,
+		tokenList:    tokenList,
+		subStore:     subStore,
+		accountStore: accountStore,
+		balancer:     balancer,
+		receipts:     receipts,
+		txs:          txs,
 	}
 }
 
-func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (err error) {
+func (s *transferProcessor) process(ctx context.Context, events []*model.Transfer) (err error) {
 	// Update total balance for new subscriptions, map[group][token]balance
-	totalBalances := make(map[int64]map[gethCommon.Address]*big.Int)
+	totalBalances := make(map[int64]map[common.Address]*big.Int)
 	totalFees := make(map[int64]*big.Int)
 
 	// Collect modified addresses
-	seenAddrs := make(map[gethCommon.Address]struct{})
+	seenAddrs := make(map[common.Address]struct{})
 	var addrs [][]byte
 	for _, e := range events {
-		fromAddr := gethCommon.BytesToAddress(e.From)
+		fromAddr := common.BytesToAddress(e.From)
 		if _, ok := seenAddrs[fromAddr]; !ok {
 			seenAddrs[fromAddr] = struct{}{}
 			addrs = append(addrs, e.From)
 		}
-		toAddr := gethCommon.BytesToAddress(e.To)
+		toAddr := common.BytesToAddress(e.To)
 		if _, ok := seenAddrs[toAddr]; !ok {
 			seenAddrs[toAddr] = struct{}{}
 			addrs = append(addrs, e.To)
@@ -90,17 +90,17 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Add new subscriptions
-	newSubResults, err := s.subscriptionStore.Find(0)
+	newSubResults, err := s.subStore.Find(0)
 	if err != nil {
 		s.logger.Error("Failed to find subscriptions", "err", err)
 		return err
 	}
 
-	contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
-	newSubs := make(map[gethCommon.Address]*model.Subscription)
+	contractsAddrs := make(map[common.Address]map[common.Address]struct{})
+	newSubs := make(map[common.Address]*model.Subscription)
 	var newAddrs [][]byte
 	for _, sub := range newSubResults {
-		newAddr := gethCommon.BytesToAddress(sub.Address)
+		newAddr := common.BytesToAddress(sub.Address)
 		if _, ok := seenAddrs[newAddr]; !ok {
 			seenAddrs[newAddr] = struct{}{}
 			addrs = append(addrs, sub.Address)
@@ -111,14 +111,14 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 		// Make sure to collect ETH/ERC20 balances for the new subscriptions too.
 		for token := range s.tokenList {
 			if contractsAddrs[token] == nil {
-				contractsAddrs[token] = make(map[gethCommon.Address]struct{})
+				contractsAddrs[token] = make(map[common.Address]struct{})
 			}
 			contractsAddrs[token][newAddr] = struct{}{}
 		}
 	}
 
 	// Get subscribed accounts whose balances are changed, including the new subscriptions
-	subs, err := s.subscriptionStore.FindByAddresses(addrs)
+	subs, err := s.subStore.FindByAddresses(addrs)
 	if err != nil {
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
 		return err
@@ -129,43 +129,43 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Calculate tx fee
-	fees := make(map[gethCommon.Hash]*big.Int)
+	fees := make(map[common.Hash]*big.Int)
 	// Assume the tx and receipt are in the same order
 	for i, tx := range s.txs {
 		r := s.receipts[i]
 		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
-		fees[gethCommon.BytesToHash(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+		fees[common.BytesToHash(tx.Hash)] = new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
 	}
 
 	// Construct a set of subscription for membership testing
-	allSubs := make(map[gethCommon.Address]*model.Subscription)
+	allSubs := make(map[common.Address]*model.Subscription)
 	for _, sub := range subs {
-		allSubs[gethCommon.BytesToAddress(sub.Address)] = sub
+		allSubs[common.BytesToAddress(sub.Address)] = sub
 	}
 
 	// Insert events if it's a subscribed account
-	addrDiff := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
-	feeDiff := make(map[gethCommon.Address]*big.Int)
+	addrDiff := make(map[common.Address]map[common.Address]*big.Int)
+	feeDiff := make(map[common.Address]*big.Int)
 	for _, e := range events {
-		_, hasFrom := allSubs[gethCommon.BytesToAddress(e.From)]
-		_, hasTo := allSubs[gethCommon.BytesToAddress(e.To)]
+		_, hasFrom := allSubs[common.BytesToAddress(e.From)]
+		_, hasTo := allSubs[common.BytesToAddress(e.To)]
 		if !hasFrom && !hasTo {
 			continue
 		}
 
 		err := s.accountStore.InsertTransfer(e)
 		if err != nil {
-			s.logger.Error("Failed to insert ERC20 transfer event", "value", e.Value, "from", gethCommon.Bytes2Hex(e.From), "to", gethCommon.Bytes2Hex(e.To), "err", err)
+			s.logger.Error("Failed to insert ERC20 transfer event", "value", e.Value, "from", common.Bytes2Hex(e.From), "to", common.Bytes2Hex(e.To), "err", err)
 			return err
 		}
-		contractAddr := gethCommon.BytesToAddress(e.Address)
+		contractAddr := common.BytesToAddress(e.Address)
 		if addrDiff[contractAddr] == nil {
-			addrDiff[contractAddr] = make(map[gethCommon.Address]*big.Int)
-			contractsAddrs[contractAddr] = make(map[gethCommon.Address]struct{})
+			addrDiff[contractAddr] = make(map[common.Address]*big.Int)
+			contractsAddrs[contractAddr] = make(map[common.Address]struct{})
 		}
 		d, _ := new(big.Int).SetString(e.Value, 10)
 		if hasFrom {
-			from := gethCommon.BytesToAddress(e.From)
+			from := common.BytesToAddress(e.From)
 			if addrDiff[contractAddr][from] == nil {
 				addrDiff[contractAddr][from] = new(big.Int).Neg(d)
 				contractsAddrs[contractAddr][from] = struct{}{}
@@ -174,7 +174,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 			}
 
 			// Add fee if it's a ETH event
-			if f, ok := fees[gethCommon.BytesToHash(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
+			if f, ok := fees[common.BytesToHash(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
 				if feeDiff[from] == nil {
 					feeDiff[from] = new(big.Int).Set(f)
 				} else {
@@ -183,7 +183,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 			}
 		}
 		if hasTo {
-			to := gethCommon.BytesToAddress(e.To)
+			to := common.BytesToAddress(e.To)
 			if addrDiff[contractAddr][to] == nil {
 				addrDiff[contractAddr][to] = d
 				contractsAddrs[contractAddr][to] = struct{}{}
@@ -225,7 +225,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 	}
 
 	// Update the subscriptions table for the new subscriptions
-	err = s.subscriptionStore.BatchUpdateBlockNumber(s.blockNumber, newAddrs)
+	err = s.subStore.BatchUpdateBlockNumber(s.blockNumber, newAddrs)
 	if err != nil {
 		s.logger.Error("Failed to update block number", "err", err)
 		return err
@@ -242,11 +242,11 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 
 			// Init total balance for the group
 			if totalBalances[sub.Group] == nil {
-				totalBalances[sub.Group] = make(map[gethCommon.Address]*big.Int)
+				totalBalances[sub.Group] = make(map[common.Address]*big.Int)
 			}
 			tb, ok := totalBalances[sub.Group][token]
 			if !ok {
-				b, err := s.subscriptionStore.FindTotalBalance(s.blockNumber-1, token, sub.Group)
+				b, err := s.subStore.FindTotalBalance(s.blockNumber-1, token, sub.Group)
 				if err != nil {
 					s.logger.Error("Failed to find total balance", "err", err)
 					return err
@@ -280,7 +280,7 @@ func (s *subscription) insert(ctx context.Context, events []*model.Transfer) (er
 			if f, ok := totalFees[group]; ok && token == model.ETHAddress {
 				tb.TxFee = f.String()
 			}
-			err = s.subscriptionStore.InsertTotalBalance(tb)
+			err = s.subStore.InsertTotalBalance(tb)
 			if err != nil {
 				return
 			}
