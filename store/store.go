@@ -344,11 +344,3 @@ func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {
 	accountStore := account.NewWithDB(m.db)
 	return accountStore.FindERC20(address)
 }
-
-func insertAccount(accountStore account.Store, blockNumber int64, addr string, balance string) error {
-	return accountStore.InsertAccount(&model.Account{
-		BlockNumber: blockNumber,
-		Address:     common.HexToBytes(addr),
-		Balance:     balance,
-	})
-}
