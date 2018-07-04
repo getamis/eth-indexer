@@ -233,13 +233,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert erc20 balance & events
-	sub := newSubscription(blockNumber, m.erc20List, receipts, txs, subscriptionStore, accountStore, m.balancer)
-	err = sub.init(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = sub.insert(ctx, events)
+	err = newSubscription(blockNumber, m.erc20List, receipts, txs, subscriptionStore, accountStore, m.balancer).insert(ctx, events)
 	if err != nil {
 		return err
 	}

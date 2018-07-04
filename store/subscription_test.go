@@ -266,36 +266,25 @@ var _ = Describe("Subscription Test", func() {
 		// For the 100 block
 		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
 			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
 				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
 				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
 			},
 			gethCommon.BytesToAddress(erc20.Address): {
+				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
 				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
 				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(100),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(500),
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(150),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(1000),
-			},
-		}, nil).Once()
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
 			},
 		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
 			model.ETHAddress: {
 				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(999),
+				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(100),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(500),
 			},
 			gethCommon.BytesToAddress(erc20.Address): {
 				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(2000),
+				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(150),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(1000),
 			},
 		}, nil).Once()
 
@@ -353,5 +342,12 @@ var _ = Describe("Subscription Test", func() {
 		et2_101, err := subStore.FindTotalBalance(101, model.ETHAddress, 2)
 		Expect(err).Should(BeNil())
 		Expect(et2_101.Balance).Should(Equal("498"))
+
+		// Verify new subscriptions' block numbers updated
+		res, err := subStore.FindByAddresses([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
+		Expect(err).Should(BeNil())
+		Expect(res[0].BlockNumber).Should(Equal(int64(90)))
+		Expect(res[1].BlockNumber).Should(Equal(int64(100)))
+		Expect(res[2].BlockNumber).Should(Equal(int64(100)))
 	})
 })

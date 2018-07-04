@@ -87,7 +87,7 @@ func (t *store) FindByAddresses(addrs [][]byte) (result []*model.Subscription, e
 		return []*model.Subscription{}, nil
 	}
 
-	err = t.db.Where("address in (?) AND block_number > 0", addrs).Find(&result).Error
+	err = t.db.Where("address in (?)", addrs).Find(&result).Error
 	if err != nil {
 		return
 	}
