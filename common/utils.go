@@ -185,8 +185,9 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 }
 
 // EthTransferEvent converts eth transfer log to eth tranfer event
-func EthTransferEvent(b *types.Block, log *types.TransferLog) *model.ETHTransfer {
-	return &model.ETHTransfer{
+func EthTransferEvent(b *types.Block, log *types.TransferLog) *model.Transfer {
+	return &model.Transfer{
+		Address:     model.ETHBytes,
 		BlockNumber: b.Number().Int64(),
 		TxHash:      log.TxHash.Bytes(),
 		From:        log.From.Bytes(),

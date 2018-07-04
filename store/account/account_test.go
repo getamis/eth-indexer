@@ -37,11 +37,12 @@ func makeERC20(hexAddr string) *model.ERC20 {
 	}
 }
 
-func makeAccount(blockNum int64, hexAddr string) *model.Account {
+func makeAccount(contractAddress []byte, blockNum int64, hexAddr string) *model.Account {
 	return &model.Account{
-		BlockNumber: blockNum,
-		Address:     common.HexToBytes(hexAddr),
-		Balance:     "987654321098765432109876543210",
+		ContractAddress: contractAddress,
+		BlockNumber:     blockNum,
+		Address:         common.HexToBytes(hexAddr),
+		Balance:         "987654321098765432109876543210",
 	}
 }
 
@@ -78,22 +79,43 @@ var _ = Describe("Account Database Test", func() {
 			db.DropTable(model.ERC20Storage{
 				Address: code.Address,
 			})
-			db.DropTable(model.ERC20Transfer{
+			db.DropTable(model.Transfer{
 				Address: code.Address,
+			})
+			db.DropTable(model.Account{
+				ContractAddress: code.Address,
 			})
 		}
 
 		db.Delete(&model.ERC20{})
 		db.Delete(&model.Account{})
-		db.Delete(&model.ETHTransfer{})
+		db.Delete(&model.Account{
+			ContractAddress: model.ETHBytes,
+		})
 	})
 
 	Context("InsertAccount()", func() {
-		It("inserts one new record", func() {
+		It("inserts one new eth record", func() {
 			store := NewWithDB(db)
 
-			data := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data := makeAccount(model.ETHBytes, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
 			err := store.InsertAccount(data)
+			Expect(err).Should(Succeed())
+
+			err = store.InsertAccount(data)
+			Expect(err).ShouldNot(BeNil())
+		})
+		It("inserts one new erc20 record", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			erc20 := makeERC20(hexAddr)
+			err := store.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+
+			data := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			err = store.InsertAccount(data)
 			Expect(err).Should(Succeed())
 
 			err = store.InsertAccount(data)
@@ -102,54 +124,100 @@ var _ = Describe("Account Database Test", func() {
 	})
 
 	Context("FindAccount()", func() {
-		It("finds the right record", func() {
+		It("finds the right eth record", func() {
 			store := NewWithDB(db)
 
-			data1 := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data1 := makeAccount(model.ETHBytes, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
 			err := store.InsertAccount(data1)
 			Expect(err).Should(Succeed())
 
-			data2 := makeAccount(1000310, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeAccount(model.ETHBytes, 1000310, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
 			err = store.InsertAccount(data2)
 			Expect(err).Should(Succeed())
 
-			data3 := makeAccount(1000314, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeAccount(model.ETHBytes, 1000314, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
 			err = store.InsertAccount(data3)
 			Expect(err).Should(Succeed())
 
 			// should return this account at latest block number
-			account, err := store.FindAccount(gethCommon.BytesToAddress(data1.Address))
+			account, err := store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data1.Address))
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
 
-			account, err = store.FindAccount(gethCommon.BytesToAddress(data3.Address))
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data3.Address))
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*account, *data3)).Should(BeTrue())
 
 			// if block num is specified, return the exact block number, or the highest
 			// block number that's less than the queried block number
-			account, err = store.FindAccount(gethCommon.BytesToAddress(data1.Address), 1000309)
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data1.Address), 1000309)
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*account, *data1)).Should(BeTrue())
 
-			account, err = store.FindAccount(gethCommon.BytesToAddress(data1.Address), 1000310)
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data1.Address), 1000310)
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
 
 			// non-existent account address
-			account, err = store.FindAccount(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
+			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+
+		It("finds the right erc20 record", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			addr := gethCommon.HexToAddress(hexAddr)
+			erc20 := makeERC20(hexAddr)
+			err := store.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+
+			data1 := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			err = store.InsertAccount(data1)
+			Expect(err).Should(Succeed())
+
+			data2 := makeAccount(erc20.Address, 1000310, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			err = store.InsertAccount(data2)
+			Expect(err).Should(Succeed())
+
+			data3 := makeAccount(erc20.Address, 1000314, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			err = store.InsertAccount(data3)
+			Expect(err).Should(Succeed())
+
+			// should return this account at latest block number
+			account, err := store.FindAccount(addr, gethCommon.BytesToAddress(data1.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
+
+			account, err = store.FindAccount(addr, gethCommon.BytesToAddress(data3.Address))
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*account, *data3)).Should(BeTrue())
+
+			// if block num is specified, return the exact block number, or the highest
+			// block number that's less than the queried block number
+			account, err = store.FindAccount(addr, gethCommon.BytesToAddress(data1.Address), 1000309)
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*account, *data1)).Should(BeTrue())
+
+			account, err = store.FindAccount(addr, gethCommon.BytesToAddress(data1.Address), 1000310)
+			Expect(err).Should(Succeed())
+			Expect(reflect.DeepEqual(*account, *data2)).Should(BeTrue())
+
+			// non-existent account address
+			account, err = store.FindAccount(addr, gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
 		})
 	})
 
 	Context("DeleteAccounts()", func() {
-		It("deletes account states from a block number", func() {
+		It("deletes eth account states from a block number", func() {
 			store := NewWithDB(db)
 
-			data1 := makeAccount(1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			data2 := makeAccount(1000313, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
-			data3 := makeAccount(1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
-			data4 := makeAccount(1000333, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data1 := makeAccount(model.ETHBytes, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeAccount(model.ETHBytes, 1000313, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeAccount(model.ETHBytes, 1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data4 := makeAccount(model.ETHBytes, 1000333, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
 			data := []*model.Account{data1, data2, data3, data4}
 			for _, acct := range data {
 				err := store.InsertAccount(acct)
@@ -157,16 +225,140 @@ var _ = Describe("Account Database Test", func() {
 			}
 
 			// Delete data2 and data3
-			err := store.DeleteAccounts(1000301, 1000315)
+			err := store.DeleteAccounts(model.ETHAddress, 1000301, 1000315)
 			Expect(err).Should(Succeed())
 
 			// Found data1 and data4
-			account, err := store.FindAccount(gethCommon.BytesToAddress(data1.Address))
+			account, err := store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data1.Address))
 			Expect(err).Should(Succeed())
 			Expect(account).Should(Equal(data1))
-			account, err = store.FindAccount(gethCommon.BytesToAddress(data4.Address))
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data4.Address))
 			Expect(err).Should(Succeed())
 			Expect(account).Should(Equal(data4))
+		})
+
+		It("deletes erc20 account states from a block number", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			addr := gethCommon.HexToAddress(hexAddr)
+			erc20 := makeERC20(hexAddr)
+			err := store.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+
+			data1 := makeAccount(erc20.Address, 1000300, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data2 := makeAccount(erc20.Address, 1000313, "0xA287a379e6caCa6732E50b88D23c290aA990A892")
+			data3 := makeAccount(erc20.Address, 1000315, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data4 := makeAccount(erc20.Address, 1000333, "0xC487a379e6caCa6732E50b88D23c290aA990A892")
+			data := []*model.Account{data1, data2, data3, data4}
+			for _, acct := range data {
+				err := store.InsertAccount(acct)
+				Expect(err).Should(Succeed())
+			}
+
+			// Delete data2 and data3
+			err = store.DeleteAccounts(addr, 1000301, 1000315)
+			Expect(err).Should(Succeed())
+
+			// Found data1 and data4
+			account, err := store.FindAccount(addr, gethCommon.BytesToAddress(data1.Address))
+			Expect(err).Should(Succeed())
+			Expect(account).Should(Equal(data1))
+			account, err = store.FindAccount(addr, gethCommon.BytesToAddress(data4.Address))
+			Expect(err).Should(Succeed())
+			Expect(account).Should(Equal(data4))
+		})
+	})
+
+	Context("InsertTransfer() & DeleteTransfer()", func() {
+		It("deletes the right eth transfer", func() {
+			store := NewWithDB(db)
+
+			event1 := &model.Transfer{
+				Address:     model.ETHBytes,
+				BlockNumber: 101,
+				TxHash:      common.HexToBytes("0x01"),
+				From:        common.HexToBytes("0x02"),
+				To:          common.HexToBytes("0x03"),
+				Value:       "1000000",
+			}
+			err := store.InsertTransfer(event1)
+			Expect(err).Should(Succeed())
+
+			event2 := &model.Transfer{
+				Address:     model.ETHBytes,
+				BlockNumber: 106,
+				TxHash:      common.HexToBytes("0x11"),
+				From:        common.HexToBytes("0x12"),
+				To:          common.HexToBytes("0x13"),
+				Value:       "1000000",
+			}
+
+			err = store.InsertTransfer(event2)
+			Expect(err).Should(Succeed())
+
+			event3 := &model.Transfer{
+				Address:     model.ETHBytes,
+				BlockNumber: 110,
+				TxHash:      common.HexToBytes("0x21"),
+				From:        common.HexToBytes("0x22"),
+				To:          common.HexToBytes("0x23"),
+				Value:       "1000000",
+			}
+			err = store.InsertTransfer(event3)
+			Expect(err).Should(Succeed())
+
+			err = store.DeleteTransfer(model.ETHAddress, int64(105), int64(110))
+			Expect(err).Should(Succeed())
+		})
+
+		It("deletes the right erc20 transfer", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			addr := gethCommon.HexToAddress(hexAddr)
+			erc20 := makeERC20(hexAddr)
+			err := store.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+
+			event1 := &model.Transfer{
+				Address:     erc20.Address,
+				BlockNumber: 101,
+				TxHash:      common.HexToBytes("0x01"),
+				From:        common.HexToBytes("0x02"),
+				To:          common.HexToBytes("0x03"),
+				Value:       "1000000",
+			}
+			err = store.InsertTransfer(event1)
+			Expect(err).Should(Succeed())
+
+			event2 := &model.Transfer{
+				Address:     erc20.Address,
+				BlockNumber: 106,
+				TxHash:      common.HexToBytes("0x11"),
+				From:        common.HexToBytes("0x12"),
+				To:          common.HexToBytes("0x13"),
+				Value:       "1000000",
+			}
+
+			err = store.InsertTransfer(event2)
+			Expect(err).Should(Succeed())
+
+			event3 := &model.Transfer{
+				Address:     erc20.Address,
+				BlockNumber: 110,
+				TxHash:      common.HexToBytes("0x21"),
+				From:        common.HexToBytes("0x22"),
+				To:          common.HexToBytes("0x23"),
+				Value:       "1000000",
+			}
+			err = store.InsertTransfer(event3)
+			Expect(err).Should(Succeed())
+
+			err = store.DeleteTransfer(addr, int64(105), int64(110))
+			Expect(err).Should(Succeed())
 		})
 	})
 
@@ -195,7 +387,7 @@ var _ = Describe("Account Database Test", func() {
 
 			list, err := store.ListERC20()
 			Expect(err).Should(Succeed())
-			Expect(list).Should(Equal([]model.ERC20{*data}))
+			Expect(list).Should(Equal([]*model.ERC20{data}))
 		})
 	})
 
@@ -329,96 +521,6 @@ var _ = Describe("Account Database Test", func() {
 				Expect(err).Should(Succeed())
 				Expect(s).Should(Equal(storage1))
 			}
-		})
-	})
-
-	Context("InsertERC20Transfer() & DeleteERC20Transfer()", func() {
-		It("deletes the right transfer", func() {
-			store := NewWithDB(db)
-
-			// Insert code to create table
-			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
-			addr := gethCommon.HexToAddress(hexAddr)
-			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data)
-			Expect(err).Should(Succeed())
-
-			event1 := &model.ERC20Transfer{
-				Address:     addr.Bytes(),
-				BlockNumber: 101,
-				TxHash:      common.HexToBytes("0x01"),
-				From:        common.HexToBytes("0x02"),
-				To:          common.HexToBytes("0x03"),
-				Value:       "1000000",
-			}
-			err = store.InsertERC20Transfer(event1)
-			Expect(err).Should(Succeed())
-
-			event2 := &model.ERC20Transfer{
-				Address:     addr.Bytes(),
-				BlockNumber: 106,
-				TxHash:      common.HexToBytes("0x11"),
-				From:        common.HexToBytes("0x12"),
-				To:          common.HexToBytes("0x13"),
-				Value:       "1000000",
-			}
-
-			err = store.InsertERC20Transfer(event2)
-			Expect(err).Should(Succeed())
-
-			event3 := &model.ERC20Transfer{
-				Address:     addr.Bytes(),
-				BlockNumber: 110,
-				TxHash:      common.HexToBytes("0x21"),
-				From:        common.HexToBytes("0x22"),
-				To:          common.HexToBytes("0x23"),
-				Value:       "1000000",
-			}
-			err = store.InsertERC20Transfer(event3)
-			Expect(err).Should(Succeed())
-
-			err = store.DeleteERC20Transfer(addr, int64(105), int64(110))
-			Expect(err).Should(Succeed())
-		})
-	})
-
-	Context("InsertETHTransfer() & DeleteETHTransfer()", func() {
-		It("deletes the right transfer", func() {
-			store := NewWithDB(db)
-
-			event1 := &model.ETHTransfer{
-				BlockNumber: 101,
-				TxHash:      common.HexToBytes("0x01"),
-				From:        common.HexToBytes("0x02"),
-				To:          common.HexToBytes("0x03"),
-				Value:       "1000000",
-			}
-			err := store.InsertETHTransfer(event1)
-			Expect(err).Should(Succeed())
-
-			event2 := &model.ETHTransfer{
-				BlockNumber: 106,
-				TxHash:      common.HexToBytes("0x11"),
-				From:        common.HexToBytes("0x12"),
-				To:          common.HexToBytes("0x13"),
-				Value:       "1000000",
-			}
-
-			err = store.InsertETHTransfer(event2)
-			Expect(err).Should(Succeed())
-
-			event3 := &model.ETHTransfer{
-				BlockNumber: 110,
-				TxHash:      common.HexToBytes("0x21"),
-				From:        common.HexToBytes("0x22"),
-				To:          common.HexToBytes("0x23"),
-				Value:       "1000000",
-			}
-			err = store.InsertETHTransfer(event3)
-			Expect(err).Should(Succeed())
-
-			err = store.DeleteETHTransfer(int64(105), int64(110))
-			Expect(err).Should(Succeed())
 		})
 	})
 })

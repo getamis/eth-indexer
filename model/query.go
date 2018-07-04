@@ -14,40 +14,22 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the eth-indexer library. If not, see <http://www.gnu.org/licenses/>.
 
-package flags
+package model
 
-const (
-	// flag names for server
-	Host = "host"
-	Port = "port"
-
-	// flag names for ethereum service
-	Eth         = "eth"
-	EthProtocol = "eth.protocol"
-	EthHost     = "eth.host"
-	EthPort     = "eth.port"
-
-	// flag names for database
-	DbDriver   = "db.driver"
-	DbHost     = "db.host"
-	DbPort     = "db.port"
-	DbName     = "db.name"
-	DbUser     = "db.user"
-	DbPassword = "db.password"
-
-	// flags for syncing
-	SyncTargetBlock = "sync.targetBlock"
-	SyncFromBlock   = "sync.fromBlock"
-
-	// flags for metrics
-	MetricsHost = "metrics.host"
-	MetricsPort = "metrics.port"
-
-	// flags for pprof
-	PprofEnable = "pprof"
-	PprofPort   = "pprof.port"
-	PprofHost   = "pprof.host"
-
-	// flags for enabled functions
-	SubscribeErc20token = "functions.erc20token"
+import (
+	"fmt"
 )
+
+type QueryParameters struct {
+	Page    uint64
+	Limit   uint64
+	OrderBy string
+	Order   string
+}
+
+func (q *QueryParameters) OrderString() string {
+	if q.OrderBy == "" || q.Order == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s %s", q.OrderBy, q.Order)
+}

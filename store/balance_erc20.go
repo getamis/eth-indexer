@@ -165,7 +165,7 @@ func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress,
 	blockNumber := big.NewInt(hdr.Number)
 
 	// Find contract account
-	account, err := srv.FindAccount(contractAddress, hdr.Number)
+	account, err := srv.FindAccount(model.ETHAddress, contractAddress, hdr.Number)
 	if err != nil {
 		logger.Error("Failed to find contract", "err", err)
 		return nil, nil, err

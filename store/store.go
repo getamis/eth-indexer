@@ -17,17 +17,20 @@
 package store
 
 import (
+	"context"
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
-	header "github.com/getamis/eth-indexer/store/block_header"
+	"github.com/getamis/eth-indexer/store/block_header"
+	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/eth-indexer/store/transaction"
-	receipt "github.com/getamis/eth-indexer/store/transaction_receipt"
+	"github.com/getamis/eth-indexer/store/transaction_receipt"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 )
@@ -52,7 +55,7 @@ const (
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
 	// Init the store manager to load the erc20 list
-	Init() error
+	Init(balancer client.Balancer) error
 	// FindERC20 finds the erc20 code
 	FindERC20(address gethCommon.Address) (*model.ERC20, error)
 	// InsertERC20 inserts the erc20 code
@@ -66,12 +69,13 @@ type Manager interface {
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data. 'delete' indicates whether deletes all data before update.
-	UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) error
+	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) error
 }
 
 type manager struct {
 	db        *gorm.DB
-	erc20List map[string]model.ERC20
+	erc20List map[string]*model.ERC20
+	balancer  client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
@@ -81,25 +85,27 @@ func NewManager(db *gorm.DB) Manager {
 	}
 }
 
-func (m *manager) Init() error {
+func (m *manager) Init(balancer client.Balancer) error {
 	list, err := account.NewWithDB(m.db).ListERC20()
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	erc20List := make(map[string]model.ERC20)
+	erc20List := make(map[string]*model.ERC20, len(list))
 	for _, e := range list {
 		erc20List[common.BytesToHex(e.Address)] = e
 	}
 	m.erc20List = erc20List
+
+	// Init balance of function
+	m.balancer = balancer
 	return nil
 }
 
 func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
-	headerStore := header.NewWithDB(m.db)
-	return headerStore.InsertTd(common.TotalDifficulty(block, td))
+	return block_header.NewWithDB(m.db).InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) (err error) {
 	size := len(blocks)
 	if size != len(receipts) || size != len(dumps) || size != len(events) {
 		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts), "dumps", len(dumps))
@@ -139,7 +145,7 @@ func (m *manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receip
 	ignoreDupErr := (mode == ModeForceSync)
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
-		err = m.insertBlock(dbTx, blocks[i], receipts[i], dumps[i], events[i])
+		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], dumps[i], events[i])
 		if ignoreDupErr && common.DuplicateError(err) {
 			err = nil
 		}
@@ -147,6 +153,7 @@ func (m *manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receip
 		if err != nil {
 			return
 		}
+
 		err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
 		if err != nil {
 			return
@@ -156,44 +163,53 @@ func (m *manager) UpdateBlocks(blocks []*types.Block, receipts [][]*types.Receip
 }
 
 func (m *manager) LatestHeader() (*model.Header, error) {
-	hs := header.NewWithDB(m.db)
-	return hs.FindLatestBlock()
+	return block_header.NewWithDB(m.db).FindLatestBlock()
 }
 
 func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
-	hs := header.NewWithDB(m.db)
-	return hs.FindBlockByNumber(number)
+	return block_header.NewWithDB(m.db).FindBlockByNumber(number)
 }
 
 func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
-	return header.NewWithDB(m.db).FindTd(hash)
+	return block_header.NewWithDB(m.db).FindTd(hash)
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
-func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump, events []*types.TransferLog) (err error) {
-	headerStore := header.NewWithDB(dbTx)
+func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump, ethEvents []*types.TransferLog) (err error) {
+	headerStore := block_header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
-	receiptStore := receipt.NewWithDB(dbTx)
+	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
+	subsStore := subscription.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
 
-	// Insert blocks, txs and receipts
+	// Insert blocks
 	err = headerStore.Insert(common.Header(block))
 	if err != nil {
 		return err
 	}
 
+	// Insert txs
+	var txs []*model.Transaction
 	for _, t := range block.Transactions() {
 		tx, err := common.Transaction(block, t)
 		if err != nil {
 			return err
 		}
+		txs = append(txs, tx)
 		err = txStore.Insert(tx)
 		if err != nil {
 			return err
 		}
 	}
 
+	var events []*model.Transfer
+	// Add eth transfer events
+	for _, e := range ethEvents {
+		events = append(events, common.EthTransferEvent(block, e))
+	}
+
+	// Insert tx receipts
 	for _, receipt := range receipts {
 		r, err := common.Receipt(block, receipt)
 		if err != nil {
@@ -205,38 +221,20 @@ func (m *manager) insertBlock(dbTx *gorm.DB, block *types.Block, receipts []*typ
 			return err
 		}
 
-		// Insert erc20 events
-		events, err := m.erc20Events(blockNumber, receipt.TxHash, r.Logs)
+		// Collect erc20 events
+		es, err := m.erc20Events(blockNumber, receipt.TxHash, r.Logs)
 		if err != nil {
 			return err
 		}
-		for _, e := range events {
-			err := accountStore.InsertERC20Transfer(e)
-			if err != nil {
-				return err
-			}
-		}
+		events = append(events, es...)
 	}
 
-	// Insert accounts
-	for addr, account := range dump.Accounts {
-		// If the account balance is changed in this tx
-		if account.Balance != "" {
-			err := insertAccount(accountStore, blockNumber, addr, account.Balance)
-			if err != nil {
-				return err
-			}
-		}
+	// Insert erc20 balance & events
+	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	if err != nil {
+		return err
 	}
 
-	// Insert eth transfer events
-	for _, event := range events {
-		e := common.EthTransferEvent(block, event)
-		err := accountStore.InsertETHTransfer(e)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -278,10 +276,12 @@ func (m *manager) updateERC20(dbTx *gorm.DB, block *types.Block, dump *state.Dir
 
 // delete deletes block and state data inside a DB transaction
 func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
-	headerStore := header.NewWithDB(dbTx)
+	headerStore := block_header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
-	receiptStore := receipt.NewWithDB(dbTx)
+	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
+	subscriptionStore := subscription.NewWithDB(dbTx)
+
 	err = headerStore.Delete(from, to)
 	if err != nil {
 		return
@@ -294,20 +294,31 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	if err != nil {
 		return
 	}
-	err = accountStore.DeleteAccounts(from, to)
+	err = accountStore.DeleteAccounts(model.ETHAddress, from, to)
+	if err != nil {
+		return
+	}
+
+	err = subscriptionStore.Reset(from, to)
 	if err != nil {
 		return
 	}
 
 	for hexAddr := range m.erc20List {
-		// Delete storage
+		// Delete erc20 balances
+		err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
+		if err != nil {
+			return
+		}
+
+		// Delete storage diff
 		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
 		if err != nil {
 			return
 		}
 
 		// Delete erc20 events
-		err = accountStore.DeleteERC20Transfer(gethCommon.HexToAddress(hexAddr), from, to)
+		err = accountStore.DeleteTransfer(gethCommon.HexToAddress(hexAddr), from, to)
 		if err != nil {
 			return
 		}
@@ -323,12 +334,4 @@ func (m *manager) InsertERC20(code *model.ERC20) error {
 func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {
 	accountStore := account.NewWithDB(m.db)
 	return accountStore.FindERC20(address)
-}
-
-func insertAccount(accountStore account.Store, blockNumber int64, addr string, balance string) error {
-	return accountStore.InsertAccount(&model.Account{
-		BlockNumber: blockNumber,
-		Address:     common.HexToBytes(addr),
-		Balance:     balance,
-	})
 }

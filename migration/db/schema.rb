@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_03_13_051512) do
+ActiveRecord::Schema.define(version: 2018_06_20_072545) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -76,6 +76,30 @@ ActiveRecord::Schema.define(version: 2018_03_13_051512) do
     t.index ["block_number", "contract_address"], name: "index_receipt_logs_on_block_number_and_contract_address"
     t.index ["block_number"], name: "index_receipt_logs_on_block_number"
     t.index ["tx_hash"], name: "index_receipt_logs_on_tx_hash"
+  end
+
+  create_table "subscriptions", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
+    t.bigint "block_number", default: 0
+    t.bigint "group", null: false
+    t.binary "address", limit: 20, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["address"], name: "index_subscriptions_on_address", unique: true
+    t.index ["block_number"], name: "index_subscriptions_on_block_number"
+    t.index ["group"], name: "index_subscriptions_on_group"
+  end
+
+  create_table "total_balances", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
+    t.bigint "block_number", null: false
+    t.binary "token", limit: 20, null: false
+    t.bigint "group", null: false
+    t.string "balance", limit: 32, null: false
+    t.string "tx_fee", limit: 32, null: false
+    t.index ["block_number", "token", "group"], name: "index_total_balances_on_block_number_and_token_and_group", unique: true
+    t.index ["block_number"], name: "index_total_balances_on_block_number"
+    t.index ["group"], name: "index_total_balances_on_group"
+    t.index ["token", "group"], name: "index_total_balances_on_token_and_group"
+    t.index ["token"], name: "index_total_balances_on_token"
   end
 
   create_table "total_difficulty", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|

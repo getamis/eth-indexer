@@ -30,6 +30,15 @@ MYSQL_DATA_PATH=~/indexer-data/mysql
 GETH_DATA_PATH=~/indexer-data/geth
 ```
 
+### Configs and Flags
+
+_eth_indexer_ supports two kinds of input:
+1. static config YAML files
+2. dynamic flags through command line
+
+You can either define your `configs/config.yml` or pass flags (e.g., `indexer --eth.port 1234`) from command line to start _eth_indexer_.
+If you use both settings, _eth_indexer_ will load `configs/config.yaml` as default and overwrite the corresponding values with specified flags from command line.
+
 ### Build
 
 ```shell
