@@ -257,13 +257,18 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			}
 			totalBalances[sub.Group][token] = new(big.Int).Add(tb, d)
 
+			// Consider tx fees
 			if f, ok := feeDiff[addr]; ok && token == model.ETHAddress {
 				if totalFees[sub.Group] == nil {
 					totalFees[sub.Group] = new(big.Int).Set(f)
 				} else {
 					totalFees[sub.Group] = new(big.Int).Add(f, totalFees[sub.Group])
 				}
-				totalBalances[sub.Group][token] = new(big.Int).Sub(totalBalances[sub.Group][token], f)
+
+				// Subtract tx fee from total balance if it's not a new subscriptions.
+				if newSubs[addr] == nil {
+					totalBalances[sub.Group][token] = new(big.Int).Sub(totalBalances[sub.Group][token], f)
+				}
 			}
 		}
 	}
