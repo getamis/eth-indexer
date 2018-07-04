@@ -101,11 +101,6 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	var newAddrs [][]byte
 	for _, sub := range newSubResults {
 		newAddr := common.BytesToAddress(sub.Address)
-		if _, ok := seenAddrs[newAddr]; !ok {
-			seenAddrs[newAddr] = struct{}{}
-			addrs = append(addrs, sub.Address)
-		}
-
 		newAddrs = append(newAddrs, sub.Address)
 		newSubs[newAddr] = sub
 		// Make sure to collect ETH/ERC20 balances for the new subscriptions too.
@@ -123,6 +118,9 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
 		return err
 	}
+
+	// Add new subscriptions to the processing list
+	subs = append(subs, newSubResults...)
 	if len(subs) == 0 {
 		s.logger.Debug("No modified or newly subscribed accounts")
 		return
