@@ -142,7 +142,7 @@ var _ = Describe("Database Test", func() {
 			err := store.BatchInsert(data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.FindByAddresses([][]byte{
+			res, err := store.FindOldSubscriptions([][]byte{
 				data0.Address,
 				data1.Address,
 				data2.Address,
@@ -151,7 +151,7 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 2))
 
-			res, err = store.FindByAddresses([][]byte{
+			res, err = store.FindOldSubscriptions([][]byte{
 				data0.Address,
 				data1.Address,
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A895"),
@@ -160,7 +160,7 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 1))
 
-			res, err = store.FindByAddresses([][]byte{
+			res, err = store.FindOldSubscriptions([][]byte{
 				data0.Address,
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A895"),
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A896"),
@@ -172,7 +172,7 @@ var _ = Describe("Database Test", func() {
 			err = store.Reset(100, 102)
 			Expect(err).Should(Succeed())
 
-			res, err = store.FindByAddresses([][]byte{
+			res, err = store.FindOldSubscriptions([][]byte{
 				data0.Address,
 				data1.Address,
 				data2.Address,

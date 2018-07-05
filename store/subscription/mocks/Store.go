@@ -61,29 +61,6 @@ func (_m *Store) Find(blockNumber int64) ([]*model.Subscription, error) {
 	return r0, r1
 }
 
-// FindByAddresses provides a mock function with given fields: addrs
-func (_m *Store) FindByAddresses(addrs [][]byte) ([]*model.Subscription, error) {
-	ret := _m.Called(addrs)
-
-	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func([][]byte) []*model.Subscription); ok {
-		r0 = rf(addrs)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.Subscription)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func([][]byte) error); ok {
-		r1 = rf(addrs)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // FindByGroup provides a mock function with given fields: groupID, query
 func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
 	ret := _m.Called(groupID, query)
@@ -112,6 +89,29 @@ func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*mo
 	}
 
 	return r0, r1, r2
+}
+
+// FindOldSubscriptions provides a mock function with given fields: addrs
+func (_m *Store) FindOldSubscriptions(addrs [][]byte) ([]*model.Subscription, error) {
+	ret := _m.Called(addrs)
+
+	var r0 []*model.Subscription
+	if rf, ok := ret.Get(0).(func([][]byte) []*model.Subscription); ok {
+		r0 = rf(addrs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Subscription)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([][]byte) error); ok {
+		r1 = rf(addrs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // FindTotalBalance provides a mock function with given fields: blockNumber, token, group

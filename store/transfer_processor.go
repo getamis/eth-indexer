@@ -113,7 +113,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	}
 
 	// Get subscribed accounts whose balances are changed, including the new subscriptions
-	subs, err := s.subStore.FindByAddresses(addrs)
+	subs, err := s.subStore.FindOldSubscriptions(addrs)
 	if err != nil {
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
 		return err
