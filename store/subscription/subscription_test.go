@@ -67,12 +67,14 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert new subscription")
-			err := store.BatchInsert([]*model.Subscription{data1})
+			duplicated, err := store.BatchInsert([]*model.Subscription{data1})
 			Expect(err).Should(Succeed())
+			Expect(len(duplicated)).Should(Equal(0))
 
-			By("failed to subscription again")
-			err = store.BatchInsert([]*model.Subscription{data1})
-			Expect(err).ShouldNot(BeNil())
+			By("duplicated should be 1")
+			duplicated, err = store.BatchInsert([]*model.Subscription{data1})
+			Expect(err).Should(Succeed())
+			Expect(len(duplicated)).Should(Equal(1))
 
 			data2 := &model.Subscription{
 				BlockNumber: 100,
@@ -80,7 +82,8 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert another new subscription")
-			err = store.BatchInsert([]*model.Subscription{data2})
+			duplicated, err = store.BatchInsert([]*model.Subscription{data2})
+			Expect(len(duplicated)).Should(Equal(0))
 			Expect(err).Should(Succeed())
 		})
 
@@ -103,7 +106,7 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			err := store.BatchInsert(data)
+			_, err := store.BatchInsert(data)
 			Expect(err).Should(Succeed())
 
 			res, err := store.Find(data1.BlockNumber)
@@ -139,7 +142,7 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			err := store.BatchInsert(data)
+			_, err := store.BatchInsert(data)
 			Expect(err).Should(Succeed())
 
 			res, err := store.FindOldSubscriptions([][]byte{
@@ -206,7 +209,7 @@ var _ = Describe("Database Test", func() {
 				}
 
 				By("Should be successful to insert", func() {
-					err := store.BatchInsert(subs)
+					_, err := store.BatchInsert(subs)
 					Expect(err).Should(Succeed())
 				})
 
@@ -269,7 +272,7 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			err := store.BatchInsert(data)
+			_, err := store.BatchInsert(data)
 			Expect(err).Should(Succeed())
 
 			res, err := store.Find(0)

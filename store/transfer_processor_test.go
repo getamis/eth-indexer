@@ -88,8 +88,9 @@ var _ = Describe("Subscription Test", func() {
 		}
 		// Insert subscription
 		subStore := subsStore.NewWithDB(db)
-		err := subStore.BatchInsert(subs)
+		duplicated, err := subStore.BatchInsert(subs)
 		Expect(err).Should(BeNil())
+		Expect(len(duplicated)).Should(Equal(0))
 
 		// Insert ERC20 total balance
 		err = subStore.InsertTotalBalance(&model.TotalBalance{

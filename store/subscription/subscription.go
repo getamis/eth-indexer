@@ -19,14 +19,19 @@ package subscription
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 
 	"github.com/getamis/eth-indexer/model"
 )
 
+const (
+	ErrCodeDuplicateKey uint16 = 1062
+)
+
 //go:generate mockery -name Store
 type Store interface {
-	BatchInsert(subs []*model.Subscription) error
+	BatchInsert(subs []*model.Subscription) ([]common.Address, error)
 	BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error
 	Find(blockNumber int64) (result []*model.Subscription, err error)
 	// FindOldSubscriptions find old subscriptions by addresses
@@ -50,7 +55,7 @@ func NewWithDB(db *gorm.DB) Store {
 	}
 }
 
-func (t *store) BatchInsert(subs []*model.Subscription) (err error) {
+func (t *store) BatchInsert(subs []*model.Subscription) (duplicated []common.Address, err error) {
 	dbTx := t.db.Begin()
 	defer func() {
 		if err != nil {
@@ -65,10 +70,15 @@ func (t *store) BatchInsert(subs []*model.Subscription) (err error) {
 	for _, sub := range subs {
 		err := dbTx.Create(sub).Error
 		if err != nil {
-			return err
+			mysqlErr, ok := err.(*mysql.MySQLError)
+			if ok && mysqlErr.Number == ErrCodeDuplicateKey {
+				duplicated = append(duplicated, common.BytesToAddress(sub.Address))
+			} else {
+				return duplicated, err
+			}
 		}
 	}
-	return nil
+	return duplicated, nil
 }
 
 func (t *store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error {
