@@ -29,6 +29,12 @@ var (
 	ETHAddress = common.BytesToAddress([]byte("ETH"))
 	// ETHBytes represents ether type in bytes array type
 	ETHBytes = ETHAddress.Bytes()
+	// RewardToMiner represents a constant at from field in transfer event
+	RewardToMiner = common.BytesToAddress([]byte("MINER REWARD"))
+	// RewardToUncle represents a constant at from field in transfer event
+	RewardToUncle = common.BytesToAddress([]byte("UNCLE REWARD"))
+	// EmptyAddress represents a empty address
+	EmptyAddress = common.Address{}
 )
 
 // Header represents the header of a block

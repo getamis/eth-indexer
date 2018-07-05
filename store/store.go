@@ -51,12 +51,6 @@ const (
 	ModeForceSync
 )
 
-var (
-	RewardToMiner = common.StringToAddress("MINER REWARD")
-	RewardToUncle = common.StringToAddress("UNCLE REWARD")
-	EmptyAddress  = gethCommon.HexToAddress("0x")
-)
-
 //go:generate mockery -name Manager
 
 // Manager is a wrapper interface to insert block, receipt and states quickly
@@ -189,7 +183,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	accountStore := account.NewWithDB(dbTx)
 	subsStore := subscription.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
-	txsFee := make(map[gethCommon.Hash]*big.Int)
+	txPrices := make(map[gethCommon.Hash]*big.Int)
 	totalTxsFee := new(big.Int)
 
 	// Insert blocks
@@ -210,7 +204,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		if err != nil {
 			return err
 		}
-		txsFee[t.Hash()] = t.GasPrice()
+		txPrices[t.Hash()] = t.GasPrice()
 	}
 
 	var events []*model.Transfer
@@ -237,29 +231,29 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 			return err
 		}
 		events = append(events, es...)
-		totalTxsFee.Add(totalTxsFee, new(big.Int).Mul(txsFee[receipt.TxHash], new(big.Int).SetUint64(receipt.GasUsed)))
+		totalTxsFee.Add(totalTxsFee, new(big.Int).Mul(txPrices[receipt.TxHash], new(big.Int).SetUint64(receipt.GasUsed)))
 	}
 
 	minerReward, unclesReward := common.AccumulateRewards(block.Header(), block.Uncles())
-	//insert uncle reward
+	// insert uncle reward
 	for i, u := range block.Uncles() {
 		events = append(events, &model.Transfer{
 			Address:     model.ETHBytes,
 			BlockNumber: u.Number.Int64(),
 			TxHash:      u.Hash().Bytes(),
-			From:        RewardToUncle.Bytes(),
+			From:        model.RewardToUncle.Bytes(),
 			To:          u.Coinbase.Bytes(),
 			Value:       unclesReward[i].String(),
 		})
 	}
 
 	// insert miner reward
-	if !bytes.Equal(block.Coinbase().Bytes(), EmptyAddress.Bytes()) {
+	if !bytes.Equal(block.Coinbase().Bytes(), model.EmptyAddress.Bytes()) {
 		events = append(events, &model.Transfer{
 			Address:     model.ETHBytes,
 			BlockNumber: block.Number().Int64(),
 			TxHash:      block.Hash().Bytes(),
-			From:        RewardToMiner.Bytes(),
+			From:        model.RewardToMiner.Bytes(),
 			To:          block.Coinbase().Bytes(),
 			Value:       minerReward.Add(minerReward, totalTxsFee).String(),
 		})

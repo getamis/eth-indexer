@@ -50,14 +50,6 @@ func AddressHex(address common.Address) string {
 	return Hex(address.Hex())
 }
 
-func StringToAddress(s string) common.Address { return BytesToAddress([]byte(s)) }
-
-func BytesToAddress(b []byte) common.Address {
-	var a common.Address
-	a.SetBytes(b)
-	return a
-}
-
 // BytesToHex returns a hex representation (lower-case string without '0x') of a byte array
 func BytesToHex(data []byte) string {
 	return Hex(hexutil.Encode(data))
@@ -211,7 +203,7 @@ var (
 	big32 = big.NewInt(32)
 )
 
-// AccumulateRewards credits the coinbase of the given block with te mining
+// AccumulateRewards credits the coinbase of the given block with the mining
 // reward. The total reward consists of the static block reward and rewards for
 // included uncles. The coinbase of each uncle block is also rewarded.
 //
