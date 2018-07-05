@@ -142,7 +142,7 @@ func (db *contractDB) GetState(addr ethCommon.Address, key ethCommon.Hash) ethCo
 	return ethCommon.Hash{}
 }
 
-func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address ethCommon.Address, blockNr int64) (*decimal.Decimal, *big.Int, error) {
+func (srv *serviceManager) GetERC20BalanceFromStorage(ctx context.Context, contractAddress, address ethCommon.Address, blockNr int64) (*decimal.Decimal, *big.Int, error) {
 	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
 	// Find contract code
 	erc20, err := srv.FindERC20(contractAddress)

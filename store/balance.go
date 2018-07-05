@@ -22,30 +22,16 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/sirius/log"
+	"github.com/shopspring/decimal"
 )
 
 var ErrInvalidBalance = errors.New("invalid balance")
 
 func (srv *serviceManager) GetBalance(ctx context.Context, address gethCommon.Address, blockNr int64) (balance *big.Int, blockNumber *big.Int, err error) {
 	logger := log.New("addr", address.Hex(), "number", blockNr)
-	// Find header
-	var hdr *model.Header
-	if common.IsLatestBlock(blockNr) {
-		hdr, err = srv.FindLatestBlock()
-	} else {
-		hdr, err = srv.FindBlockByNumber(blockNr)
-	}
-	if err != nil {
-		logger.Error("Failed to find header for block", "err", err)
-		return nil, nil, err
-	}
-	blockNumber = big.NewInt(hdr.Number)
-
-	// Find account
-	account, err := srv.FindAccount(model.ETHAddress, address, hdr.Number)
+	account, err := srv.FindAccount(model.ETHAddress, address, blockNr)
 	if err != nil {
 		logger.Error("Failed to find account", "err", err)
 		return nil, nil, err
@@ -56,6 +42,31 @@ func (srv *serviceManager) GetBalance(ctx context.Context, address gethCommon.Ad
 		logger.Error("Failed to covert balance", "balance", account.Balance)
 		return nil, nil, ErrInvalidBalance
 	}
-
+	blockNumber = big.NewInt(blockNr)
 	return
+}
+
+func (srv *serviceManager) GetERC20Balance(ctx context.Context, contractAddress, address gethCommon.Address, blockNr int64) (*decimal.Decimal, *big.Int, error) {
+	logger := log.New("contractAddr", contractAddress.Hex(), "addr", address.Hex(), "number", blockNr)
+	// Find contract code
+	erc20, err := srv.FindERC20(contractAddress)
+	if err != nil {
+		logger.Error("Failed to find erc20", "err", err)
+		return nil, nil, err
+	}
+
+	account, err := srv.FindAccount(contractAddress, address, blockNr)
+	if err != nil {
+		logger.Error("Failed to find account", "err", err)
+		return nil, nil, err
+	}
+
+	var ok bool
+	balance, ok := new(big.Int).SetString(account.Balance, 10)
+	if !ok {
+		logger.Error("Failed to covert balance", "balance", account.Balance)
+		return nil, nil, ErrInvalidBalance
+	}
+	result := decimal.NewFromBigInt(balance, -int32(erc20.Decimals))
+	return &result, big.NewInt(blockNr), nil
 }
