@@ -29,7 +29,8 @@ type Store interface {
 	BatchInsert(subs []*model.Subscription) error
 	BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error
 	Find(blockNumber int64) (result []*model.Subscription, err error)
-	FindByAddresses(addrs [][]byte) (result []*model.Subscription, err error)
+	// FindOldSubscriptions find old subscriptions by addresses
+	FindOldSubscriptions(addrs [][]byte) (result []*model.Subscription, err error)
 	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
 
 	// Total balance
@@ -82,12 +83,12 @@ func (t *store) Find(blockNumber int64) (result []*model.Subscription, err error
 	return
 }
 
-func (t *store) FindByAddresses(addrs [][]byte) (result []*model.Subscription, err error) {
+func (t *store) FindOldSubscriptions(addrs [][]byte) (result []*model.Subscription, err error) {
 	if len(addrs) == 0 {
 		return []*model.Subscription{}, nil
 	}
 
-	err = t.db.Where("address in (?)", addrs).Find(&result).Error
+	err = t.db.Where("address in (?) AND block_number > 0", addrs).Find(&result).Error
 	if err != nil {
 		return
 	}

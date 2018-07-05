@@ -344,7 +344,7 @@ var _ = Describe("Subscription Test", func() {
 		Expect(et2_101.Balance).Should(Equal("498"))
 
 		// Verify new subscriptions' block numbers updated
-		res, err := subStore.FindByAddresses([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
+		res, err := subStore.FindOldSubscriptions([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
 		Expect(err).Should(BeNil())
 		Expect(res[0].BlockNumber).Should(Equal(int64(90)))
 		Expect(res[1].BlockNumber).Should(Equal(int64(100)))
