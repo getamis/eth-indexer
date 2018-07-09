@@ -48,7 +48,7 @@ type ServiceManager interface {
 	FindERC20(address common.Address) (result *model.ERC20, err error)
 
 	// Subscription store
-	AddSubscriptions(group int64, addrs []common.Address) error
+	AddSubscriptions(group int64, addrs []common.Address) (duplicated []common.Address, err error)
 	GetSubscriptions(group int64, page, limit uint64) (result []*model.Subscription, total uint64, err error)
 
 	// GetBalance returns the amount of wei for the given address in the state of the
@@ -89,9 +89,9 @@ func NewServiceManager(db *gorm.DB) ServiceManager {
 	}
 }
 
-func (srv *serviceManager) AddSubscriptions(group int64, addrs []common.Address) (err error) {
+func (srv *serviceManager) AddSubscriptions(group int64, addrs []common.Address) (duplicated []common.Address, err error) {
 	if len(addrs) == 0 {
-		return nil
+		return duplicated, nil
 	}
 	subs := make([]*model.Subscription, len(addrs))
 	for i, addr := range addrs {
