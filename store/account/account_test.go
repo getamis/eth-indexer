@@ -19,6 +19,7 @@ package account
 import (
 	"os"
 	"reflect"
+	"strconv"
 	"testing"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -38,11 +39,15 @@ func makeERC20(hexAddr string) *model.ERC20 {
 }
 
 func makeAccount(contractAddress []byte, blockNum int64, hexAddr string) *model.Account {
+	return makeAccountWithBalance(contractAddress, blockNum, hexAddr, "987654321098765432109876543210")
+}
+
+func makeAccountWithBalance(contractAddress []byte, blockNum int64, hexAddr, balance string) *model.Account {
 	return &model.Account{
 		ContractAddress: contractAddress,
 		BlockNumber:     blockNum,
 		Address:         common.HexToBytes(hexAddr),
-		Balance:         "987654321098765432109876543210",
+		Balance:         balance,
 	}
 }
 
@@ -207,6 +212,79 @@ var _ = Describe("Account Database Test", func() {
 			// non-existent account address
 			account, err = store.FindAccount(addr, gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
+		})
+	})
+
+	Context("FindLatestAccounts()", func() {
+		It("finds the eth records with highest block numbers", func() {
+			store := NewWithDB(db)
+			hexAddr0 := "0xF287a379e6caCa6732E50b88D23c290aA990A892" // does not exist in DB
+			hexAddr1 := "0xA287a379e6caCa6732E50b88D23c290aA990A892"
+			hexAddr2 := "0xC487a379e6caCa6732E50b88D23c290aA990A892"
+			hexAddr3 := "0xD487a379e6caCa6732E50b88D23c290aA990A892"
+
+			blockNumber := int64(1000300)
+			var expected []model.Account
+			for _, hexAddr := range []string{hexAddr1, hexAddr2, hexAddr3} {
+				var acct *model.Account
+				for i := 0; i < 3; i++ {
+					acct = makeAccountWithBalance(model.ETHBytes, blockNumber+int64(i), hexAddr, strconv.FormatInt(blockNumber, 10))
+					err := store.InsertAccount(acct)
+					Expect(err).Should(Succeed())
+				}
+				// the last one is with the highest block number
+				expected = append(expected, *acct)
+				blockNumber++
+			}
+
+			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3)}
+			// should return accounts at latest block number
+			accounts, err := store.FindLatestAccounts(model.ETHAddress, addrs)
+			Expect(err).Should(Succeed())
+			Expect(len(accounts)).Should(Equal(3))
+			for i, acct := range accounts {
+				acct.ContractAddress = model.ETHBytes
+				Expect(*acct).Should(Equal(expected[i]))
+			}
+		})
+
+		It("finds the erc20 records with highest block numbers", func() {
+			store := NewWithDB(db)
+
+			// Insert code to create table
+			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
+			tokenAddr := gethCommon.HexToAddress(hexAddr)
+			erc20 := makeERC20(hexAddr)
+			err := store.InsertERC20(erc20)
+			Expect(err).Should(Succeed())
+
+			hexAddr0 := "0xF287a379e6caCa6732E50b88D23c290aA990A892" // does not exist in DB
+			hexAddr1 := "0xA287a379e6caCa6732E50b88D23c290aA990A892"
+			hexAddr2 := "0xC487a379e6caCa6732E50b88D23c290aA990A892"
+			hexAddr3 := "0xD487a379e6caCa6732E50b88D23c290aA990A892"
+
+			blockNumber := int64(1000300)
+			var expected []model.Account
+			for _, hexAddr := range []string{hexAddr1, hexAddr2, hexAddr3} {
+				var acct *model.Account
+				for i := 0; i < 3; i++ {
+					acct = makeAccountWithBalance(erc20.Address, blockNumber+int64(i), hexAddr, strconv.FormatInt(blockNumber, 10))
+					err := store.InsertAccount(acct)
+					Expect(err).Should(Succeed())
+				}
+				// the last one is with the highest block number
+				expected = append(expected, *acct)
+				blockNumber++
+			}
+			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3)}
+			// should return accounts at latest block number
+			accounts, err := store.FindLatestAccounts(tokenAddr, addrs)
+			Expect(err).Should(Succeed())
+			Expect(len(accounts)).Should(Equal(3))
+			for i, acct := range accounts {
+				acct.ContractAddress = erc20.Address
+				Expect(*acct).Should(Equal(expected[i]))
+			}
 		})
 	})
 

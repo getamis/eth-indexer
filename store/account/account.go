@@ -17,6 +17,8 @@
 package account
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/jinzhu/gorm"
@@ -39,6 +41,7 @@ type Store interface {
 	// Accounts
 	InsertAccount(account *model.Account) error
 	FindAccount(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Account, err error)
+	FindLatestAccounts(contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error)
 	DeleteAccounts(contractAddress common.Address, from, to int64) error
 
 	// Transfer events
@@ -140,6 +143,29 @@ func (t *store) FindAccount(contractAddress common.Address, address common.Addre
 		err = t.db.Where("address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
 	} else {
 		err = t.db.Where("address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
+	}
+	return
+}
+
+func (t *store) FindLatestAccounts(contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error) {
+	if len(addrs) == 0 {
+		return []*model.Account{}, nil
+	}
+
+	acct := model.Account{
+		ContractAddress: contractAddress.Bytes(),
+	}
+	// The following query does not work because the select fields needs to also be in group by fields (ONLY_FULL_GROUP_BY mode)
+	// "select address, balance, MAX(block_number) as block_number from %s where address in (?) group by address"
+	// and the following query
+	// "select address, balance, MAX(block_number) as block_number from %s where address in (?) group by (address, balance)"
+	// is not what we want, because (address, balance) isn't unique
+	query := fmt.Sprintf(
+		"select * from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
+		acct.TableName(), acct.TableName())
+	err = t.db.Raw(query, addrs).Scan(&result).Error
+	if err != nil {
+		return
 	}
 	return
 }
