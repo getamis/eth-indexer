@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
+	common2 "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
@@ -142,7 +143,6 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	}
 
 	// Insert events if it's a subscribed account
-	addrDiff := make(map[common.Address]map[common.Address]*big.Int)
 	feeDiff := make(map[common.Address]*big.Int)
 	for _, e := range events {
 		_, hasFrom := allSubs[common.BytesToAddress(e.From)]
@@ -157,19 +157,12 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			return err
 		}
 		contractAddr := common.BytesToAddress(e.Address)
-		if addrDiff[contractAddr] == nil {
-			addrDiff[contractAddr] = make(map[common.Address]*big.Int)
+		if contractsAddrs[contractAddr] == nil {
 			contractsAddrs[contractAddr] = make(map[common.Address]struct{})
 		}
-		d, _ := new(big.Int).SetString(e.Value, 10)
 		if hasFrom {
 			from := common.BytesToAddress(e.From)
-			if addrDiff[contractAddr][from] == nil {
-				addrDiff[contractAddr][from] = new(big.Int).Neg(d)
-				contractsAddrs[contractAddr][from] = struct{}{}
-			} else {
-				addrDiff[contractAddr][from] = new(big.Int).Add(addrDiff[contractAddr][from], new(big.Int).Neg(d))
-			}
+			contractsAddrs[contractAddr][from] = struct{}{}
 
 			// Add fee if it's a ETH event
 			if f, ok := fees[common.BytesToHash(e.TxHash)]; ok && bytes.Equal(e.Address, model.ETHBytes) {
@@ -182,12 +175,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 		if hasTo {
 			to := common.BytesToAddress(e.To)
-			if addrDiff[contractAddr][to] == nil {
-				addrDiff[contractAddr][to] = d
-				contractsAddrs[contractAddr][to] = struct{}{}
-			} else {
-				addrDiff[contractAddr][to] = new(big.Int).Add(addrDiff[contractAddr][to], d)
-			}
+			contractsAddrs[contractAddr][to] = struct{}{}
 		}
 	}
 
@@ -198,8 +186,16 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		return err
 	}
 
-	// Insert balance if it's a subscribed account
+	// Insert balance and calculate diff to total balances
+	addrDiff := make(map[common.Address]map[common.Address]*big.Int)
+	allAddrs := append(addrs, newAddrs...)
 	for contractAddr, addrs := range results {
+		// Get last recorded balance for these accounts
+		latestBalances, err := s.getLatestBalances(contractAddr, allAddrs)
+		if err != nil {
+			s.logger.Error("Failed to get previous balances", "len", len(allAddrs), "err", err)
+			return err
+		}
 		for addr, balance := range addrs {
 			b := &model.Account{
 				ContractAddress: contractAddr.Bytes(),
@@ -213,15 +209,30 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 				return err
 			}
 
-			// If addr is a new subscription, add its balance to addrDiff for totalBalances.
-			// Note that we overwrite the original value if it exists, because the diff to
-			// totalBalances for a new subscription is its current balance.
-			if newSubs[addr] != nil {
-				if addrDiff[contractAddr] == nil {
-					addrDiff[contractAddr] = make(map[common.Address]*big.Int)
-				}
-				addrDiff[contractAddr][addr] = balance
+			if addrDiff[contractAddr] == nil {
+				addrDiff[contractAddr] = make(map[common.Address]*big.Int)
 			}
+			acct := latestBalances[addr]
+			diff := new(big.Int)
+
+			// If addr is a new subscription, add its balance to addrDiff for totalBalances.
+			if newSubs[addr] != nil {
+				// double check we don't have its previous balance
+				if acct != nil {
+					s.logger.Error("New subscription had previous balance", "block", acct.BlockNumber, "addr", addr.Hex(), "balance", acct.Balance)
+					return common2.ErrHasPrevBalance
+				}
+				diff = balance
+			} else {
+				// make sure we have an old balance
+				if acct == nil {
+					s.logger.Error("Old subscription missing previous balance", "contractAddr", contractAddr.Hex(), "addr", addr.Hex())
+					return common2.ErrMissingPrevBalance
+				}
+				prevBalance, _ := new(big.Int).SetString(acct.Balance, 10)
+				diff.Sub(balance, prevBalance)
+			}
+			addrDiff[contractAddr][addr] = diff
 		}
 	}
 
@@ -264,11 +275,6 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 				} else {
 					totalFees[sub.Group] = new(big.Int).Add(f, totalFees[sub.Group])
 				}
-
-				// Subtract tx fee from total balance if it's not a new subscriptions.
-				if newSubs[addr] == nil {
-					totalBalances[sub.Group][token] = new(big.Int).Sub(totalBalances[sub.Group][token], f)
-				}
 			}
 		}
 	}
@@ -293,4 +299,18 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 	}
 	return nil
+}
+
+// Get last recorded balance data for these accounts
+func (s *transferProcessor) getLatestBalances(contractAddr common.Address, addrs [][]byte) (map[common.Address]*model.Account, error) {
+	balances, err := s.accountStore.FindLatestAccounts(contractAddr, addrs)
+	if err != nil {
+		s.logger.Error("Failed to get previous balances", "len", len(addrs), "err", err)
+		return nil, err
+	}
+	lastBalances := make(map[common.Address]*model.Account)
+	for _, acct := range balances {
+		lastBalances[common.BytesToAddress(acct.Address)] = acct
+	}
+	return lastBalances, nil
 }
