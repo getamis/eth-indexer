@@ -23,6 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/model"
@@ -194,4 +195,41 @@ func EthTransferEvent(b *types.Block, log *types.TransferLog) *model.Transfer {
 		To:          log.To.Bytes(),
 		Value:       log.Value.String(),
 	}
+}
+
+// Some weird constants to avoid constant memory allocs for them.
+var (
+	big8  = big.NewInt(8)
+	big32 = big.NewInt(32)
+)
+
+// AccumulateRewards credits the coinbase of the given block with the mining
+// reward. The total reward consists of the static block reward and rewards for
+// included uncles. The coinbase of each uncle block is also rewarded.
+//
+// **COPIED FROM**: github.com/ethereum/go-ethereum/consensus/ethash/consensus.go#accumulateRewards()
+func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerReward *big.Int, uncleReward []*big.Int) {
+	// Select the correct block reward based on chain progression
+	blockReward := ethash.FrontierBlockReward
+	if params.MainnetChainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
+		blockReward = ethash.ByzantiumBlockReward
+	}
+
+	// Accumulate the rewards for the miner and any included uncles
+	reward := new(big.Int).Set(blockReward)
+	r := new(big.Int)
+	uncleReward = make([]*big.Int, len(uncles))
+	for i, uncle := range uncles {
+		r.Add(uncle.Number, big8)
+		r.Sub(r, header.Number)
+		r.Mul(r, blockReward)
+		r.Div(r, big8)
+		uncleReward[i] = new(big.Int).Set(r)
+
+		r.Div(blockReward, big32)
+		reward.Add(reward, r)
+	}
+
+	minerReward = reward
+	return
 }

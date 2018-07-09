@@ -17,6 +17,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"math/big"
 
@@ -182,6 +183,8 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	accountStore := account.NewWithDB(dbTx)
 	subsStore := subscription.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
+	txPrices := make(map[gethCommon.Hash]*big.Int)
+	totalTxsFee := new(big.Int)
 
 	// Insert blocks
 	err = headerStore.Insert(common.Header(block))
@@ -201,6 +204,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		if err != nil {
 			return err
 		}
+		txPrices[t.Hash()] = t.GasPrice()
 	}
 
 	var events []*model.Transfer
@@ -227,6 +231,32 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 			return err
 		}
 		events = append(events, es...)
+		totalTxsFee.Add(totalTxsFee, new(big.Int).Mul(txPrices[receipt.TxHash], new(big.Int).SetUint64(receipt.GasUsed)))
+	}
+
+	minerReward, unclesReward := common.AccumulateRewards(block.Header(), block.Uncles())
+	// insert uncle reward
+	for i, u := range block.Uncles() {
+		events = append(events, &model.Transfer{
+			Address:     model.ETHBytes,
+			BlockNumber: u.Number.Int64(),
+			TxHash:      u.Hash().Bytes(),
+			From:        model.RewardToUncle.Bytes(),
+			To:          u.Coinbase.Bytes(),
+			Value:       unclesReward[i].String(),
+		})
+	}
+
+	// insert miner reward
+	if !bytes.Equal(block.Coinbase().Bytes(), model.EmptyAddress.Bytes()) {
+		events = append(events, &model.Transfer{
+			Address:     model.ETHBytes,
+			BlockNumber: block.Number().Int64(),
+			TxHash:      block.Hash().Bytes(),
+			From:        model.RewardToMiner.Bytes(),
+			To:          block.Coinbase().Bytes(),
+			Value:       minerReward.Add(minerReward, totalTxsFee).String(),
+		})
 	}
 
 	// Insert erc20 balance & events

@@ -72,6 +72,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	// Update total balance for new subscriptions, map[group][token]balance
 	totalBalances := make(map[int64]map[common.Address]*big.Int)
 	totalFees := make(map[int64]*big.Int)
+	totalMinerReward := make(map[int64]*big.Int)
+	totalUncleReward := make(map[int64]*big.Int)
 
 	// Collect modified addresses
 	seenAddrs := make(map[common.Address]struct{})
@@ -144,6 +146,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	// Insert events if it's a subscribed account
 	addrDiff := make(map[common.Address]map[common.Address]*big.Int)
 	feeDiff := make(map[common.Address]*big.Int)
+	minerRewardDiff := make(map[common.Address]*big.Int)
+	uncleRewardDiff := make(map[common.Address]*big.Int)
 	for _, e := range events {
 		_, hasFrom := allSubs[common.BytesToAddress(e.From)]
 		_, hasTo := allSubs[common.BytesToAddress(e.To)]
@@ -182,7 +186,22 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 		if hasTo {
 			to := common.BytesToAddress(e.To)
-			if addrDiff[contractAddr][to] == nil {
+			if bytes.Equal(e.From, model.RewardToMiner.Bytes()) && bytes.Equal(e.Address, model.ETHBytes) {
+				// Record miner reward
+				if minerRewardDiff[to] == nil {
+					minerRewardDiff[to] = new(big.Int).Set(d)
+				} else {
+					minerRewardDiff[to] = new(big.Int).Add(minerRewardDiff[to], d)
+				}
+			} else if bytes.Equal(e.From, model.RewardToUncle.Bytes()) && bytes.Equal(e.Address, model.ETHBytes) {
+				// Record uncle reward
+				if uncleRewardDiff[to] == nil {
+					uncleRewardDiff[to] = new(big.Int).Set(d)
+				} else {
+					uncleRewardDiff[to] = new(big.Int).Add(uncleRewardDiff[to], d)
+				}
+			} else if addrDiff[contractAddr][to] == nil {
+				// Init transfer balance
 				addrDiff[contractAddr][to] = d
 				contractsAddrs[contractAddr][to] = struct{}{}
 			} else {
@@ -270,21 +289,53 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 					totalBalances[sub.Group][token] = new(big.Int).Sub(totalBalances[sub.Group][token], f)
 				}
 			}
+
+			// add miner reward
+			if mr, ok := minerRewardDiff[addr]; ok && token == model.ETHAddress {
+				if totalMinerReward[sub.Group] == nil {
+					totalMinerReward[sub.Group] = new(big.Int).Set(mr)
+				} else {
+					totalMinerReward[sub.Group] = new(big.Int).Add(mr, totalMinerReward[sub.Group])
+				}
+				if newSubs[addr] == nil {
+					totalBalances[sub.Group][token] = new(big.Int).Add(totalBalances[sub.Group][token], mr)
+				}
+			}
+
+			// add uncle reward
+			if ur, ok := uncleRewardDiff[addr]; ok && token == model.ETHAddress {
+				if totalUncleReward[sub.Group] == nil {
+					totalUncleReward[sub.Group] = new(big.Int).Set(ur)
+				} else {
+					totalUncleReward[sub.Group] = new(big.Int).Add(ur, totalUncleReward[sub.Group])
+				}
+				if newSubs[addr] == nil {
+					totalBalances[sub.Group][token] = new(big.Int).Add(totalBalances[sub.Group][token], ur)
+				}
+			}
 		}
 	}
 
 	for group, addrs := range totalBalances {
 		for token, d := range addrs {
 			tb := &model.TotalBalance{
-				Token:       token.Bytes(),
-				BlockNumber: s.blockNumber,
-				Group:       group,
-				TxFee:       "0",
-				Balance:     d.String(),
+				Token:        token.Bytes(),
+				BlockNumber:  s.blockNumber,
+				Group:        group,
+				TxFee:        "0",
+				Balance:      d.String(),
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 
 			if f, ok := totalFees[group]; ok && token == model.ETHAddress {
 				tb.TxFee = f.String()
+			}
+			if mr, ok := totalMinerReward[group]; ok {
+				tb.MinerReward = mr.String()
+			}
+			if ur, ok := totalUncleReward[group]; ok {
+				tb.UnclesReward = ur.String()
 			}
 			err = s.subStore.InsertTotalBalance(tb)
 			if err != nil {

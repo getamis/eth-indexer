@@ -41,11 +41,12 @@ var (
 
 var _ = Describe("Manager Test", func() {
 	var (
-		blocks   []*types.Block
-		receipts [][]*types.Receipt
-		dumps    []*state.DirtyDump
-		events   [][]*types.TransferLog
-		manager  Manager
+		blocks    []*types.Block
+		receipts  [][]*types.Receipt
+		dumps     []*state.DirtyDump
+		events    [][]*types.TransferLog
+		signedTxs [][]*types.Transaction
+		manager   Manager
 	)
 
 	newErc20Addr := gethCommon.HexToAddress("1234567891")
@@ -85,18 +86,27 @@ var _ = Describe("Manager Test", func() {
 
 	BeforeEach(func() {
 		// Init initial states
+		signedTxs = [][]*types.Transaction{
+			{
+				signTransaction(types.NewTransaction(0, unknownRecipientAddr, big.NewInt(10000), 9000000, big.NewInt(9000000), []byte("test payload")), acc0Key),
+			},
+			{
+				signTransaction(types.NewTransaction(1, unknownRecipientAddr, big.NewInt(10000), 9000000, big.NewInt(9000000), []byte("test payload")), acc0Key),
+			},
+		}
 		blocks = []*types.Block{
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-			}),
+			}).WithBody(signedTxs[0], nil),
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(101),
-			}),
+			}).WithBody(signedTxs[1], nil),
 		}
 		receipts = [][]*types.Receipt{
 			{
 				&types.Receipt{
-					TxHash: gethCommon.HexToHash("0x01"),
+					TxHash:  signedTxs[0][0].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
 					Logs: []*types.Log{
 						{
 							Address: gethCommon.HexToAddress("0x000001"),
@@ -123,7 +133,8 @@ var _ = Describe("Manager Test", func() {
 			},
 			{
 				&types.Receipt{
-					TxHash: gethCommon.HexToHash("0x02"),
+					TxHash:  signedTxs[1][0].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
 				},
 			},
 		}
@@ -245,13 +256,17 @@ var _ = Describe("Manager Test", func() {
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
 					ReceiptHash: gethCommon.HexToHash("0x02"),
-				}),
+				}).WithBody(signedTxs[1], nil),
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(101),
 					ReceiptHash: gethCommon.HexToHash("0x03"),
-				}),
+				}).WithBody(signedTxs[0], nil),
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, receipts, dumps, events, ModeReOrg)
+			newReceipts := [][]*types.Receipt{
+				receipts[1],
+				receipts[0],
+			}
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			header, err := manager.GetHeaderByNumber(100)
