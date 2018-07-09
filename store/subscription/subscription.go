@@ -19,9 +19,9 @@ package subscription
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/sirius/log"
-	"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 
+	idxCommon "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 )
 
@@ -68,13 +68,12 @@ func (t *store) BatchInsert(subs []*model.Subscription) (duplicated []common.Add
 		}
 	}()
 	for _, sub := range subs {
-		err := dbTx.Create(sub).Error
-		if err != nil {
-			mysqlErr, ok := err.(*mysql.MySQLError)
-			if ok && mysqlErr.Number == ErrCodeDuplicateKey {
+		createErr := dbTx.Create(sub).Error
+		if createErr != nil {
+			if idxCommon.DuplicateError(createErr) {
 				duplicated = append(duplicated, common.BytesToAddress(sub.Address))
 			} else {
-				return duplicated, err
+				return nil, createErr
 			}
 		}
 	}
