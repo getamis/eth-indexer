@@ -224,7 +224,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr3 := "0xD487a379e6caCa6732E50b88D23c290aA990A892"
 
 			blockNumber := int64(1000300)
-			var expected []model.Account
+			var expected []*model.Account
 			for _, hexAddr := range []string{hexAddr1, hexAddr2, hexAddr3} {
 				var acct *model.Account
 				for i := 0; i < 3; i++ {
@@ -233,18 +233,18 @@ var _ = Describe("Account Database Test", func() {
 					Expect(err).Should(Succeed())
 				}
 				// the last one is with the highest block number
-				expected = append(expected, *acct)
+				expected = append(expected, acct)
 				blockNumber++
 			}
 
-			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3)}
+			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3), common.HexToBytes(hexAddr3)}
 			// should return accounts at latest block number
 			accounts, err := store.FindLatestAccounts(model.ETHAddress, addrs)
 			Expect(err).Should(Succeed())
 			Expect(len(accounts)).Should(Equal(3))
 			for i, acct := range accounts {
 				acct.ContractAddress = model.ETHBytes
-				Expect(*acct).Should(Equal(expected[i]))
+				Expect(acct).Should(Equal(expected[i]))
 			}
 		})
 
@@ -264,7 +264,7 @@ var _ = Describe("Account Database Test", func() {
 			hexAddr3 := "0xD487a379e6caCa6732E50b88D23c290aA990A892"
 
 			blockNumber := int64(1000300)
-			var expected []model.Account
+			var expected []*model.Account
 			for _, hexAddr := range []string{hexAddr1, hexAddr2, hexAddr3} {
 				var acct *model.Account
 				for i := 0; i < 3; i++ {
@@ -273,17 +273,17 @@ var _ = Describe("Account Database Test", func() {
 					Expect(err).Should(Succeed())
 				}
 				// the last one is with the highest block number
-				expected = append(expected, *acct)
+				expected = append(expected, acct)
 				blockNumber++
 			}
-			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3)}
+			addrs := [][]byte{common.HexToBytes(hexAddr0), common.HexToBytes(hexAddr1), common.HexToBytes(hexAddr2), common.HexToBytes(hexAddr3), common.HexToBytes(hexAddr3)}
 			// should return accounts at latest block number
 			accounts, err := store.FindLatestAccounts(tokenAddr, addrs)
 			Expect(err).Should(Succeed())
 			Expect(len(accounts)).Should(Equal(3))
 			for i, acct := range accounts {
 				acct.ContractAddress = erc20.Address
-				Expect(*acct).Should(Equal(expected[i]))
+				Expect(acct).Should(Equal(expected[i]))
 			}
 		})
 	})
