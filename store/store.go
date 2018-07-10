@@ -46,9 +46,6 @@ const (
 	// ModeSync represents update blocks by ethereum sync
 	// Stop if any errors occur, but return nil error if it's a duplicate error
 	ModeSync
-	// ModeForceSync represents update erc20 storage data forcibly
-	// Update all erc20 storage data even if duplicate errors occur.
-	ModeForceSync
 )
 
 //go:generate mockery -name Manager
@@ -142,12 +139,10 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 		}
 	}
 
-	// In ModeForceSync, ignore the duplicate error and continue to process it.
-	ignoreDupErr := (mode == ModeForceSync)
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
 		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], dumps[i], events[i])
-		if ignoreDupErr && common.DuplicateError(err) {
+		if common.DuplicateError(err) {
 			err = nil
 		}
 

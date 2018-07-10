@@ -55,8 +55,7 @@ var (
 	dbPassword string
 
 	// flags for syncing
-	targetBlock int64
-	fromBlock   int64
+	fromBlock int64
 
 	// flags for profiling
 	profiling  bool
@@ -125,13 +124,9 @@ var ServerCmd = &cobra.Command{
 			}()
 		}
 
-		log.Info("Starting eth-indexer", "from", fromBlock, "target", targetBlock)
-		if targetBlock > 0 {
-			err = indexer.SyncToTarget(ctx, fromBlock, targetBlock)
-		} else {
-			ch := make(chan *types.Header)
-			err = indexer.Listen(ctx, ch, fromBlock)
-		}
+		log.Info("Starting eth-indexer", "from", fromBlock)
+		ch := make(chan *types.Header)
+		err = indexer.Listen(ctx, ch, fromBlock)
 
 		// Ignore if listener is stopped by signal
 		if err == context.Canceled {
@@ -168,7 +163,6 @@ func init() {
 	ServerCmd.Flags().String(flags.DbPassword, "my-secret-pw", "The database password to login")
 
 	// Syncing related flags
-	ServerCmd.Flags().Int64(flags.SyncTargetBlock, 0, "The block number to sync to initially")
 	ServerCmd.Flags().Int64(flags.SyncFromBlock, 0, "The init block number to sync to initially")
 
 	// Profling flags
@@ -210,7 +204,6 @@ func assignVarFromViper() {
 	dbPassword = viper.GetString(flags.DbPassword)
 
 	// flags for syncing
-	targetBlock = viper.GetInt64(flags.SyncTargetBlock)
 	fromBlock = viper.GetInt64(flags.SyncFromBlock)
 
 	//flag for pprof

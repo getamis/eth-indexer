@@ -190,45 +190,6 @@ var _ = Describe("Indexer Test", func() {
 		})
 	})
 
-	Context("SyncToTarget()", func() {
-		targetBlock := int64(19)
-
-		It("sync to target (no sync before)", func() {
-			blocks := make([]*types.Block, 20)
-			tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
-			receipt := types.NewReceipt([]byte{}, false, 0)
-			for i := int64(1); i <= targetBlock; i++ {
-				block := types.NewBlock(
-					&types.Header{
-						Number:     big.NewInt(i),
-						Root:       common.HexToHash("1234567890" + strconv.Itoa(int(i))),
-						Difficulty: big.NewInt(1),
-					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
-				blocks[i] = block
-
-				parent := block.ParentHash().Bytes()
-
-				// Cannot get TD from DB, get it from etherem
-				if i == 1 {
-					mockStoreManager.On("GetTd", parent).Return(nil, gorm.ErrRecordNotFound).Once()
-					mockEthClient.On("GetTotalDifficulty", mock.Anything, block.ParentHash()).Return(big.NewInt(i), nil).Once()
-				} else {
-					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
-						i - 1, parent, strconv.Itoa(int(i))}, nil).Once()
-				}
-				mockStoreManager.On("InsertTd", block, big.NewInt(i+1)).Return(nil).Once()
-				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
-				mockEthClient.On("ModifiedAccountStatesByNumber", mock.Anything, uint64(i)).Return(nil, nil).Once()
-				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(types.Receipts{receipt}, nil).Once()
-				mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, []*state.DirtyDump{nilDirtyDump}, [][]*types.TransferLog{nilTransferLogs}, store.ModeForceSync).Return(nil).Once()
-			}
-
-			err := idx.SyncToTarget(context.Background(), 1, targetBlock)
-			Expect(err).Should(BeNil())
-		})
-	})
-
 	Context("Listen()", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		ch := make(chan *types.Header)

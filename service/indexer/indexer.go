@@ -94,23 +94,6 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 	return idx.manager.Init(idx.client)
 }
 
-// SyncToTarget syncs the blocks fromBlock to targetBlock. In this function, we are NOT checking reorg and inserting TD. We force to INSERT blocks.
-func (idx *indexer) SyncToTarget(ctx context.Context, fromBlock, targetBlock int64) error {
-	for i := fromBlock; i <= targetBlock; i++ {
-		block, err := idx.client.BlockByNumber(ctx, big.NewInt(i))
-		if err != nil {
-			log.Error("Failed to get block from ethereum", "number", i, "err", err)
-			return err
-		}
-		_, _, err = idx.insertBlocks(ctx, []*types.Block{block}, store.ModeForceSync)
-		if err != nil {
-			log.Error("Failed to update block atomically", "number", i, "err", err)
-			return err
-		}
-	}
-	return nil
-}
-
 func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

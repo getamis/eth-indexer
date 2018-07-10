@@ -314,30 +314,6 @@ var _ = Describe("Manager Test", func() {
 			Expect(header).Should(Equal(h))
 		})
 
-		It("force sync mode", func() {
-			// Create find new erc20
-			err := manager.InsertERC20(newErc20)
-			Expect(err).Should(BeNil())
-
-			// Reload manager
-			manager = NewManager(db)
-			err = manager.Init(nil)
-			Expect(err).Should(BeNil())
-
-			// Force update blocks
-			err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeForceSync)
-			Expect(err).Should(BeNil())
-
-			// Got blocks 0
-			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
-			header, err := manager.GetHeaderByNumber(100)
-			Expect(err).Should(BeNil())
-
-			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
-			Expect(err).Should(BeNil())
-			Expect(header).Should(Equal(h))
-		})
-
 		It("failed due to wrong signer", func() {
 			blocks[0] = types.NewBlock(
 				blocks[0].Header(), []*types.Transaction{
