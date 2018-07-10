@@ -28,16 +28,20 @@ const (
 )
 
 var (
-	// ErrWrongSigner returns if it's a wrong signer
+	// ErrWrongSigner is returned if it's a wrong signer
 	ErrWrongSigner = errors.New("wrong signer")
-	// ErrInconsistentRoot returns if the block and dump states have different root
+	// ErrInconsistentRoot is returned if the block and dump states have different root
 	ErrInconsistentRoot = errors.New("inconsistent root")
-	// ErrInconsistentStates returns if the number of blocks, dumps or recipents are different
+	// ErrInconsistentStates is returned if the number of blocks, dumps or receipts are different
 	ErrInconsistentStates = errors.New("inconsistent states")
 	// ErrInvalidTD is returned when a block has invalid TD
 	ErrInvalidTD = errors.New("invalid TD")
-	// ErrInvalidReceiptLog returns if it's a invalid receipt log
+	// ErrInvalidReceiptLog is returned if it's a invalid receipt log
 	ErrInvalidReceiptLog = errors.New("invalid receipt log")
+	// ErrHasPrevBalance is returned if an account has a previous balance when it's a new subscription
+	ErrHasPrevBalance = errors.New("missing previous balance")
+	// ErrMissingPrevBalance is returned if an account is missing previous balance when it's an old subscription
+	ErrMissingPrevBalance = errors.New("missing previous balance")
 )
 
 // DuplicateError checks whether it's a duplicate key error

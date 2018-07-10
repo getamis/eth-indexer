@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/account"
 	subsStore "github.com/getamis/eth-indexer/store/subscription"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -259,6 +260,24 @@ var _ = Describe("Subscription Test", func() {
 		manager = NewManager(db)
 
 		err = manager.InsertERC20(erc20)
+		Expect(err).Should(BeNil())
+
+		acctStore := account.NewWithDB(db)
+		// Insert previous ERC20 balance for the old subscriptions
+		err = acctStore.InsertAccount(&model.Account{
+			ContractAddress: erc20.Address,
+			BlockNumber:     99,
+			Address:         subs[0].Address,
+			Balance:         "2000",
+		})
+		Expect(err).Should(BeNil())
+		// Insert previous ether balance for the old subscriptions
+		err = acctStore.InsertAccount(&model.Account{
+			ContractAddress: model.ETHBytes,
+			BlockNumber:     99,
+			Address:         subs[0].Address,
+			Balance:         "1000",
+		})
 		Expect(err).Should(BeNil())
 
 		err = manager.Init(mockBalancer)

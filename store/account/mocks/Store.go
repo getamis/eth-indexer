@@ -128,6 +128,29 @@ func (_m *Store) FindERC20Storage(address common.Address, key common.Hash, block
 	return r0, r1
 }
 
+// FindLatestAccounts provides a mock function with given fields: contractAddress, addrs
+func (_m *Store) FindLatestAccounts(contractAddress common.Address, addrs [][]byte) ([]*model.Account, error) {
+	ret := _m.Called(contractAddress, addrs)
+
+	var r0 []*model.Account
+	if rf, ok := ret.Get(0).(func(common.Address, [][]byte) []*model.Account); ok {
+		r0 = rf(contractAddress, addrs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Account)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, [][]byte) error); ok {
+		r1 = rf(contractAddress, addrs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FindTransfer provides a mock function with given fields: contractAddress, address, blockNr
 func (_m *Store) FindTransfer(contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Transfer, error) {
 	_va := make([]interface{}, len(blockNr))
