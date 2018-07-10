@@ -154,11 +154,6 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 		if err != nil {
 			return
 		}
-
-		err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
-		if err != nil {
-			return
-		}
 	}
 	return
 }
@@ -262,42 +257,6 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	return nil
 }
 
-// updateERC20 updates erc20 storages. If 'ignoreDuplicateError' is true, ignore duplicate key error, and continue to process
-func (m *manager) updateERC20(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump, ignoreDuplicateError bool) error {
-	if dump.Accounts == nil {
-		dump.Accounts = make(map[string]state.DirtyDumpAccount)
-	}
-
-	// There is no erc20 storage updates
-	accountStore := account.NewWithDB(dbTx)
-	blockNumber := block.Number().Int64()
-
-	for erc20Addr, erc20 := range m.erc20List {
-		// This erc20 contract is not deployed yet
-		if blockNumber < erc20.BlockNumber {
-			continue
-		}
-
-		account, ok := dump.Accounts[erc20Addr]
-		if ok {
-			// Update storage record if it's in modified accounts
-			for key, value := range account.Storage {
-				s := &model.ERC20Storage{
-					BlockNumber: blockNumber,
-					Address:     common.HexToBytes(erc20Addr),
-					Key:         common.HexToBytes(key),
-					Value:       common.HexToBytes(value),
-				}
-				err := accountStore.InsertERC20Storage(s)
-				if err != nil && !(ignoreDuplicateError && common.DuplicateError(err)) {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 // delete deletes block and state data inside a DB transaction
 func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	headerStore := block_header.NewWithDB(dbTx)
@@ -342,12 +301,6 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	for hexAddr := range m.erc20List {
 		// Delete erc20 balances
 		err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
-		if err != nil {
-			return
-		}
-
-		// Delete storage diff
-		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
 		if err != nil {
 			return
 		}

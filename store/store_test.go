@@ -29,7 +29,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
-	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
@@ -244,12 +243,6 @@ var _ = Describe("Manager Test", func() {
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
 		db.Delete(&model.ERC20{})
-		db.DropTable(model.ERC20Storage{
-			Address: erc20.Address,
-		})
-		db.DropTable(model.ERC20Storage{
-			Address: newErc20.Address,
-		})
 		db.DropTable(model.Account{
 			ContractAddress: erc20.Address,
 		})
@@ -322,14 +315,6 @@ var _ = Describe("Manager Test", func() {
 		})
 
 		It("force sync mode", func() {
-			accountStore := account.NewWithDB(db)
-
-			// Cannot find new erc20 storage
-			for k := range newErc20Storage {
-				_, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
-				Expect(err).ShouldNot(BeNil())
-			}
-
 			// Create find new erc20
 			err := manager.InsertERC20(newErc20)
 			Expect(err).Should(BeNil())
@@ -351,17 +336,6 @@ var _ = Describe("Manager Test", func() {
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
 			Expect(err).Should(BeNil())
 			Expect(header).Should(Equal(h))
-
-			// Found new erc20 storage
-			for k, v := range newErc20Storage {
-				value, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
-				Expect(err).Should(BeNil())
-				Expect(value.Value).Should(Equal(gethCommon.HexToHash(v).Bytes()))
-			}
-
-			db.DropTable(model.ERC20Storage{
-				Address: newErc20.Address,
-			})
 		})
 
 		It("failed due to wrong signer", func() {
