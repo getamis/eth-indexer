@@ -72,7 +72,7 @@ type Manager interface {
 
 type manager struct {
 	db        *gorm.DB
-	erc20List map[string]*model.ERC20
+	erc20List map[gethCommon.Address]*model.ERC20
 	balancer  client.Balancer
 }
 
@@ -88,9 +88,9 @@ func (m *manager) Init(balancer client.Balancer) error {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	erc20List := make(map[string]*model.ERC20, len(list))
+	erc20List := make(map[gethCommon.Address]*model.ERC20, len(list))
 	for _, e := range list {
-		erc20List[common.BytesToHex(e.Address)] = e
+		erc20List[gethCommon.BytesToAddress(e.Address)] = e
 	}
 	m.erc20List = erc20List
 
@@ -293,15 +293,15 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		return
 	}
 
-	for hexAddr := range m.erc20List {
+	for addr := range m.erc20List {
 		// Delete erc20 balances
-		err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
+		err = accountStore.DeleteAccounts(addr, from, to)
 		if err != nil {
 			return
 		}
 
 		// Delete erc20 events
-		err = accountStore.DeleteTransfer(gethCommon.HexToAddress(hexAddr), from, to)
+		err = accountStore.DeleteTransfer(addr, from, to)
 		if err != nil {
 			return
 		}

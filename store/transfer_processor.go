@@ -45,7 +45,7 @@ type transferProcessor struct {
 }
 
 func newTransferProcessor(blockNumber int64,
-	erc20List map[string]*model.ERC20,
+	erc20List map[gethCommon.Address]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
 	subStore subscription.Store,
@@ -54,7 +54,7 @@ func newTransferProcessor(blockNumber int64,
 	tokenList := make(map[gethCommon.Address]struct{}, len(erc20List)+1)
 	tokenList[model.ETHAddress] = struct{}{}
 	for addr := range erc20List {
-		tokenList[gethCommon.HexToAddress(addr)] = struct{}{}
+		tokenList[addr] = struct{}{}
 	}
 	return &transferProcessor{
 		logger:       log.New("number", blockNumber),
