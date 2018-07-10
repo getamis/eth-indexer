@@ -33,11 +33,12 @@ import (
 
 var _ = Describe("Subscription Test", func() {
 	var (
-		blocks   []*types.Block
-		receipts [][]*types.Receipt
-		dumps    []*state.DirtyDump
-		events   [][]*types.TransferLog
-		manager  Manager
+		blocks    []*types.Block
+		signedTxs [][]*types.Transaction
+		receipts  [][]*types.Receipt
+		dumps     []*state.DirtyDump
+		events    [][]*types.TransferLog
+		manager   Manager
 
 		mockBalancer *mocks.Balancer
 	)
@@ -74,17 +75,17 @@ var _ = Describe("Subscription Test", func() {
 			{
 				BlockNumber: 90,
 				Group:       1,
-				Address:     gethCommon.Hex2Bytes("36928500bc1dcd7af6a2b4008875cc336b927d57"),
+				Address:     acc0Addr.Bytes(),
 			},
 			{
 				BlockNumber: 0,
 				Group:       1,
-				Address:     gethCommon.Hex2Bytes("c6cde7c39eb2f0f0095f41570af89efc2c1ea828"),
+				Address:     acc1Addr.Bytes(),
 			},
 			{
 				BlockNumber: 0,
 				Group:       2,
-				Address:     gethCommon.Hex2Bytes("36928500bc1dcd7af6a2b4008875cc336b927d58"),
+				Address:     acc2Addr.Bytes(),
 			},
 		}
 		// Insert subscription
@@ -99,6 +100,7 @@ var _ = Describe("Subscription Test", func() {
 			BlockNumber: 99,
 			Group:       1,
 			Balance:     "2000",
+			TxFee:       "0",
 		})
 		Expect(err).Should(BeNil())
 		// Insert ether total balance
@@ -107,25 +109,42 @@ var _ = Describe("Subscription Test", func() {
 			BlockNumber: 99,
 			Group:       1,
 			Balance:     "1000",
+			TxFee:       "0",
 		})
 		Expect(err).Should(BeNil())
 
 		// Init initial states
+		signedTxs = [][]*types.Transaction{
+			{
+				signTransaction(types.NewTransaction(0, gethCommon.BytesToAddress(subs[1].Address), big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc0Key),
+				signTransaction(types.NewTransaction(0, gethCommon.BytesToAddress(subs[2].Address), big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc1Key),
+			},
+			{
+				signTransaction(types.NewTransaction(0, gethCommon.BytesToAddress(subs[1].Address), big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
+				signTransaction(types.NewTransaction(1, gethCommon.BytesToAddress(subs[0].Address), big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
+			},
+			{
+				signTransaction(types.NewTransaction(2, unknownRecipientAddr, big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
+			},
+		}
+
 		blocks = []*types.Block{
 			types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(100),
-			}),
+				Number:   big.NewInt(100),
+				Coinbase: acc0Addr,
+			}).WithBody(signedTxs[0], nil),
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(101),
-			}),
+			}).WithBody(signedTxs[1], nil),
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(102),
-			}),
+			}).WithBody(signedTxs[2], nil),
 		}
 		receipts = [][]*types.Receipt{
 			{
 				&types.Receipt{
-					TxHash: gethCommon.HexToHash("0x01"),
+					TxHash:  signedTxs[0][0].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
 					Logs: []*types.Log{
 						{
 							Address: gethCommon.HexToAddress("0x000001"),
@@ -139,30 +158,35 @@ var _ = Describe("Subscription Test", func() {
 						},
 						{
 							Address: gethCommon.BytesToAddress(erc20.Address),
-							// transfer 1 tokens from 0x36928500bc1dcd7af6a2b4008875cc336b927d57 to 0xc6cde7c39eb2f0f0095f41570af89efc2c1ea828
+							// transfer 1 tokens from subs[0] to subs[1]
 							Topics: []gethCommon.Hash{
 								gethCommon.BytesToHash(sha3TransferEvent),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
-								gethCommon.HexToHash("0x000000000000000000000000c6cde7c39eb2f0f0095f41570af89efc2c1ea828"),
+								gethCommon.BytesToHash(subs[0].Address),
+								gethCommon.BytesToHash(subs[1].Address),
 							},
 							Data: gethCommon.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"),
 						},
 						{
 							Address: gethCommon.BytesToAddress(erc20.Address),
-							// transfer 1 tokens from 0x36928500bc1dcd7af6a2b4008875cc336b927d58 to 0x36928500bc1dcd7af6a2b4008875cc336b927d57
+							// transfer 1 tokens from subs[2] to subs[0]
 							Topics: []gethCommon.Hash{
 								gethCommon.BytesToHash(sha3TransferEvent),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d58"),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
+								gethCommon.BytesToHash(subs[2].Address),
+								gethCommon.BytesToHash(subs[0].Address),
 							},
 							Data: gethCommon.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"),
 						},
 					},
 				},
+				&types.Receipt{
+					TxHash:  signedTxs[0][1].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
+				},
 			},
 			{
 				&types.Receipt{
-					TxHash: gethCommon.HexToHash("0x02"),
+					TxHash:  signedTxs[1][0].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
 					Logs: []*types.Log{
 						{
 							Address: gethCommon.HexToAddress("0x000001"),
@@ -176,21 +200,21 @@ var _ = Describe("Subscription Test", func() {
 						},
 						{
 							Address: gethCommon.BytesToAddress(erc20.Address),
-							// transfer 1 tokens from 0x36928500bc1dcd7af6a2b4008875cc336b927d57 to 0xc6cde7c39eb2f0f0095f41570af89efc2c1ea828
+							// transfer 1 tokens from subs[0] to subs[1]
 							Topics: []gethCommon.Hash{
 								gethCommon.BytesToHash(sha3TransferEvent),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
-								gethCommon.HexToHash("0x000000000000000000000000c6cde7c39eb2f0f0095f41570af89efc2c1ea828"),
+								gethCommon.BytesToHash(subs[0].Address),
+								gethCommon.BytesToHash(subs[1].Address),
 							},
 							Data: gethCommon.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"),
 						},
 						{
 							Address: gethCommon.BytesToAddress(erc20.Address),
-							// transfer 1 tokens from 0x36928500bc1dcd7af6a2b4008875cc336b927d58 to 0x36928500bc1dcd7af6a2b4008875cc336b927d57
+							// transfer 1 tokens from subs[2] to subs[0]
 							Topics: []gethCommon.Hash{
 								gethCommon.BytesToHash(sha3TransferEvent),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d58"),
-								gethCommon.HexToHash("0x00000000000000000000000036928500bc1dcd7af6a2b4008875cc336b927d57"),
+								gethCommon.BytesToHash(subs[2].Address),
+								gethCommon.BytesToHash(subs[0].Address),
 							},
 							Data: gethCommon.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"),
 						},
@@ -206,10 +230,15 @@ var _ = Describe("Subscription Test", func() {
 						},
 					},
 				},
+				&types.Receipt{
+					TxHash:  signedTxs[1][1].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
+				},
 			},
 			{
 				&types.Receipt{
-					TxHash: gethCommon.HexToHash("0x03"),
+					TxHash:  signedTxs[2][0].Hash(),
+					GasUsed: commonGasUsed.Uint64(),
 				},
 			},
 		}
@@ -230,13 +259,13 @@ var _ = Describe("Subscription Test", func() {
 					From:   gethCommon.BytesToAddress(subs[0].Address),
 					To:     gethCommon.BytesToAddress(subs[1].Address),
 					Value:  big.NewInt(1),
-					TxHash: gethCommon.HexToHash("0x03"),
+					TxHash: signedTxs[0][0].Hash(),
 				},
 				{
 					From:   gethCommon.BytesToAddress(subs[1].Address),
 					To:     gethCommon.BytesToAddress(subs[2].Address),
 					Value:  big.NewInt(1),
-					TxHash: gethCommon.HexToHash("0x06"),
+					TxHash: signedTxs[0][1].Hash(),
 				},
 			},
 			{
@@ -244,13 +273,13 @@ var _ = Describe("Subscription Test", func() {
 					From:   gethCommon.BytesToAddress(subs[2].Address),
 					To:     gethCommon.BytesToAddress(subs[1].Address),
 					Value:  big.NewInt(1),
-					TxHash: gethCommon.HexToHash("0x03"),
+					TxHash: signedTxs[1][0].Hash(),
 				},
 				{
 					From:   gethCommon.BytesToAddress(subs[2].Address),
 					To:     gethCommon.BytesToAddress(subs[0].Address),
 					Value:  big.NewInt(1),
-					TxHash: gethCommon.HexToHash("0x06"),
+					TxHash: signedTxs[1][1].Hash(),
 				},
 			},
 			{},

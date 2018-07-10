@@ -18,6 +18,8 @@ package model
 
 import (
 	"bytes"
+	"errors"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -29,6 +31,11 @@ var (
 	ETHAddress = common.BytesToAddress([]byte("ETH"))
 	// ETHBytes represents ether type in bytes array type
 	ETHBytes = ETHAddress.Bytes()
+
+	// Maximum number of uncles allowed in a single block
+	maxUncles         = 2
+	ErrTooManyUncles  = errors.New("too many uncles or confused numbers of uncle")
+	ErrConfusedUncles = errors.New("confused numbers of uncle")
 )
 
 // Header represents the header of a block
@@ -48,6 +55,14 @@ type Header struct {
 	ExtraData   []byte
 	MixDigest   []byte
 	Nonce       []byte
+	// MinerBaseReward plus UnclesInclusionReward plus TxsFee is MinerReward.
+	MinerReward           string
+	UnclesInclusionReward string
+	TxsFee                string
+	// Total of uncles reward. At most 2.
+	UnclesReward string
+	Uncle1Hash   []byte
+	Uncle2Hash   []byte
 	// golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
@@ -57,6 +72,33 @@ type Header struct {
 // TableName returns the table name of this model
 func (h Header) TableName() string {
 	return "block_headers"
+}
+
+// AddReward adds reward to header.
+// Verify that there are at most 2 uncles
+func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int, unclesReward []*big.Int, unclesHash []common.Hash) (*Header, error) {
+	if len(unclesReward) != len(unclesHash) {
+		return nil, ErrConfusedUncles
+	}
+	if len(unclesReward) > maxUncles {
+		return nil, ErrTooManyUncles
+	}
+	totalUnclesReward := new(big.Int)
+	ush := make([][]byte, maxUncles)
+	for i, u := range unclesHash {
+		ush[i] = u.Bytes()
+		totalUnclesReward.Add(totalUnclesReward, unclesReward[i])
+	}
+	minerReward := new(big.Int).Add(txsFee, minerBaseReward)
+	minerReward.Add(minerReward, uncleInclusionReward)
+
+	h.MinerReward = minerReward.String()
+	h.UnclesInclusionReward = uncleInclusionReward.String()
+	h.TxsFee = txsFee.String()
+	h.UnclesReward = totalUnclesReward.String()
+	h.Uncle1Hash = ush[0]
+	h.Uncle2Hash = ush[1]
+	return &h, nil
 }
 
 // Transaction represents a transaction
