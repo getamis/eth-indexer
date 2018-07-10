@@ -17,10 +17,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/getamis/eth-indexer/store"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/sirius/database"
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
@@ -35,7 +36,12 @@ func main() {
 		),
 	)
 	addr := common.HexToAddress("0x756f45e3fa69347a9a973a725e3c98bc4db0b5a0")
-	manager := store.NewServiceManager(db)
-	balance, blockNumber, _ := manager.GetBalance(context.Background(), addr, -1)
-	fmt.Println(balance, blockNumber)
+	store := account.NewWithDB(db)
+
+	account, err := store.FindAccount(model.ETHAddress, addr)
+	if err != nil {
+		fmt.Printf("Failed to find account: %v\n", err)
+	} else {
+		fmt.Printf("Find account, block_number: %v, balance: %v, \n", account.Balance, account.BlockNumber)
+	}
 }
