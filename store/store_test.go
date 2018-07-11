@@ -60,6 +60,7 @@ var (
 var _ = Describe("Manager Test", func() {
 	var (
 		blocks    []*types.Block
+		uncles    [][]*types.Header
 		receipts  [][]*types.Receipt
 		dumps     []*state.DirtyDump
 		events    [][]*types.TransferLog
@@ -112,13 +113,25 @@ var _ = Describe("Manager Test", func() {
 				signTransaction(types.NewTransaction(1, unknownRecipientAddr, big.NewInt(10000), commonGasLimit.Uint64(), commonGasPrice, []byte("test payload")), acc0Key),
 			},
 		}
+		uncles = [][]*types.Header{
+			{
+				types.CopyHeader(&types.Header{
+					Number: big.NewInt(99),
+				}),
+			},
+			{
+				types.CopyHeader(&types.Header{
+					Number: big.NewInt(99),
+				}),
+			},
+		}
 		blocks = []*types.Block{
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
-			}).WithBody(signedTxs[0], nil),
+			}).WithBody(signedTxs[0], uncles[0]),
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(101),
-			}).WithBody(signedTxs[1], nil),
+			}).WithBody(signedTxs[1], uncles[1]),
 		}
 		receipts = [][]*types.Receipt{
 			{
@@ -226,6 +239,7 @@ var _ = Describe("Manager Test", func() {
 	AfterEach(func() {
 		// Clean all data
 		db.Delete(&model.Header{})
+		db.Delete(&model.UncleHeader{})
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
@@ -256,11 +270,11 @@ var _ = Describe("Manager Test", func() {
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
 					ReceiptHash: gethCommon.HexToHash("0x02"),
-				}).WithBody(signedTxs[1], nil),
+				}).WithBody(signedTxs[1], uncles[1]),
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(101),
 					ReceiptHash: gethCommon.HexToHash("0x03"),
-				}).WithBody(signedTxs[0], nil),
+				}).WithBody(signedTxs[0], uncles[0]),
 			}
 			newReceipts := [][]*types.Receipt{
 				receipts[1],
@@ -269,7 +283,7 @@ var _ = Describe("Manager Test", func() {
 			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeSync)
 			Expect(err).Should(BeNil())
 
-			minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
@@ -278,15 +292,19 @@ var _ = Describe("Manager Test", func() {
 		})
 
 		It("reorg mode", func() {
+			newUncles := [][]*types.Header{
+				uncles[1],
+				uncles[0],
+			}
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
 					ReceiptHash: gethCommon.HexToHash("0x02"),
-				}).WithBody(signedTxs[1], nil),
+				}).WithBody(signedTxs[1], newUncles[0]),
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(101),
 					ReceiptHash: gethCommon.HexToHash("0x03"),
-				}).WithBody(signedTxs[0], nil),
+				}).WithBody(signedTxs[0], newUncles[1]),
 			}
 			newReceipts := [][]*types.Receipt{
 				receipts[1],
@@ -295,7 +313,7 @@ var _ = Describe("Manager Test", func() {
 			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
-			minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
@@ -326,7 +344,7 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			// Got blocks 0
-			minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
 
@@ -350,7 +368,7 @@ var _ = Describe("Manager Test", func() {
 			blocks[0] = types.NewBlock(
 				blocks[0].Header(), []*types.Transaction{
 					types.NewTransaction(0, gethCommon.Address{}, gethCommon.Big0, 0, gethCommon.Big0, []byte{}),
-				}, nil, []*types.Receipt{
+				}, uncles[0], []*types.Receipt{
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
@@ -377,8 +395,8 @@ var _ = Describe("Manager Test", func() {
 
 	Context("GetHeaderByNumber()", func() {
 		It("gets the right header", func() {
-			for _, block := range blocks {
-				minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			for i, block := range blocks {
+				minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[i].Header(), uncles[i])
 				header, err := manager.GetHeaderByNumber(block.Number().Int64())
 				Expect(err).Should(Succeed())
 
@@ -391,7 +409,7 @@ var _ = Describe("Manager Test", func() {
 
 	Context("LatestHeader()", func() {
 		It("gets the latest header", func() {
-			minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[1].Header(), uncles[1])
 			header, err := manager.LatestHeader()
 			Expect(err).Should(Succeed())
 
