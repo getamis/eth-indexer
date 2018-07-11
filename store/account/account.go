@@ -47,6 +47,7 @@ type Store interface {
 	// Transfer events
 	InsertTransfer(event *model.Transfer) error
 	FindTransfer(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Transfer, err error)
+	FindAllTransfers(contractAddress common.Address, address common.Address) (result []*model.Transfer, err error)
 	DeleteTransfer(contractAddress common.Address, from, to int64) error
 }
 
@@ -185,10 +186,17 @@ func (t *store) FindTransfer(contractAddress common.Address, address common.Addr
 		Address: contractAddress.Bytes(),
 	}
 	if len(blockNr) == 0 {
-		err = t.db.Where("address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("`from` = ? OR `to` = ?", address.Bytes(), address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
 	} else {
-		err = t.db.Where("address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.Where("(`from` = ? OR `to` = ?) AND block_number <= ?", address.Bytes(), address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
 	}
+	return
+}
+
+func (t *store) FindAllTransfers(contractAddress common.Address, address common.Address) (result []*model.Transfer, err error) {
+	err = t.db.Table(model.Transfer{
+		Address: contractAddress.Bytes(),
+	}.TableName()).Where("`from` = ? OR `to` = ?", address.Bytes(), address.Bytes()).Order("block_number DESC").Find(&result).Error
 	return
 }
 
