@@ -52,7 +52,7 @@ type EthClient interface {
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
-	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
+	GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	// Get ETH transfer logs
@@ -162,13 +162,11 @@ func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.
 	return r, err
 }
 
-func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
-	logger := log.New("addr", addr, "number", num)
+func (c *client) GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error) {
+	logger := log.New("addr", addr)
 	erc20 := &model.ERC20{
-		Address:     addr.Bytes(),
-		BlockNumber: num,
+		Address: addr.Bytes(),
 	}
-
 	caller, err := contracts.NewERC20TokenCaller(addr, c)
 	if err != nil {
 		logger.Warn("Failed to initiate contract caller", "err", err)

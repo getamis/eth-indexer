@@ -18,7 +18,6 @@ package main
 
 import (
 	"encoding/json"
-	"strconv"
 
 	"github.com/getamis/sirius/log"
 	"github.com/spf13/cobra"
@@ -40,23 +39,20 @@ var (
 var vp = viper.New()
 
 // LoadTokensFromConfig is the function to return addresses and blocks from config file
-func LoadTokensFromConfig() ([]string, []int64, error) {
+func LoadTokensFromConfig() ([]string, error) {
 	for _, v := range list {
 		data, _ := json.Marshal(v)
 		result := make(map[string]string)
 		err := json.Unmarshal(data, &result)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		addr := result["address"]
 		addresses = append(addresses, addr)
-
-		block, _ := strconv.ParseInt(result["block"], 10, 64)
-		blocks = append(blocks, block)
 	}
 
-	return addresses, blocks, nil
+	return addresses, nil
 }
 
 func init() {
