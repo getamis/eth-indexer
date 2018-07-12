@@ -2,7 +2,7 @@ version: "3"
 services:
   # Customized geth image for indexer
   geth:
-    image: quay.io/amis/geth:indexer_diff_1.8.10
+    image: quay.io/amis/geth:indexer_diff_tx_1.8.10
     ports:
       - "30303:30303"
       - "8546:8546"

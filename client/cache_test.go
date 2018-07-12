@@ -212,6 +212,50 @@ var _ = Describe("Cache Test", func() {
 			})
 		})
 	})
+
+	Context("GetBlockReceipts()", func() {
+		receipts := types.Receipts{types.NewReceipt([]byte{}, false, 0)}
+		It("in cache", func() {
+			By("wrong in cache")
+			cacheClient.blockReceiptsCache.Add(block.Hash().Hex(), "wrong data")
+			mockClient.On("GetBlockReceipts", ctx, block.Hash()).Return(nil, unknownErr).Once()
+			got, err := cacheClient.GetBlockReceipts(ctx, block.Hash())
+			Expect(err).Should(Equal(unknownErr))
+			Expect(got).Should(BeNil())
+
+			By("add in cache")
+			mockClient.On("GetBlockReceipts", ctx, block.Hash()).Return(receipts, nil).Once()
+			got, err = cacheClient.GetBlockReceipts(ctx, block.Hash())
+			Expect(err).Should(BeNil())
+			Expect(got).Should(Equal(receipts))
+
+			By("already in cache")
+			got, err = cacheClient.GetBlockReceipts(ctx, block.Hash())
+			Expect(err).Should(BeNil())
+			Expect(got).Should(Equal(receipts))
+		})
+		Context("not in cache", func() {
+			It("find block successfully", func() {
+				mockClient.On("GetBlockReceipts", ctx, block.Hash()).Return(receipts, nil).Once()
+				got, err := cacheClient.GetBlockReceipts(ctx, block.Hash())
+				Expect(err).Should(BeNil())
+				Expect(got).Should(Equal(receipts))
+
+				got, err = cacheClient.GetBlockReceipts(ctx, block.Hash())
+				Expect(err).Should(BeNil())
+				Expect(got).Should(Equal(receipts))
+			})
+			It("failed to find block", func() {
+				mockClient.On("GetBlockReceipts", ctx, block.Hash()).Return(nil, unknownErr).Once()
+				got, err := cacheClient.GetBlockReceipts(ctx, block.Hash())
+				Expect(err).Should(Equal(unknownErr))
+				Expect(got).Should(BeNil())
+
+				_, ok := cacheClient.blockReceiptsCache.Get(block.Hash().Hex())
+				Expect(ok).Should(BeFalse())
+			})
+		})
+	})
 })
 
 func TestClientServer(t *testing.T) {
