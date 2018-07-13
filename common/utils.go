@@ -30,6 +30,10 @@ import (
 	"github.com/getamis/sirius/log"
 )
 
+const (
+	emptyEventName = "NA"
+)
+
 // IsLatestBlock returns true if blockNumber < 0 and false otherwise.
 func IsLatestBlock(blockNumber int64) bool {
 	return blockNumber < 0
@@ -163,11 +167,16 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 			log.Error("Invalid topic length", "hash", receipt.TxHash.Hex(), "len", len(l.Topics))
 			return nil, ErrInvalidReceiptLog
 		}
+
+		eventName := []byte(emptyEventName)
+		if len(l.Topics) > 0 {
+			eventName = l.Topics[0].Bytes()
+		}
 		log := &model.Log{
 			TxHash:          r.TxHash,
 			BlockNumber:     r.BlockNumber,
 			ContractAddress: l.Address.Bytes(),
-			EventName:       l.Topics[0].Bytes(),
+			EventName:       eventName,
 			Data:            l.Data,
 		}
 		for i := 1; i < len(l.Topics); i++ {
