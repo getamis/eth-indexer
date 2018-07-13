@@ -78,7 +78,6 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	var addrs [][]byte
 	// From block / uncles coinbases
 	for _, cb := range coinbases {
-		s.logger.Info("coinbase", "cb", cb.Hex())
 		if _, ok := seenAddrs[cb]; !ok {
 			seenAddrs[cb] = struct{}{}
 			addrs = append(addrs, cb.Bytes())
@@ -179,12 +178,13 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 
 	// Make sure coinbases are also included in balance queries to geth
 	for _, addr := range coinbases {
-		if allSubs[addr] != nil {
-			if contractsAddrs[model.ETHAddress] == nil {
-				contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
-			}
-			contractsAddrs[model.ETHAddress][addr] = struct{}{}
+		if allSubs[addr] == nil {
+			continue
 		}
+		if contractsAddrs[model.ETHAddress] == nil {
+			contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
+		}
+		contractsAddrs[model.ETHAddress][addr] = struct{}{}
 	}
 
 	// Collect tx fee and make sure fee payers are included in balance queries to geth
@@ -192,22 +192,23 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	// are not included in events.
 	feeDiff := make(map[gethCommon.Address]*big.Int)
 	for i, tx := range s.txs {
+		from := gethCommon.BytesToAddress(tx.From)
+		if allSubs[from] == nil {
+			continue
+		}
 		// Assume the tx and receipt are in the same order
 		r := s.receipts[i]
 		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
-		from := gethCommon.BytesToAddress(tx.From)
-		if allSubs[from] != nil {
-			fee := new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
-			if feeDiff[from] == nil {
-				feeDiff[from] = new(big.Int).Set(fee)
-			} else {
-				feeDiff[from] = new(big.Int).Add(feeDiff[from], fee)
-			}
-			if contractsAddrs[model.ETHAddress] == nil {
-				contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
-			}
-			contractsAddrs[model.ETHAddress][from] = struct{}{}
+		fee := new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
+		if feeDiff[from] == nil {
+			feeDiff[from] = new(big.Int).Set(fee)
+		} else {
+			feeDiff[from] = new(big.Int).Add(feeDiff[from], fee)
 		}
+		if contractsAddrs[model.ETHAddress] == nil {
+			contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
+		}
+		contractsAddrs[model.ETHAddress][from] = struct{}{}
 	}
 
 	// Get balances
