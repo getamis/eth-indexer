@@ -228,7 +228,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert blocks
-	minerBaseReward, uncleInclusionReward, _, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
+	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
 	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
 	if err != nil {
 		return err
@@ -239,7 +239,8 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert erc20 balance & events
-	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	coinbases := append(uncleCBs, block.Coinbase())
+	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
 	if err != nil {
 		return err
 	}

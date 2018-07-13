@@ -125,7 +125,8 @@ var _ = Describe("Subscription Test", func() {
 				signTransaction(types.NewTransaction(1, gethCommon.BytesToAddress(subs[0].Address), big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
 			},
 			{
-				signTransaction(types.NewTransaction(2, unknownRecipientAddr, big.NewInt(1), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
+				// mimic a calling a contract without any value transfer (not represented in events)
+				signTransaction(types.NewTransaction(2, contractAddress, big.NewInt(0), 9000000, commonGasPrice, []byte("test payload")), acc2Key),
 			},
 		}
 
@@ -135,10 +136,12 @@ var _ = Describe("Subscription Test", func() {
 				Coinbase: acc0Addr,
 			}).WithBody(signedTxs[0], nil),
 			types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(101),
+				Number:   big.NewInt(101),
+				Coinbase: unknownRecipientAddr,
 			}).WithBody(signedTxs[1], nil),
 			types.NewBlockWithHeader(&types.Header{
-				Number: big.NewInt(102),
+				Number:   big.NewInt(102),
+				Coinbase: acc1Addr,
 			}).WithBody(signedTxs[2], nil),
 		}
 		receipts = [][]*types.Receipt{
@@ -354,12 +357,25 @@ var _ = Describe("Subscription Test", func() {
 			model.ETHAddress: {
 				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(1000),
 				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(101),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(498),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(458),
 			},
 			gethCommon.BytesToAddress(erc20.Address): {
 				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(2000),
 				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(151),
 				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(999),
+			},
+		}, nil).Once()
+
+		// For the 102 block
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), map[gethCommon.Address]map[gethCommon.Address]struct{}{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
+				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
+			},
+		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(201),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(438),
 			},
 		}, nil).Once()
 
@@ -398,8 +414,23 @@ var _ = Describe("Subscription Test", func() {
 		Expect(et1_101.TxFee).Should(Equal("0"))
 		et2_101, err := subStore.FindTotalBalance(101, model.ETHAddress, 2)
 		Expect(err).Should(BeNil())
-		Expect(et2_101.Balance).Should(Equal("498"))
+		Expect(et2_101.Balance).Should(Equal("458"))
 		Expect(et2_101.TxFee).Should(Equal("40"))
+
+		t1_102, err := subStore.FindTotalBalance(102, gethCommon.BytesToAddress(erc20.Address), 1)
+		Expect(err).Should(BeNil())
+		Expect(t1_102).Should(Equal(t1_101))
+		t2_102, err := subStore.FindTotalBalance(102, gethCommon.BytesToAddress(erc20.Address), 2)
+		Expect(err).Should(BeNil())
+		Expect(t2_102).Should(Equal(t2_101))
+		et1_102, err := subStore.FindTotalBalance(102, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_102.Balance).Should(Equal("1201"))
+		Expect(et1_102.TxFee).Should(Equal("0"))
+		et2_102, err := subStore.FindTotalBalance(102, model.ETHAddress, 2)
+		Expect(err).Should(BeNil())
+		Expect(et2_102.Balance).Should(Equal("438"))
+		Expect(et2_102.TxFee).Should(Equal("20"))
 
 		// Verify new subscriptions' block numbers updated
 		res, err := subStore.FindOldSubscriptions([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
