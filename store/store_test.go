@@ -54,6 +54,7 @@ var (
 	commonGasLimit = big.NewInt(5)
 
 	unknownRecipientAddr = gethCommon.HexToAddress("0xunknownrecipient")
+	contractAddress      = gethCommon.HexToAddress("0x3893b9422Cd5D70a81eDeFfe3d5A1c6A978310BB")
 )
 
 var _ = Describe("Manager Test", func() {
