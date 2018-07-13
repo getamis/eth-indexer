@@ -157,9 +157,10 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 	// Construct receipt log model
 	var logs []*model.Log
 	for _, l := range receipt.Logs {
-		// The length of topics should be larger than 0 and equal or smaller than 4
+		// The length of topics should be equal or smaller than 4.
 		// 1 event name and at most 3 indexed parameters
-		if len(l.Topics) == 0 || len(l.Topics) > 4 {
+		if len(l.Topics) > 4 {
+			log.Error("Invalid topic length", "hash", receipt.TxHash.Hex(), "len", len(l.Topics))
 			return nil, ErrInvalidReceiptLog
 		}
 		log := &model.Log{
