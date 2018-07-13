@@ -228,6 +228,29 @@ func (_m *EthClient) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump,
 	return r0, r1
 }
 
+// GetBlockReceipts provides a mock function with given fields: ctx, hash
+func (_m *EthClient) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
+	ret := _m.Called(ctx, hash)
+
+	var r0 types.Receipts
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) types.Receipts); ok {
+		r0 = rf(ctx, hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(types.Receipts)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, hash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetERC20 provides a mock function with given fields: ctx, addr, num
 func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
 	ret := _m.Called(ctx, addr, num)
@@ -389,29 +412,6 @@ func (_m *EthClient) TransactionReceipt(ctx context.Context, txHash common.Hash)
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
 		r1 = rf(ctx, txHash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// TransactionReceipts provides a mock function with given fields: ctx, txs
-func (_m *EthClient) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
-	ret := _m.Called(ctx, txs)
-
-	var r0 []*types.Receipt
-	if rf, ok := ret.Get(0).(func(context.Context, types.Transactions) []*types.Receipt); ok {
-		r0 = rf(ctx, txs)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*types.Receipt)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, types.Transactions) error); ok {
-		r1 = rf(ctx, txs)
 	} else {
 		r1 = ret.Error(1)
 	}

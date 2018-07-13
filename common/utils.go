@@ -23,6 +23,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/model"
@@ -156,9 +157,10 @@ func Receipt(b *types.Block, receipt *types.Receipt) (*model.Receipt, error) {
 	// Construct receipt log model
 	var logs []*model.Log
 	for _, l := range receipt.Logs {
-		// The length of topics should be larger than 0 and equal or smaller than 4
+		// The length of topics should be equal or smaller than 4.
 		// 1 event name and at most 3 indexed parameters
-		if len(l.Topics) == 0 || len(l.Topics) > 4 {
+		if len(l.Topics) > 4 {
+			log.Error("Invalid topic length", "hash", receipt.TxHash.Hex(), "len", len(l.Topics))
 			return nil, ErrInvalidReceiptLog
 		}
 		log := &model.Log{
@@ -194,4 +196,47 @@ func EthTransferEvent(b *types.Block, log *types.TransferLog) *model.Transfer {
 		To:          log.To.Bytes(),
 		Value:       log.Value.String(),
 	}
+}
+
+// Some weird constants to avoid constant memory allocs for them.
+var (
+	big8  = big.NewInt(8)
+	big32 = big.NewInt(32)
+)
+
+// AccumulateRewards credits the coinbase of the given block with the mining
+// reward. The total reward consists of the static block reward and rewards for
+// included uncles. The coinbase of each uncle block is also rewarded.
+//
+// **COPIED FROM**: github.com/ethereum/go-ethereum/consensus/ethash/consensus.go#accumulateRewards()
+func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseReward, uncleInclusionReward *big.Int, uncleCoinbase []common.Address, uncleReward []*big.Int, uncleHash []common.Hash) {
+	// Select the correct block reward based on chain progression
+	minerBaseReward = ethash.FrontierBlockReward
+	if params.MainnetChainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
+		minerBaseReward = ethash.ByzantiumBlockReward
+	}
+
+	// Accumulate the rewards for the miner and any included uncles
+	r := new(big.Int)
+	uncleInclusionReward = new(big.Int)
+	uncleReward = make([]*big.Int, len(uncles))
+	uncleHash = make([]common.Hash, len(uncles))
+	uncleCoinbase = make([]common.Address, len(uncles))
+	for i, uncle := range uncles {
+		r.Add(uncle.Number, big8)
+		r.Sub(r, header.Number)
+		r.Mul(r, minerBaseReward)
+		r.Div(r, big8)
+		// store uncle reward
+		uncleReward[i] = new(big.Int).Set(r)
+
+		// store uncle inclusion reward
+		r.Div(minerBaseReward, big32)
+		uncleInclusionReward.Add(uncleInclusionReward, r)
+
+		// store uncle information
+		uncleCoinbase[i] = uncle.Coinbase
+		uncleHash[i] = uncle.Hash()
+	}
+	return
 }

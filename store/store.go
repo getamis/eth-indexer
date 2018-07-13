@@ -182,12 +182,8 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	accountStore := account.NewWithDB(dbTx)
 	subsStore := subscription.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
-
-	// Insert blocks
-	err = headerStore.Insert(common.Header(block))
-	if err != nil {
-		return err
-	}
+	txPrices := make(map[gethCommon.Hash]*big.Int)
+	totalTxsFee := new(big.Int)
 
 	// Insert txs
 	var txs []*model.Transaction
@@ -201,6 +197,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		if err != nil {
 			return err
 		}
+		txPrices[t.Hash()] = t.GasPrice()
 	}
 
 	var events []*model.Transfer
@@ -227,10 +224,23 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 			return err
 		}
 		events = append(events, es...)
+		totalTxsFee.Add(totalTxsFee, new(big.Int).Mul(txPrices[receipt.TxHash], new(big.Int).SetUint64(receipt.GasUsed)))
+	}
+
+	// Insert blocks
+	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
+	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+	if err != nil {
+		return err
+	}
+	headerStore.Insert(h)
+	if err != nil {
+		return err
 	}
 
 	// Insert erc20 balance & events
-	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	coinbases := append(uncleCBs, block.Coinbase())
+	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
 	if err != nil {
 		return err
 	}
