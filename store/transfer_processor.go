@@ -213,7 +213,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 				addrDiff[contractAddr] = make(map[gethCommon.Address]*big.Int)
 			}
 			acct := latestBalances[addr]
-			diff := new(big.Int)
+			var diff *big.Int
 
 			// If addr is a new subscription, add its balance to addrDiff for totalBalances.
 			if newSubs[addr] != nil {
@@ -222,7 +222,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 					s.logger.Error("New subscription had previous balance", "block", acct.BlockNumber, "addr", addr.Hex(), "balance", acct.Balance)
 					return common.ErrHasPrevBalance
 				}
-				diff = balance
+				diff = new(big.Int).Set(balance)
 			} else {
 				// make sure we have an old balance
 				if acct == nil {
@@ -230,7 +230,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 					return common.ErrMissingPrevBalance
 				}
 				prevBalance, _ := new(big.Int).SetString(acct.Balance, 10)
-				diff.Sub(balance, prevBalance)
+				diff = new(big.Int).Sub(balance, prevBalance)
 			}
 			addrDiff[contractAddr][addr] = diff
 		}
