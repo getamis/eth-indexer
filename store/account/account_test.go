@@ -313,6 +313,10 @@ var _ = Describe("Account Database Test", func() {
 			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data4.Address))
 			Expect(err).Should(Succeed())
 			Expect(account).Should(Equal(data4))
+
+			// Not found data3
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data3.Address), data3.BlockNumber)
+			Expect(err).ShouldNot(Succeed())
 		})
 
 		It("deletes erc20 account states from a block number", func() {
@@ -523,6 +527,23 @@ var _ = Describe("Account Database Test", func() {
 			// DeleteTransfer
 			err = store.DeleteTransfer(addr, int64(105), int64(110))
 			Expect(err).Should(Succeed())
+
+			// FindAllTransfers
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr1))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(Equal(1))
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr2))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(Equal(1))
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr3))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(BeZero())
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr4))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(BeZero())
 		})
 	})
 
