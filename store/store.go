@@ -304,7 +304,13 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	if err != nil {
 		return
 	}
+
+	// Delete eth account and transfers
 	err = accountStore.DeleteAccounts(model.ETHAddress, from, to)
+	if err != nil {
+		return
+	}
+	err = accountStore.DeleteTransfer(model.ETHAddress, from, to)
 	if err != nil {
 		return
 	}
