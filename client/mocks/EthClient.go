@@ -418,3 +418,49 @@ func (_m *EthClient) TransactionReceipt(ctx context.Context, txHash common.Hash)
 
 	return r0, r1
 }
+
+// UncleByBlockHashAndPosition provides a mock function with given fields: ctx, hash, position
+func (_m *EthClient) UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error) {
+	ret := _m.Called(ctx, hash, position)
+
+	var r0 *types.Header
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash, uint) *types.Header); ok {
+		r0 = rf(ctx, hash, position)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Header)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash, uint) error); ok {
+		r1 = rf(ctx, hash, position)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UnclesByBlockHash provides a mock function with given fields: ctx, blockHash
+func (_m *EthClient) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error) {
+	ret := _m.Called(ctx, blockHash)
+
+	var r0 []*types.Header
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) []*types.Header); ok {
+		r0 = rf(ctx, blockHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Header)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
+		r1 = rf(ctx, blockHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
