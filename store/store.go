@@ -72,7 +72,7 @@ type Manager interface {
 
 type manager struct {
 	db        *gorm.DB
-	erc20List map[gethCommon.Address]*model.ERC20
+	tokenList map[gethCommon.Address]struct{}
 	balancer  client.Balancer
 }
 
@@ -88,11 +88,12 @@ func (m *manager) Init(balancer client.Balancer) error {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	erc20List := make(map[gethCommon.Address]*model.ERC20, len(list))
+	tokenList := make(map[gethCommon.Address]struct{}, len(list))
+	tokenList[model.ETHAddress] = struct{}{}
 	for _, e := range list {
-		erc20List[gethCommon.BytesToAddress(e.Address)] = e
+		tokenList[gethCommon.BytesToAddress(e.Address)] = struct{}{}
 	}
-	m.erc20List = erc20List
+	m.tokenList = tokenList
 
 	// Init balance of function
 	m.balancer = balancer
@@ -244,7 +245,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		coinbases = append(coinbases, u.Coinbase)
 	}
 	coinbases = append(coinbases, block.Coinbase())
-	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
+	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
 	if err != nil {
 		return err
 	}
@@ -278,22 +279,12 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		return
 	}
 
-	// Delete eth account and transfers
-	err = accountStore.DeleteAccounts(model.ETHAddress, from, to)
-	if err != nil {
-		return
-	}
-	err = accountStore.DeleteTransfer(model.ETHAddress, from, to)
-	if err != nil {
-		return
-	}
-
 	err = subscriptionStore.Reset(from, to)
 	if err != nil {
 		return
 	}
 
-	for addr := range m.erc20List {
+	for addr := range m.tokenList {
 		// Delete erc20 balances
 		err = accountStore.DeleteAccounts(addr, from, to)
 		if err != nil {
