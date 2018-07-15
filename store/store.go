@@ -119,11 +119,6 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 
 	dbTx := m.db.Begin()
 	defer func() {
-		// In ModeSync, return nil error if it's a duplicate error
-		if (mode == ModeSync) && common.DuplicateError(err) {
-			err = nil
-		}
-
 		if err != nil {
 			dbTx.Rollback()
 			return
@@ -142,10 +137,6 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
 		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], events[i])
-		if common.DuplicateError(err) {
-			err = nil
-		}
-
 		if err != nil {
 			return
 		}

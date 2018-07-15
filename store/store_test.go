@@ -227,7 +227,7 @@ var _ = Describe("Manager Test", func() {
 	})
 
 	Context("UpdateBlocks()", func() {
-		It("sync mode", func() {
+		It("sync mode, got duplicate key error due to the same txs", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
@@ -243,7 +243,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[0],
 			}
 			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeSync)
-			Expect(err).Should(BeNil())
+			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
