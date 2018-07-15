@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/eth-indexer/common"
@@ -61,7 +60,6 @@ var _ = Describe("Manager Test", func() {
 		blocks    []*types.Block
 		uncles    [][]*types.Header
 		receipts  [][]*types.Receipt
-		dumps     []*state.DirtyDump
 		events    [][]*types.TransferLog
 		signedTxs [][]*types.Transaction
 		manager   Manager
@@ -72,10 +70,6 @@ var _ = Describe("Manager Test", func() {
 		Address:     newErc20Addr.Bytes(),
 		Code:        []byte("1332"),
 		BlockNumber: 0,
-	}
-	newErc20Storage := map[string]string{
-		common.BytesToHex(gethCommon.HexToHash("0x0a").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0b").Bytes()),
-		common.BytesToHex(gethCommon.HexToHash("0x0c").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0d").Bytes()),
 	}
 
 	BeforeSuite(func() {
@@ -169,31 +163,6 @@ var _ = Describe("Manager Test", func() {
 				},
 			},
 		}
-		dumps = []*state.DirtyDump{
-			{
-				Root: "root1",
-				Accounts: map[string]state.DirtyDumpAccount{
-					common.BytesToHex(erc20.Address): {
-						Storage: map[string]string{
-							"1": "2",
-						},
-					},
-					common.BytesToHex(newErc20.Address): {
-						Storage: newErc20Storage,
-					},
-				},
-			},
-			{
-				Root: "root2",
-				Accounts: map[string]state.DirtyDumpAccount{
-					"3": {
-						Storage: map[string]string{
-							"4": "5",
-						},
-					},
-				},
-			},
-		}
 		events = [][]*types.TransferLog{
 			{
 				{
@@ -231,7 +200,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 	})
 
@@ -273,7 +242,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeSync)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeSync)
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -303,7 +272,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -322,7 +291,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})

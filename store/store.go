@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
@@ -67,7 +66,7 @@ type Manager interface {
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data. 'delete' indicates whether deletes all data before update.
-	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) error
+	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) error
 }
 
 type manager struct {
@@ -104,10 +103,10 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	return block_header.NewWithDB(m.db).InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) (err error) {
 	size := len(blocks)
-	if size != len(receipts) || size != len(dumps) || size != len(events) {
-		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts), "dumps", len(dumps))
+	if size != len(receipts) || size != len(events) {
+		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
 		return common.ErrInconsistentStates
 	}
 
@@ -142,7 +141,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
-		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], dumps[i], events[i])
+		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], events[i])
 		if common.DuplicateError(err) {
 			err = nil
 		}
@@ -167,7 +166,7 @@ func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
-func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump, ethEvents []*types.TransferLog) (err error) {
+func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
 	headerStore := block_header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
