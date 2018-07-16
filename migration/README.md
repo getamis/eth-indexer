@@ -16,7 +16,12 @@ vim db/migration/foo_bar_migration.rb
 
 ####### kick off mysql service via docker
 ```
-docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_CHARSET=utf8 -e MYSQL_DATABASE=indexer-db --name indexer-mysql mysql:5.7 --character-set-server=utf8 --collation-server=utf8_unicode_ci
+docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_CHARSET=utf8 -e MYSQL_DATABASE=ethdb --name indexer-mysql mysql:5.7 --character-set-server=utf8 --collation-server=utf8_unicode_ci
+```
+
+####### run mysql migration to upgrade schema.rb
+```
+bundle exec rake db:migrate
 ```
 
 ####### do migration with docker
