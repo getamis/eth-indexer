@@ -23,7 +23,6 @@ import (
 	"math/big"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
@@ -92,23 +91,6 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 	}
 
 	return idx.manager.Init(idx.client)
-}
-
-// SyncToTarget syncs the blocks fromBlock to targetBlock. In this function, we are NOT checking reorg and inserting TD. We force to INSERT blocks.
-func (idx *indexer) SyncToTarget(ctx context.Context, fromBlock, targetBlock int64) error {
-	for i := fromBlock; i <= targetBlock; i++ {
-		block, err := idx.client.BlockByNumber(ctx, big.NewInt(i))
-		if err != nil {
-			log.Error("Failed to get block from ethereum", "number", i, "err", err)
-			return err
-		}
-		_, _, err = idx.insertBlocks(ctx, []*types.Block{block}, store.ModeForceSync)
-		if err != nil {
-			log.Error("Failed to update block atomically", "number", i, "err", err)
-			return err
-		}
-	}
-	return nil
 }
 
 func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
@@ -270,21 +252,19 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mod
 	// Update blocks
 	var newBlocks []*types.Block
 	var receipts [][]*types.Receipt
-	var dumps []*state.DirtyDump
 	var events [][]*types.TransferLog
 	for i := len(blocks) - 1; i >= 0; i-- {
 		block := blocks[i]
-		receipt, dump, event, err := idx.getBlockData(ctx, block)
+		receipt, event, err := idx.getBlockData(ctx, block)
 		if err != nil {
 			log.Error("Failed to get receipts and state data", "err", err)
 			return nil, nil, err
 		}
 		newBlocks = append(newBlocks, block)
 		receipts = append(receipts, receipt)
-		dumps = append(dumps, dump)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, dumps, events, mode)
+	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, mode)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -367,7 +347,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 }
 
 // getBlockData returns the receipts generated in the given block, and state diff since last block
-func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, *state.DirtyDump, []*types.TransferLog, error) {
+func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*types.Receipt, []*types.TransferLog, error) {
 	blockNumber := block.Number().Int64()
 	logger := log.New("number", blockNumber, "hash", block.Hash().Hex())
 
@@ -375,41 +355,15 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
-		return nil, nil, nil, err
-	}
-
-	// Get state dump
-	dump := &state.DirtyDump{}
-	isGenesis := blockNumber == 0
-	if isGenesis {
-		d, err := idx.client.DumpBlock(ctx, 0)
-		if err != nil {
-			logger.Error("Failed to get state from ethereum", "err", err)
-			return nil, nil, nil, err
-		}
-		dump.Root = d.Root
-		dump.Accounts = make(map[string]state.DirtyDumpAccount)
-		for addr, acc := range d.Accounts {
-			dump.Accounts[addr] = state.DirtyDumpAccount{
-				Balance: acc.Balance,
-				Storage: acc.Storage,
-			}
-		}
-	} else {
-		// This API is only supported on our customized geth.
-		dump, err = idx.client.ModifiedAccountStatesByNumber(ctx, block.Number().Uint64())
-		if err != nil {
-			logger.Error("Failed to get modified accounts from ethereum", "err", err)
-			return nil, nil, nil, err
-		}
+		return nil, nil, err
 	}
 
 	// Get Eth transfer events
 	events, err := idx.client.GetTransferLogs(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get eth transfer events from ethereum", "err", err)
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return receipts, dump, events, nil
+	return receipts, events, nil
 }

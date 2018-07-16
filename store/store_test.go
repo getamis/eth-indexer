@@ -24,12 +24,10 @@ import (
 	"testing"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
-	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
@@ -62,7 +60,6 @@ var _ = Describe("Manager Test", func() {
 		blocks    []*types.Block
 		uncles    [][]*types.Header
 		receipts  [][]*types.Receipt
-		dumps     []*state.DirtyDump
 		events    [][]*types.TransferLog
 		signedTxs [][]*types.Transaction
 		manager   Manager
@@ -73,10 +70,6 @@ var _ = Describe("Manager Test", func() {
 		Address:     newErc20Addr.Bytes(),
 		Code:        []byte("1332"),
 		BlockNumber: 0,
-	}
-	newErc20Storage := map[string]string{
-		common.BytesToHex(gethCommon.HexToHash("0x0a").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0b").Bytes()),
-		common.BytesToHex(gethCommon.HexToHash("0x0c").Bytes()): common.BytesToHex(gethCommon.HexToHash("0x0d").Bytes()),
 	}
 
 	BeforeSuite(func() {
@@ -170,31 +163,6 @@ var _ = Describe("Manager Test", func() {
 				},
 			},
 		}
-		dumps = []*state.DirtyDump{
-			{
-				Root: "root1",
-				Accounts: map[string]state.DirtyDumpAccount{
-					common.BytesToHex(erc20.Address): {
-						Storage: map[string]string{
-							"1": "2",
-						},
-					},
-					common.BytesToHex(newErc20.Address): {
-						Storage: newErc20Storage,
-					},
-				},
-			},
-			{
-				Root: "root2",
-				Accounts: map[string]state.DirtyDumpAccount{
-					"3": {
-						Storage: map[string]string{
-							"4": "5",
-						},
-					},
-				},
-			},
-		}
 		events = [][]*types.TransferLog{
 			{
 				{
@@ -232,7 +200,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 	})
 
@@ -244,12 +212,6 @@ var _ = Describe("Manager Test", func() {
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
 		db.Delete(&model.ERC20{})
-		db.DropTable(model.ERC20Storage{
-			Address: erc20.Address,
-		})
-		db.DropTable(model.ERC20Storage{
-			Address: newErc20.Address,
-		})
 		db.DropTable(model.Account{
 			ContractAddress: erc20.Address,
 		})
@@ -265,7 +227,7 @@ var _ = Describe("Manager Test", func() {
 	})
 
 	Context("UpdateBlocks()", func() {
-		It("sync mode", func() {
+		It("sync mode, got duplicate key error due to the same txs", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
@@ -280,8 +242,8 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeSync)
-			Expect(err).Should(BeNil())
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeSync)
+			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
@@ -310,7 +272,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -321,49 +283,6 @@ var _ = Describe("Manager Test", func() {
 			Expect(header).Should(Equal(h))
 		})
 
-		It("force sync mode", func() {
-			accountStore := account.NewWithDB(db)
-
-			// Cannot find new erc20 storage
-			for k := range newErc20Storage {
-				_, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
-				Expect(err).ShouldNot(BeNil())
-			}
-
-			// Create find new erc20
-			err := manager.InsertERC20(newErc20)
-			Expect(err).Should(BeNil())
-
-			// Reload manager
-			manager = NewManager(db)
-			err = manager.Init(nil)
-			Expect(err).Should(BeNil())
-
-			// Force update blocks
-			err = manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeForceSync)
-			Expect(err).Should(BeNil())
-
-			// Got blocks 0
-			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
-			header, err := manager.GetHeaderByNumber(100)
-			Expect(err).Should(BeNil())
-
-			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
-			Expect(err).Should(BeNil())
-			Expect(header).Should(Equal(h))
-
-			// Found new erc20 storage
-			for k, v := range newErc20Storage {
-				value, err := accountStore.FindERC20Storage(newErc20Addr, gethCommon.HexToHash(k), blocks[0].Number().Int64())
-				Expect(err).Should(BeNil())
-				Expect(value.Value).Should(Equal(gethCommon.HexToHash(v).Bytes()))
-			}
-
-			db.DropTable(model.ERC20Storage{
-				Address: newErc20.Address,
-			})
-		})
-
 		It("failed due to wrong signer", func() {
 			blocks[0] = types.NewBlock(
 				blocks[0].Header(), []*types.Transaction{
@@ -372,7 +291,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(context.Background(), blocks, receipts, dumps, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})

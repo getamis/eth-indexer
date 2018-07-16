@@ -268,19 +268,6 @@ func (e ERC20) TableName() string {
 	return "erc20"
 }
 
-// ERC20Storage represents the contract storage
-type ERC20Storage struct {
-	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"size:8;index;unique_index:idx_block_number_key_hash"`
-	Key         []byte `gorm:"column:key_hash;size:32;unique_index:idx_block_number_key_hash"`
-	Value       []byte `gorm:"size:32"`
-}
-
-// TableName retruns the table name of this erc20 contract
-func (s ERC20Storage) TableName() string {
-	return "erc20_" + hexutil.Encode(s.Address)
-}
-
 // Subscription represents the Subscription model
 type Subscription struct {
 	ID          int64

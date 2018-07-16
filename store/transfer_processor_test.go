@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/common"
@@ -37,7 +36,6 @@ var _ = Describe("Subscription Test", func() {
 		blocks    []*types.Block
 		signedTxs [][]*types.Transaction
 		receipts  [][]*types.Receipt
-		dumps     []*state.DirtyDump
 		events    [][]*types.TransferLog
 		manager   Manager
 
@@ -247,17 +245,6 @@ var _ = Describe("Subscription Test", func() {
 				},
 			},
 		}
-		dumps = []*state.DirtyDump{
-			{
-				Root: "root1",
-			},
-			{
-				Root: "root2",
-			},
-			{
-				Root: "root3",
-			},
-		}
 		events = [][]*types.TransferLog{
 			{
 				{
@@ -380,7 +367,7 @@ var _ = Describe("Subscription Test", func() {
 			},
 		}, nil).Once()
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 
 		// Verify total balances
@@ -502,17 +489,6 @@ var _ = Describe("Subscription Test", func() {
 			{},
 			{},
 		}
-		dumps = []*state.DirtyDump{
-			{
-				Root: "root1",
-			},
-			{
-				Root: "root2",
-			},
-			{
-				Root: "root3",
-			},
-		}
 		events = [][]*types.TransferLog{
 			{},
 			{},
@@ -538,7 +514,7 @@ var _ = Describe("Subscription Test", func() {
 				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(213),
 			},
 		}, nil).Once()
-		err = manager.UpdateBlocks(ctx, blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 
 		// Verify total balances
