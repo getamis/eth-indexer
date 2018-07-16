@@ -101,38 +101,6 @@ func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int
 	return &h, nil
 }
 
-// UncleHeader represents the header of a uncle
-type UncleHeader struct {
-	Hash        []byte
-	ParentHash  []byte
-	UncleHash   []byte
-	Coinbase    []byte
-	Root        []byte
-	TxHash      []byte
-	ReceiptHash []byte
-	Difficulty  int64
-	Number      int64
-	GasLimit    int64
-	GasUsed     int64
-	Time        int64
-	ExtraData   []byte
-	MixDigest   []byte
-	Nonce       []byte
-	Reward      string
-	Position    int
-	BlockNumber int64
-}
-
-// TableName returns the table name of this model
-func (h UncleHeader) TableName() string {
-	return "uncle_headers"
-}
-
-func (h UncleHeader) AddReward(reward *big.Int) *UncleHeader {
-	h.Reward = reward.String()
-	return &h
-}
-
 // Transaction represents a transaction
 type Transaction struct {
 	Hash        []byte
