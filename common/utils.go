@@ -116,32 +116,6 @@ func Header(b *types.Block) *model.Header {
 	}
 }
 
-// UncleHeader converts ethereum block to db uncle header
-func UncleHeader(b *types.Block, uncleHeader *types.Header, position int) *model.UncleHeader {
-	nonce := make([]byte, 8)
-	binary.BigEndian.PutUint64(nonce, uncleHeader.Nonce.Uint64())
-
-	return &model.UncleHeader{
-		Hash:        b.Hash().Bytes(),
-		ParentHash:  uncleHeader.ParentHash.Bytes(),
-		UncleHash:   uncleHeader.UncleHash.Bytes(),
-		Coinbase:    uncleHeader.Coinbase.Bytes(),
-		Root:        uncleHeader.Root.Bytes(),
-		TxHash:      uncleHeader.TxHash.Bytes(),
-		ReceiptHash: uncleHeader.ReceiptHash.Bytes(),
-		Difficulty:  uncleHeader.Difficulty.Int64(),
-		Number:      uncleHeader.Number.Int64(),
-		GasLimit:    int64(uncleHeader.GasLimit),
-		GasUsed:     int64(uncleHeader.GasUsed),
-		Time:        uncleHeader.Time.Int64(),
-		ExtraData:   uncleHeader.Extra,
-		MixDigest:   uncleHeader.MixDigest.Bytes(),
-		Nonce:       nonce,
-		BlockNumber: b.Header().Number.Int64(),
-		Position:    position,
-	}
-}
-
 // Transaction converts ethereum transaction to db transaction
 func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, error) {
 	signer := types.MakeSigner(params.MainnetChainConfig, b.Number())
@@ -244,7 +218,7 @@ var (
 // included uncles. The coinbase of each uncle block is also rewarded.
 //
 // **COPIED FROM**: github.com/ethereum/go-ethereum/consensus/ethash/consensus.go#accumulateRewards()
-func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseReward, uncleInclusionReward *big.Int, uncleReward []*big.Int, uncleHash []common.Hash) {
+func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseReward, uncleInclusionReward *big.Int, uncleCoinbase []common.Address, uncleReward []*big.Int, uncleHash []common.Hash) {
 	// Select the correct block reward based on chain progression
 	minerBaseReward = ethash.FrontierBlockReward
 	if params.MainnetChainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
@@ -256,6 +230,7 @@ func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseR
 	uncleInclusionReward = new(big.Int)
 	uncleReward = make([]*big.Int, len(uncles))
 	uncleHash = make([]common.Hash, len(uncles))
+	uncleCoinbase = make([]common.Address, len(uncles))
 	for i, uncle := range uncles {
 		r.Add(uncle.Number, big8)
 		r.Sub(r, header.Number)
@@ -269,6 +244,7 @@ func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseR
 		uncleInclusionReward.Add(uncleInclusionReward, r)
 
 		// store uncle information
+		uncleCoinbase[i] = uncle.Coinbase
 		uncleHash[i] = uncle.Hash()
 	}
 	return

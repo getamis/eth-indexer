@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_10_052024) do
+ActiveRecord::Schema.define(version: 2018_07_06_033026) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -142,28 +142,6 @@ ActiveRecord::Schema.define(version: 2018_07_10_052024) do
     t.index ["block_hash"], name: "index_transactions_on_block_hash"
     t.index ["block_number"], name: "index_transactions_on_block_number"
     t.index ["hash"], name: "index_transactions_on_hash", unique: true
-  end
-
-  create_table "uncle_headers", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
-    t.integer "position", limit: 1, null: false
-    t.string "reward", limit: 32, null: false
-    t.bigint "block_number", null: false
-    t.binary "uncle_hash", limit: 32, null: false
-    t.binary "hash", limit: 32, null: false
-    t.binary "parent_hash", limit: 32, null: false
-    t.binary "coinbase", limit: 20, null: false
-    t.binary "root", limit: 32, null: false
-    t.binary "tx_hash", limit: 32, null: false
-    t.binary "receipt_hash", limit: 32, null: false
-    t.bigint "difficulty", null: false
-    t.bigint "number", null: false
-    t.bigint "gas_limit", null: false
-    t.bigint "gas_used", null: false
-    t.bigint "time", null: false
-    t.binary "extra_data", limit: 1024
-    t.binary "mix_digest", limit: 32, null: false
-    t.binary "nonce", limit: 8, null: false
-    t.index ["hash"], name: "index_uncle_headers_on_hash", unique: true
   end
 
 end

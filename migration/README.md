@@ -24,9 +24,6 @@ docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_CHARSET=
 bundle exec rake db:migrate
 ```
 
-####### Committing your migration files and schema.rb
-
-
 ####### do migration with docker
 ```
 // build docker migration image
