@@ -207,7 +207,6 @@ var _ = Describe("Manager Test", func() {
 	AfterEach(func() {
 		// Clean all data
 		db.Delete(&model.Header{})
-		db.Delete(&model.UncleHeader{})
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
@@ -245,10 +244,10 @@ var _ = Describe("Manager Test", func() {
 			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeSync)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
-			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
-			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			Expect(header).Should(Equal(h))
 		})
@@ -275,10 +274,10 @@ var _ = Describe("Manager Test", func() {
 			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeReOrg)
 			Expect(err).Should(BeNil())
 
-			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.GetHeaderByNumber(100)
 			Expect(err).Should(BeNil())
-			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			Expect(header).Should(Equal(h))
 		})
@@ -315,11 +314,11 @@ var _ = Describe("Manager Test", func() {
 	Context("GetHeaderByNumber()", func() {
 		It("gets the right header", func() {
 			for i, block := range blocks {
-				minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[i].Header(), uncles[i])
+				minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[i].Header(), uncles[i])
 				header, err := manager.GetHeaderByNumber(block.Number().Int64())
 				Expect(err).Should(Succeed())
 
-				h, err := common.Header(block).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+				h, err := common.Header(block).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 				Expect(err).Should(BeNil())
 				Expect(header).Should(Equal(h))
 			}
@@ -328,11 +327,11 @@ var _ = Describe("Manager Test", func() {
 
 	Context("LatestHeader()", func() {
 		It("gets the latest header", func() {
-			minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(blocks[1].Header(), uncles[1])
+			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[1].Header(), uncles[1])
 			header, err := manager.LatestHeader()
 			Expect(err).Should(Succeed())
 
-			h, err := common.Header(blocks[1]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+			h, err := common.Header(blocks[1]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			Expect(header).Should(Equal(h))
 		})

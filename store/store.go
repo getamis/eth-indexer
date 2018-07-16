@@ -30,7 +30,6 @@ import (
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/eth-indexer/store/transaction"
 	"github.com/getamis/eth-indexer/store/transaction_receipt"
-	"github.com/getamis/eth-indexer/store/uncle_header"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
 )
@@ -163,7 +162,6 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
 	subsStore := subscription.NewWithDB(dbTx)
-	uncleStore := uncle_header.NewWithDB(dbTx)
 	blockNumber := block.Number().Int64()
 	txPrices := make(map[gethCommon.Hash]*big.Int)
 	totalTxsFee := new(big.Int)
@@ -211,8 +209,8 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Insert blocks
-	minerBaseReward, uncleInclusionReward, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
-	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
+	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 	if err != nil {
 		return err
 	}
@@ -221,20 +219,8 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		return err
 	}
 
-	// Insert uncles
-	for i, u := range block.Uncles() {
-		err = uncleStore.Insert(common.UncleHeader(block, u, i).AddReward(unclesReward[i]))
-		if err != nil {
-			return err
-		}
-	}
-
 	// Insert erc20 balance & events
-	coinbases := make([]gethCommon.Address, 1+len(block.Uncles()))
-	for _, u := range block.Uncles() {
-		coinbases = append(coinbases, u.Coinbase)
-	}
-	coinbases = append(coinbases, block.Coinbase())
+	coinbases := append(uncleCBs, block.Coinbase())
 	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
 	if err != nil {
 		return err
@@ -246,17 +232,12 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 // delete deletes block and state data inside a DB transaction
 func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	headerStore := block_header.NewWithDB(dbTx)
-	uncleStore := uncle_header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
 	subscriptionStore := subscription.NewWithDB(dbTx)
 
 	err = headerStore.Delete(from, to)
-	if err != nil {
-		return
-	}
-	err = uncleStore.DeleteByBlockNumber(from, to)
 	if err != nil {
 		return
 	}
