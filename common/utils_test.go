@@ -17,9 +17,11 @@
 package common
 
 import (
+	"bytes"
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -50,14 +52,14 @@ func TestAccumulateRewards(t *testing.T) {
 		},
 		{
 			description:          "two uncles in same block number",
-			uncleHeaders:         []*types.Header{{Number: big.NewInt(blockNum.Int64() - 1)}, {Number: big.NewInt(blockNum.Int64() - 1)}},
+			uncleHeaders:         []*types.Header{{Number: big.NewInt(blockNum.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(blockNum.Int64() - 1), Coinbase: common.HexToAddress("uncle2")}},
 			uncleInclusionReward: big.NewInt(187500000000000000),
 			minerBaseReward:      minerBaseReward,
 			unclesReward:         []*big.Int{big.NewInt(2625000000000000000), big.NewInt(2625000000000000000)},
 		},
 		{
 			description:          "two uncles in different block number",
-			uncleHeaders:         []*types.Header{{Number: big.NewInt(blockNum.Int64() - 1)}, {Number: big.NewInt(blockNum.Int64() - 2)}},
+			uncleHeaders:         []*types.Header{{Number: big.NewInt(blockNum.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(blockNum.Int64() - 2), Coinbase: common.HexToAddress("uncle2")}},
 			uncleInclusionReward: big.NewInt(187500000000000000),
 			minerBaseReward:      minerBaseReward,
 			unclesReward:         []*big.Int{big.NewInt(2625000000000000000), big.NewInt(2250000000000000000)},
@@ -65,12 +67,15 @@ func TestAccumulateRewards(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
-			minerBaseReward, uncleInclusionReward, unclesReward, _ := AccumulateRewards(header, tt.uncleHeaders)
+			minerBaseReward, uncleInclusionReward, unclesCoinbase, unclesReward, _ := AccumulateRewards(header, tt.uncleHeaders)
 
 			assert.Equal(t, tt.minerBaseReward, minerBaseReward)
 			assert.EqualValues(t, len(tt.unclesReward), len(unclesReward))
 			for i, u := range tt.unclesReward {
 				assert.Zero(t, u.Cmp(unclesReward[i]))
+			}
+			for i, u := range tt.uncleHeaders {
+				assert.True(t, bytes.Equal(u.Coinbase.Bytes(), unclesCoinbase[i].Bytes()))
 			}
 			assert.Zero(t, tt.uncleInclusionReward.Cmp(uncleInclusionReward))
 		})
