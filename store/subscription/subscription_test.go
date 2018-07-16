@@ -293,11 +293,13 @@ var _ = Describe("Database Test", func() {
 		It("should insert", func() {
 			store := NewWithDB(db)
 			data1 := &model.TotalBalance{
-				BlockNumber: 100,
-				Token:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
-				Group:       1,
-				Balance:     "1000",
-				TxFee:       "99",
+				BlockNumber:  100,
+				Token:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+				Group:        1,
+				Balance:      "1000",
+				TxFee:        "99",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 
 			By("insert new total balance")
@@ -309,11 +311,13 @@ var _ = Describe("Database Test", func() {
 			Expect(err).ShouldNot(BeNil())
 
 			data2 := &model.TotalBalance{
-				BlockNumber: 101,
-				Token:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
-				Group:       1,
-				Balance:     "1000",
-				TxFee:       "101",
+				BlockNumber:  101,
+				Token:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+				Group:        1,
+				Balance:      "1000",
+				TxFee:        "101",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 
 			By("insert another new subscription")
@@ -324,25 +328,31 @@ var _ = Describe("Database Test", func() {
 		It("should get total balances, then reset them", func() {
 			store := NewWithDB(db)
 			data1 := &model.TotalBalance{
-				BlockNumber: 100,
-				Token:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
-				Group:       1,
-				Balance:     "1000",
-				TxFee:       "99",
+				BlockNumber:  100,
+				Token:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+				Group:        1,
+				Balance:      "1000",
+				TxFee:        "99",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 			data2 := &model.TotalBalance{
-				BlockNumber: 101,
-				Token:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A893"),
-				Group:       2,
-				Balance:     "1000",
-				TxFee:       "99",
+				BlockNumber:  101,
+				Token:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A893"),
+				Group:        2,
+				Balance:      "1000",
+				TxFee:        "99",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 			data3 := &model.TotalBalance{
-				BlockNumber: 102,
-				Token:       common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A894"),
-				Group:       3,
-				Balance:     "1000",
-				TxFee:       "99",
+				BlockNumber:  102,
+				Token:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A894"),
+				Group:        3,
+				Balance:      "1000",
+				TxFee:        "99",
+				MinerReward:  "0",
+				UnclesReward: "0",
 			}
 			By("insert three new total balances")
 			data := []*model.TotalBalance{data1, data2, data3}
