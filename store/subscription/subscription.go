@@ -37,6 +37,7 @@ type Store interface {
 	// FindOldSubscriptions find old subscriptions by addresses
 	FindOldSubscriptions(addrs [][]byte) (result []*model.Subscription, err error)
 	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
+	ListOldSubscriptions(query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
 
 	// Total balance
 	InsertTotalBalance(data *model.TotalBalance) error
@@ -112,18 +113,6 @@ func (t *store) FindTotalBalance(blockNumber int64, token common.Address, group 
 	result := &model.TotalBalance{}
 	err := t.db.Where("block_number <= ? AND token = ? AND `group` = ?", blockNumber, token.Bytes(), group).Order("block_number DESC").Limit(1).Find(&result).Error
 	if err != nil {
-		// if not found error, hide error and return total balance = 0
-		if err == gorm.ErrRecordNotFound {
-			return &model.TotalBalance{
-				BlockNumber:  blockNumber,
-				Token:        token.Bytes(),
-				Group:        group,
-				Balance:      "0",
-				TxFee:        "0",
-				MinerReward:  "0",
-				UnclesReward: "0",
-			}, nil
-		}
 		return nil, err
 	}
 	return result, nil
@@ -139,19 +128,25 @@ func (t *store) Reset(from, to int64) error {
 	return t.db.Delete(model.TotalBalance{}, "block_number >= ? AND block_number <= ?", from, to).Error
 }
 
-func (t *store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	filter := &model.Subscription{
+func (t *store) FindByGroup(groupID int64, params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	return t.find(t.db.Model(&model.Subscription{}).Where(&model.Subscription{
 		Group: groupID,
-	}
-	db := t.db.Model(&model.Subscription{}).Where(filter)
+	}), params)
+}
+
+func (t *store) ListOldSubscriptions(params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	return t.find(t.db.Model(&model.Subscription{}).Where("block_number > 0"), params)
+}
+
+func (t *store) find(db *gorm.DB, params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
 	var total uint64
 	err := db.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	start := (query.Page - 1) * query.Limit
+	start := (params.Page - 1) * params.Limit
 	var result []*model.Subscription
-	err = db.Offset(start).Limit(query.Limit).Order(query.OrderString()).Find(&result).Error
+	err = db.Offset(start).Limit(params.Limit).Order(params.OrderString()).Find(&result).Error
 	if err != nil {
 		return nil, 0, err
 	}

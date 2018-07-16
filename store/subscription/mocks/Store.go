@@ -160,6 +160,36 @@ func (_m *Store) InsertTotalBalance(data *model.TotalBalance) error {
 	return r0
 }
 
+// ListOldSubscriptions provides a mock function with given fields: query
+func (_m *Store) ListOldSubscriptions(query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(query)
+
+	var r0 []*model.Subscription
+	if rf, ok := ret.Get(0).(func(*model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Subscription)
+		}
+	}
+
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(*model.QueryParameters) uint64); ok {
+		r1 = rf(query)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(*model.QueryParameters) error); ok {
+		r2 = rf(query)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // Reset provides a mock function with given fields: from, to
 func (_m *Store) Reset(from int64, to int64) error {
 	ret := _m.Called(from, to)
