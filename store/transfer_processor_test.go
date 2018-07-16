@@ -397,7 +397,7 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(et2_100.Balance).Should(Equal("500"))
 		Expect(et2_100.TxFee).Should(Equal("0"))
-		Expect(et2_100.MinerReward).Should(Equal("5000000000000000040"))
+		Expect(et2_100.MinerReward).Should(Equal("0"))
 		Expect(et2_100.UnclesReward).Should(Equal("0"))
 
 		t1_101, err := subStore.FindTotalBalance(101, gethCommon.BytesToAddress(erc20.Address), 1)
@@ -441,7 +441,7 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(et2_102.Balance).Should(Equal("438"))
 		Expect(et2_102.TxFee).Should(Equal("20"))
-		Expect(et2_102.MinerReward).Should(Equal("5000000000000000020"))
+		Expect(et2_102.MinerReward).Should(Equal("0"))
 		Expect(et2_102.UnclesReward).Should(Equal("0"))
 
 		// Verify new subscriptions' block numbers updated

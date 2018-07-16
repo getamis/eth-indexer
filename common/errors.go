@@ -42,6 +42,8 @@ var (
 	ErrHasPrevBalance = errors.New("missing previous balance")
 	// ErrMissingPrevBalance is returned if an account is missing previous balance when it's an old subscription
 	ErrMissingPrevBalance = errors.New("missing previous balance")
+
+	ErrTooManyUncles = errors.New("too many uncles")
 )
 
 // DuplicateError checks whether it's a duplicate key error

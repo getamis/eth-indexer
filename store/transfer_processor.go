@@ -68,8 +68,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	// Update total balance for new subscriptions, map[group][token]balance
 	totalBalances := make(map[int64]map[gethCommon.Address]*big.Int)
 	totalFees := make(map[int64]*big.Int)
-	totalMinerReward := new(big.Int)
-	totalUncleRewards := new(big.Int)
+	totalMinerReward := make(map[int64]*big.Int)
+	totalUncleRewards := make(map[int64]*big.Int)
 
 	// Collect modified addresses
 	seenAddrs := make(map[gethCommon.Address]struct{})
@@ -142,6 +142,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		allSubs[gethCommon.BytesToAddress(sub.Address)] = sub
 	}
 
+	minerRewardDiff := make(map[gethCommon.Address]*big.Int)
+	uncleRewardDiff := make(map[gethCommon.Address]*big.Int)
 	// Insert events and calculate miner, uncle reward if it's a subscribed account
 	for _, e := range events {
 		_, hasFrom := allSubs[gethCommon.BytesToAddress(e.From)]
@@ -169,16 +171,26 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 
 		if e.IsMinerRewardEvent() {
-			// only one event on miner reward
-			totalMinerReward.SetString(e.Value, 10)
-		} else if e.IsUncleRewardEvent() {
-			// it's two uncle events possible.
-			d, ok := new(big.Int).SetString(e.Value, 10)
-			if !ok {
-				s.logger.Error("Failed to parse event balance", "type", "uncle", "value", e.Value)
-				// FIXME: do we need to return error?
+			to := gethCommon.BytesToAddress(e.To)
+			reward, _ := new(big.Int).SetString(e.Value, 10)
+
+			if len(minerRewardDiff) > 1 {
+				s.printUnexpectedRewardEvent(e, minerRewardDiff)
+				return model.ErrTooManyMiners
 			}
-			totalUncleRewards.Add(totalUncleRewards, d)
+			minerRewardDiff[to] = new(big.Int).Set(reward)
+		} else if e.IsUncleRewardEvent() {
+			if len(uncleRewardDiff) > model.MaxUncles {
+				s.printUnexpectedRewardEvent(e, uncleRewardDiff)
+				return model.ErrTooManyUncles
+			}
+			to := gethCommon.BytesToAddress(e.To)
+			reward, _ := new(big.Int).SetString(e.Value, 10)
+			if uncleRewardDiff[to] == nil {
+				uncleRewardDiff[to] = new(big.Int).Set(reward)
+			} else {
+				uncleRewardDiff[to].Add(uncleRewardDiff[to], reward)
+			}
 		}
 	}
 
@@ -295,12 +307,30 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			}
 			totalBalances[sub.Group][token] = new(big.Int).Add(tb, d)
 
+			if token != model.ETHAddress {
+				continue
+			}
+
 			// Consider tx fees
-			if f, ok := feeDiff[addr]; ok && token == model.ETHAddress {
+			if f, ok := feeDiff[addr]; ok {
 				if totalFees[sub.Group] == nil {
 					totalFees[sub.Group] = new(big.Int).Set(f)
 				} else {
 					totalFees[sub.Group] = new(big.Int).Add(f, totalFees[sub.Group])
+				}
+			}
+			// Consider miner reward
+			if r, ok := minerRewardDiff[addr]; ok {
+				if totalMinerReward[sub.Group] == nil {
+					totalMinerReward[sub.Group] = new(big.Int).Set(r)
+				}
+			}
+			// Consider uncle reward
+			if r, ok := uncleRewardDiff[addr]; ok {
+				if totalUncleRewards[sub.Group] == nil {
+					totalUncleRewards[sub.Group] = new(big.Int).Set(r)
+				} else {
+					totalUncleRewards[sub.Group] = new(big.Int).Add(r, totalUncleRewards[sub.Group])
 				}
 			}
 		}
@@ -322,8 +352,12 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 				if f, ok := totalFees[group]; ok {
 					tb.TxFee = f.String()
 				}
-				tb.MinerReward = totalMinerReward.String()
-				tb.UnclesReward = totalUncleRewards.String()
+				if r, ok := totalMinerReward[group]; ok {
+					tb.MinerReward = r.String()
+				}
+				if r, ok := totalUncleRewards[group]; ok {
+					tb.UnclesReward = r.String()
+				}
 			}
 			err = s.subStore.InsertTotalBalance(tb)
 			if err != nil {
@@ -345,4 +379,12 @@ func (s *transferProcessor) getLatestBalances(contractAddr gethCommon.Address, a
 		lastBalances[gethCommon.BytesToAddress(acct.Address)] = acct
 	}
 	return lastBalances, nil
+}
+
+func (s *transferProcessor) printUnexpectedRewardEvent(e *model.Transfer, rewardDiff map[gethCommon.Address]*big.Int) {
+	for addr, value := range rewardDiff {
+		s.logger.Error("Previous event diff", "block number", e.BlockNumber, "from", string(e.From), "to", addr.Hex(), "balance", value)
+	}
+
+	s.logger.Error("Current event diff", "block number", e.BlockNumber, "from", string(e.From), "to", string(e.To), "balance", e.Value)
 }
