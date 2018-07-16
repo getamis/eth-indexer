@@ -87,7 +87,7 @@ var _ = Describe("Manager Test", func() {
 	// ERC20 contract
 	erc20 := &model.ERC20{
 		Address:     gethCommon.HexToAddress("1234567890").Bytes(),
-		BlockNumber: 0,
+		BlockNumber: 1,
 	}
 
 	AfterSuite(func() {

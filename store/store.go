@@ -70,7 +70,7 @@ type Manager interface {
 
 type manager struct {
 	db        *gorm.DB
-	tokenList map[gethCommon.Address]struct{}
+	tokenList map[gethCommon.Address]*model.ERC20
 	balancer  client.Balancer
 }
 
@@ -82,14 +82,17 @@ func NewManager(db *gorm.DB) Manager {
 }
 
 func (m *manager) Init(balancer client.Balancer) error {
-	list, err := account.NewWithDB(m.db).ListERC20()
+	list, err := account.NewWithDB(m.db).ListOldERC20()
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	tokenList := make(map[gethCommon.Address]struct{}, len(list))
-	tokenList[model.ETHAddress] = struct{}{}
+	tokenList := make(map[gethCommon.Address]*model.ERC20, len(list))
+	tokenList[model.ETHAddress] = &model.ERC20{
+		Address:     model.ETHBytes,
+		BlockNumber: 0,
+	}
 	for _, e := range list {
-		tokenList[gethCommon.BytesToAddress(e.Address)] = struct{}{}
+		tokenList[gethCommon.BytesToAddress(e.Address)] = e
 	}
 	m.tokenList = tokenList
 
@@ -247,6 +250,15 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		return err
 	}
 
+	// Init new erc20 tokens if existed
+	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, blockNumber, m.balancer)
+	if err != nil {
+		return err
+	}
+	for _, token := range newTokens {
+		m.tokenList[gethCommon.BytesToAddress(token.Address)] = token
+	}
+
 	return nil
 }
 
@@ -276,7 +288,7 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		return
 	}
 
-	for addr := range m.tokenList {
+	for addr, token := range m.tokenList {
 		// Delete erc20 balances
 		err = accountStore.DeleteAccounts(addr, from, to)
 		if err != nil {
@@ -287,6 +299,17 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		err = accountStore.DeleteTransfer(addr, from, to)
 		if err != nil {
 			return
+		}
+
+		if from <= token.BlockNumber && token.BlockNumber <= to {
+			// Reset token
+			token.BlockNumber = 0
+			err = accountStore.SetERC20Block(token)
+			if err != nil {
+				return
+			}
+			// Remove token if it's initialized between `from` and `to`
+			delete(m.tokenList, addr)
 		}
 	}
 	return

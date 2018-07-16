@@ -45,7 +45,7 @@ var _ = Describe("Subscription Test", func() {
 	// ERC20 contract
 	erc20 := &model.ERC20{
 		Address:     gethCommon.HexToAddress("1234567892").Bytes(),
-		BlockNumber: 0,
+		BlockNumber: 1,
 	}
 
 	BeforeEach(func() {
@@ -60,6 +60,7 @@ var _ = Describe("Subscription Test", func() {
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
+		db.Delete(&model.TotalBalance{})
 		db.Delete(&model.Subscription{})
 		db.Delete(&model.ERC20{})
 		db.DropTable(model.Transfer{

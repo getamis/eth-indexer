@@ -34,7 +34,7 @@ type transferProcessor struct {
 	logger      log.Logger
 	blockNumber int64
 	// tokenList includes ETH and erc20 tokens
-	tokenList    map[gethCommon.Address]struct{}
+	tokenList    map[gethCommon.Address]*model.ERC20
 	subStore     subscription.Store
 	accountStore account.Store
 	balancer     client.Balancer
@@ -45,7 +45,7 @@ type transferProcessor struct {
 }
 
 func newTransferProcessor(blockNumber int64,
-	tokenList map[gethCommon.Address]struct{},
+	tokenList map[gethCommon.Address]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
 	subStore subscription.Store,
