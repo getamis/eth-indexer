@@ -251,7 +251,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	}
 
 	// Init new erc20 tokens if existed
-	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, blockNumber, m.balancer)
+	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, blockNumber)
 	if err != nil {
 		return err
 	}
@@ -303,8 +303,9 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 
 		if from <= token.BlockNumber && token.BlockNumber <= to {
 			// Reset token
-			token.BlockNumber = 0
-			err = accountStore.SetERC20Block(token)
+			err = accountStore.BatchUpdateERC20BlockNumber(0, [][]byte{
+				addr.Bytes(),
+			})
 			if err != nil {
 				return
 			}

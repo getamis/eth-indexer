@@ -43,14 +43,12 @@ var _ = Describe("New ERC20 Test", func() {
 
 	// ERC20 contract
 	erc20s := []*model.ERC20{
-		&model.ERC20{
+		{
 			Address:     gethCommon.HexToAddress("1234567893").Bytes(),
-			Code:        []byte("1334"),
 			BlockNumber: 1,
 		},
-		&model.ERC20{
+		{
 			Address:     gethCommon.HexToAddress("1234567894").Bytes(),
-			Code:        []byte("1334"),
 			BlockNumber: 0,
 		},
 	}
@@ -67,6 +65,7 @@ var _ = Describe("New ERC20 Test", func() {
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
 		db.Delete(&model.Account{})
+		db.Delete(&model.ERC20{})
 		db.Delete(&model.TotalBalance{})
 		db.Delete(&model.Subscription{})
 		db.DropTable(model.Transfer{
@@ -252,7 +251,7 @@ var _ = Describe("New ERC20 Test", func() {
 		Expect(res[2].BlockNumber).Should(Equal(int64(100)))
 		erc20, err := acctStore.FindERC20(gethCommon.BytesToAddress(erc20s[1].Address))
 		Expect(err).Should(BeNil())
-		Expect(erc20.BlockNumber).Should(Equal(int64(100)))
+		Expect(erc20.BlockNumber).Should(Equal(int64(101)))
 		// Check the balances of new token
 		for i, sub := range subs {
 			acc, err := acctStore.FindAccount(gethCommon.BytesToAddress(erc20s[1].Address), gethCommon.BytesToAddress(sub.Address))
@@ -345,7 +344,7 @@ var _ = Describe("New ERC20 Test", func() {
 		// Verify new subscriptions' block numbers updated
 		erc20, err = acctStore.FindERC20(gethCommon.BytesToAddress(erc20s[1].Address))
 		Expect(err).Should(BeNil())
-		Expect(erc20.BlockNumber).Should(Equal(int64(100)))
+		Expect(erc20.BlockNumber).Should(Equal(int64(101)))
 
 		// Check the balances of new token
 		for i, sub := range subs {

@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
@@ -34,8 +33,9 @@ var (
 )
 
 // initNewERC20 inits all new erc20 tokens.
-// We insert balances of ALL subscriptions and total balances for these new tokens.
-func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, subStore subscription.Store, blockNumber int64, balancer client.Balancer) (map[gethCommon.Address]*model.ERC20, error) {
+// 1. insert balances of ALL subscriptions and total balances for these new tokens at the given block.
+// 2. return new tokens with the next block number
+func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, subStore subscription.Store, blockNumber int64) (map[gethCommon.Address]*model.ERC20, error) {
 	// Get latest ERC20 list
 	list, err := accountStore.ListNewERC20()
 	if err != nil {
@@ -46,10 +46,12 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 		return nil, nil
 	}
 
+	nextBlockNumber := blockNumber + 1
 	newTokens := make(map[gethCommon.Address]*model.ERC20, len(list))
 	for _, e := range list {
-		e.BlockNumber = blockNumber
+		e.BlockNumber = nextBlockNumber
 		newTokens[gethCommon.BytesToAddress(e.Address)] = e
+		log.Debug("Try to add new ERC20 token", "name", e.Name, "addr", gethCommon.BytesToAddress(e.Address).Hex())
 	}
 
 	query := &model.QueryParameters{
@@ -73,19 +75,20 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 
 		// Construct a set of subscription for membership testing
 		subMap := make(map[gethCommon.Address]*model.Subscription)
-		for _, sub := range subs {
-			subMap[gethCommon.BytesToAddress(sub.Address)] = sub
-		}
-		// Contructs the requested balance map
 		contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
-		for _, token := range newTokens {
-			contractsAddrs[gethCommon.BytesToAddress(token.Address)] = make(map[gethCommon.Address]struct{})
-			for _, sub := range subs {
-				contractsAddrs[gethCommon.BytesToAddress(token.Address)][gethCommon.BytesToAddress(sub.Address)] = struct{}{}
+		for _, sub := range subs {
+			subAddr := gethCommon.BytesToAddress(sub.Address)
+			subMap[subAddr] = sub
+			for _, token := range newTokens {
+				tokenAddr := gethCommon.BytesToAddress(token.Address)
+				if contractsAddrs[tokenAddr] == nil {
+					contractsAddrs[tokenAddr] = make(map[gethCommon.Address]struct{})
+				}
+				contractsAddrs[tokenAddr][subAddr] = struct{}{}
 			}
 		}
 		// Get balances
-		results, err := balancer.BalanceOf(ctx, big.NewInt(blockNumber), contractsAddrs)
+		results, err := m.balancer.BalanceOf(ctx, big.NewInt(blockNumber), contractsAddrs)
 		if err != nil {
 			logger.Error("Failed to get ERC20 balance", "len", len(contractsAddrs), "err", err)
 			return nil, err
@@ -151,13 +154,15 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 		}
 	}
 
-	// Update erc20 tokens
+	// Update erc20 tokens to the next block number
+	var addrs [][]byte
 	for _, token := range newTokens {
-		err = accountStore.SetERC20Block(token)
-		if err != nil {
-			log.Error("Failed to set erc20 block number", "err", err)
-			return nil, err
-		}
+		addrs = append(addrs, token.Address)
+	}
+	err = accountStore.BatchUpdateERC20BlockNumber(nextBlockNumber, addrs)
+	if err != nil {
+		log.Error("Failed to update erc20 block number", "err", err)
+		return nil, err
 	}
 	return newTokens, nil
 }
