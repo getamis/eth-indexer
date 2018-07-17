@@ -149,18 +149,12 @@ func (c *client) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) (
 func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
 	r := &state.Dump{}
 	err := c.rpc.CallContext(ctx, r, "debug_dumpBlock", fmt.Sprintf("0x%x", blockNr))
-	if err == nil && r == nil {
-		err = ethereum.NotFound
-	}
 	return r, err
 }
 
 func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
 	var r string
 	err := c.rpc.CallContext(ctx, &r, "debug_getTotalDifficulty", hash.Hex())
-	if err == nil && len(r) == 0 {
-		err = ethereum.NotFound
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -175,27 +169,18 @@ func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big
 func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	var r types.Receipts
 	err := c.rpc.CallContext(ctx, &r, "debug_getBlockReceipts", hash.Hex())
-	if err == nil && r == nil {
-		err = ethereum.NotFound
-	}
 	return r, err
 }
 
 func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {
 	r := &state.DirtyDump{}
 	err := c.rpc.CallContext(ctx, r, "debug_getModifiedAccountStatesByNumber", num)
-	if err == nil && r == nil {
-		err = ethereum.NotFound
-	}
 	return r, err
 }
 
 func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
 	logger := log.New("addr", addr, "number", num)
 	code, err := c.CodeAt(ctx, addr, nil)
-	if err == nil && len(code) == 0 {
-		err = ethereum.NotFound
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -236,9 +221,6 @@ func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (
 func (c *client) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error) {
 	r := []*types.TransferLog{}
 	err := c.rpc.CallContext(ctx, &r, "debug_getTransferLogs", hash.Hex())
-	if err == nil && len(r) == 0 {
-		err = ethereum.NotFound
-	}
 	return r, err
 }
 
