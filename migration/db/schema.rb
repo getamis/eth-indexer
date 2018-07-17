@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_06_033026) do
+ActiveRecord::Schema.define(version: 2018_07_15_064231) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -101,6 +101,8 @@ ActiveRecord::Schema.define(version: 2018_07_06_033026) do
     t.bigint "group", null: false
     t.string "balance", limit: 32, null: false
     t.string "tx_fee", limit: 32, null: false
+    t.string "uncles_reward", limit: 32, null: false
+    t.string "miner_reward", limit: 32, null: false
     t.index ["block_number", "token", "group"], name: "index_total_balances_on_block_number_and_token_and_group", unique: true
     t.index ["block_number"], name: "index_total_balances_on_block_number"
     t.index ["group"], name: "index_total_balances_on_group"

@@ -219,9 +219,30 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		return err
 	}
 
-	// Insert erc20 balance & events
-	coinbases := append(uncleCBs, block.Coinbase())
-	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
+	// Insert uncles
+	for i, u := range block.Uncles() {
+		// Insert a transfer event to represent uncle reward
+		events = append(events, &model.Transfer{
+			Address:     model.ETHBytes,
+			BlockNumber: block.Number().Int64(),
+			TxHash:      u.Hash().Bytes(),
+			From:        model.RewardToUncle.Bytes(),
+			To:          u.Coinbase.Bytes(),
+			Value:       unclesReward[i].String(),
+		})
+	}
+
+	// Insert a transfer event to represent miner reward
+	events = append(events, &model.Transfer{
+		Address:     model.ETHBytes,
+		BlockNumber: block.Number().Int64(),
+		TxHash:      block.Hash().Bytes(),
+		From:        model.RewardToMiner.Bytes(),
+		To:          block.Coinbase().Bytes(),
+		Value:       h.MinerReward,
+	})
+
+	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
 	if err != nil {
 		return err
 	}

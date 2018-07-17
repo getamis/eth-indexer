@@ -51,6 +51,7 @@ func newTransferProcessor(blockNumber int64,
 	subStore subscription.Store,
 	accountStore account.Store,
 	balancer client.Balancer) *transferProcessor {
+
 	return &transferProcessor{
 		logger:       log.New("number", blockNumber),
 		blockNumber:  blockNumber,
@@ -63,21 +64,16 @@ func newTransferProcessor(blockNumber int64,
 	}
 }
 
-func (s *transferProcessor) process(ctx context.Context, events []*model.Transfer, coinbases []gethCommon.Address) (err error) {
+func (s *transferProcessor) process(ctx context.Context, events []*model.Transfer) (err error) {
 	// Update total balance for new subscriptions, map[group][token]balance
 	totalBalances := make(map[int64]map[gethCommon.Address]*big.Int)
 	totalFees := make(map[int64]*big.Int)
+	totalMinerReward := make(map[int64]*big.Int)
+	totalUncleRewards := make(map[int64]*big.Int)
 
 	// Collect modified addresses
 	seenAddrs := make(map[gethCommon.Address]struct{})
 	var addrs [][]byte
-	// From block / uncles coinbases
-	for _, cb := range coinbases {
-		if _, ok := seenAddrs[cb]; !ok {
-			seenAddrs[cb] = struct{}{}
-			addrs = append(addrs, cb.Bytes())
-		}
-	}
 	// Collect fee payers
 	// Note that we don't calculate fees from events because events with transfer value 0 (but still incur fee)
 	// are not included in events.
@@ -88,12 +84,14 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			addrs = append(addrs, tx.From)
 		}
 	}
-	// From transfer events
+	// From transfer events (including miner and uncles)
 	for _, e := range events {
 		fromAddr := gethCommon.BytesToAddress(e.From)
 		if _, ok := seenAddrs[fromAddr]; !ok {
-			seenAddrs[fromAddr] = struct{}{}
-			addrs = append(addrs, e.From)
+			if !e.IsMinerRewardEvent() && !e.IsUncleRewardEvent() {
+				seenAddrs[fromAddr] = struct{}{}
+				addrs = append(addrs, e.From)
+			}
 		}
 		toAddr := gethCommon.BytesToAddress(e.To)
 		if _, ok := seenAddrs[toAddr]; !ok {
@@ -144,7 +142,9 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		allSubs[gethCommon.BytesToAddress(sub.Address)] = sub
 	}
 
-	// Insert events if it's a subscribed account
+	minerRewardDiff := make(map[gethCommon.Address]*big.Int)
+	uncleRewardDiff := make(map[gethCommon.Address]*big.Int)
+	// Insert events and calculate miner, uncle reward if it's a subscribed account
 	for _, e := range events {
 		_, hasFrom := allSubs[gethCommon.BytesToAddress(e.From)]
 		_, hasTo := allSubs[gethCommon.BytesToAddress(e.To)]
@@ -169,17 +169,29 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			to := gethCommon.BytesToAddress(e.To)
 			contractsAddrs[contractAddr][to] = struct{}{}
 		}
-	}
 
-	// Make sure coinbases are also included in balance queries to geth
-	for _, addr := range coinbases {
-		if allSubs[addr] == nil {
-			continue
+		if e.IsMinerRewardEvent() {
+			to := gethCommon.BytesToAddress(e.To)
+			reward, _ := new(big.Int).SetString(e.Value, 10)
+
+			if len(minerRewardDiff) > 1 {
+				s.printUnexpectedRewardEvent(e, minerRewardDiff)
+				return model.ErrTooManyMiners
+			}
+			minerRewardDiff[to] = new(big.Int).Set(reward)
+		} else if e.IsUncleRewardEvent() {
+			if len(uncleRewardDiff) > model.MaxUncles {
+				s.printUnexpectedRewardEvent(e, uncleRewardDiff)
+				return model.ErrTooManyUncles
+			}
+			to := gethCommon.BytesToAddress(e.To)
+			reward, _ := new(big.Int).SetString(e.Value, 10)
+			if uncleRewardDiff[to] == nil {
+				uncleRewardDiff[to] = new(big.Int).Set(reward)
+			} else {
+				uncleRewardDiff[to].Add(uncleRewardDiff[to], reward)
+			}
 		}
-		if contractsAddrs[model.ETHAddress] == nil {
-			contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
-		}
-		contractsAddrs[model.ETHAddress][addr] = struct{}{}
 	}
 
 	// Collect tx fee and make sure fee payers are included in balance queries to geth
@@ -209,7 +221,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	// Get balances
 	results, err := s.balancer.BalanceOf(ctx, big.NewInt(s.blockNumber), contractsAddrs)
 	if err != nil {
-		s.logger.Error("Failed to get ERC20 balance", "len", len(contractsAddrs), "err", err)
+		s.logger.Error("Failed to get ERC20 balance with ethclient", "len", len(contractsAddrs), "err", err)
 		return err
 	}
 
@@ -295,12 +307,30 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			}
 			totalBalances[sub.Group][token] = new(big.Int).Add(tb, d)
 
+			if token != model.ETHAddress {
+				continue
+			}
+
 			// Consider tx fees
-			if f, ok := feeDiff[addr]; ok && token == model.ETHAddress {
+			if f, ok := feeDiff[addr]; ok {
 				if totalFees[sub.Group] == nil {
 					totalFees[sub.Group] = new(big.Int).Set(f)
 				} else {
 					totalFees[sub.Group] = new(big.Int).Add(f, totalFees[sub.Group])
+				}
+			}
+			// Consider miner reward
+			if r, ok := minerRewardDiff[addr]; ok {
+				if totalMinerReward[sub.Group] == nil {
+					totalMinerReward[sub.Group] = new(big.Int).Set(r)
+				}
+			}
+			// Consider uncle reward
+			if r, ok := uncleRewardDiff[addr]; ok {
+				if totalUncleRewards[sub.Group] == nil {
+					totalUncleRewards[sub.Group] = new(big.Int).Set(r)
+				} else {
+					totalUncleRewards[sub.Group] = new(big.Int).Add(r, totalUncleRewards[sub.Group])
 				}
 			}
 		}
@@ -309,15 +339,25 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	for group, addrs := range totalBalances {
 		for token, d := range addrs {
 			tb := &model.TotalBalance{
-				Token:       token.Bytes(),
-				BlockNumber: s.blockNumber,
-				Group:       group,
-				TxFee:       "0",
-				Balance:     d.String(),
+				Token:        token.Bytes(),
+				BlockNumber:  s.blockNumber,
+				Group:        group,
+				TxFee:        "0",
+				MinerReward:  "0",
+				UnclesReward: "0",
+				Balance:      d.String(),
 			}
 
-			if f, ok := totalFees[group]; ok && token == model.ETHAddress {
-				tb.TxFee = f.String()
+			if token == model.ETHAddress {
+				if f, ok := totalFees[group]; ok {
+					tb.TxFee = f.String()
+				}
+				if r, ok := totalMinerReward[group]; ok {
+					tb.MinerReward = r.String()
+				}
+				if r, ok := totalUncleRewards[group]; ok {
+					tb.UnclesReward = r.String()
+				}
 			}
 			err = s.subStore.InsertTotalBalance(tb)
 			if err != nil {
@@ -339,4 +379,12 @@ func (s *transferProcessor) getLatestBalances(contractAddr gethCommon.Address, a
 		lastBalances[gethCommon.BytesToAddress(acct.Address)] = acct
 	}
 	return lastBalances, nil
+}
+
+func (s *transferProcessor) printUnexpectedRewardEvent(e *model.Transfer, rewardDiff map[gethCommon.Address]*big.Int) {
+	for addr, value := range rewardDiff {
+		s.logger.Error("Previous event diff", "block number", e.BlockNumber, "from", string(e.From), "to", addr.Hex(), "balance", value)
+	}
+
+	s.logger.Error("Current event diff", "block number", e.BlockNumber, "from", string(e.From), "to", string(e.To), "balance", e.Value)
 }

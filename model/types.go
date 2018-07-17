@@ -31,10 +31,17 @@ var (
 	ETHAddress = common.BytesToAddress([]byte("ETH"))
 	// ETHBytes represents ether type in bytes array type
 	ETHBytes = ETHAddress.Bytes()
+	// RewardToMiner represents a constant at from field in transfer event
+	RewardToMiner = common.BytesToAddress([]byte("MINER REWARD"))
+	// RewardToUncle represents a constant at from field in transfer event
+	RewardToUncle = common.BytesToAddress([]byte("UNCLE REWARD"))
 
 	// Maximum number of uncles allowed in a single block
-	maxUncles         = 2
-	ErrTooManyUncles  = errors.New("too many uncles or confused numbers of uncle")
+	MaxUncles = 2
+	// ErrTooManyUncles is returned if uncles is larger than 2
+	ErrTooManyUncles = errors.New("too many uncles")
+	// ErrTooManyMiners is returned if miner is larger than 1
+	ErrTooManyMiners  = errors.New("too many miners")
 	ErrConfusedUncles = errors.New("confused numbers of uncle")
 )
 
@@ -84,7 +91,7 @@ func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int
 	if len(unclesReward) != len(unclesHash) || len(unclesReward) != len(uncleCBs) {
 		return nil, ErrConfusedUncles
 	}
-	if len(unclesReward) > maxUncles {
+	if len(unclesReward) > MaxUncles {
 		return nil, ErrTooManyUncles
 	}
 
@@ -218,13 +225,29 @@ func (e Transfer) TableName() string {
 	return "erc20_transfer_" + hexutil.Encode(e.Address)
 }
 
+// IsMinerRewardEvent represents a miner or uncle event.
+//
+// Note that the event is defined by us. It's not a standard ethereum event.
+func (e Transfer) IsMinerRewardEvent() bool {
+	return bytes.Equal(e.From, RewardToMiner.Bytes())
+}
+
+// IsUncleRewardEvent represents a miner or uncle event.
+//
+// Note that the event is defined by us. It's not a standard ethereum event.
+func (e Transfer) IsUncleRewardEvent() bool {
+	return bytes.Equal(e.From, RewardToUncle.Bytes())
+}
+
 // TotalBalance represents the total balance of subscription accounts in different group
 type TotalBalance struct {
-	Token       []byte
-	BlockNumber int64
-	Group       int64
-	Balance     string
-	TxFee       string
+	Token        []byte
+	BlockNumber  int64
+	Group        int64
+	Balance      string
+	TxFee        string
+	MinerReward  string
+	UnclesReward string
 }
 
 // TableName retruns the table name of this model
