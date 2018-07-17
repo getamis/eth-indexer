@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/common"
@@ -37,7 +36,6 @@ var _ = Describe("Subscription Test", func() {
 		blocks    []*types.Block
 		signedTxs [][]*types.Transaction
 		receipts  [][]*types.Receipt
-		dumps     []*state.DirtyDump
 		events    [][]*types.TransferLog
 		manager   Manager
 
@@ -71,6 +69,7 @@ var _ = Describe("Subscription Test", func() {
 	})
 
 	It("should be successful", func() {
+		By("Normal blocks comes")
 		// subscriptions
 		subs := []*model.Subscription{
 			{
@@ -97,20 +96,24 @@ var _ = Describe("Subscription Test", func() {
 
 		// Insert ERC20 total balance
 		err = subStore.InsertTotalBalance(&model.TotalBalance{
-			Token:       erc20.Address,
-			BlockNumber: 99,
-			Group:       1,
-			Balance:     "2000",
-			TxFee:       "0",
+			Token:        erc20.Address,
+			BlockNumber:  99,
+			Group:        1,
+			Balance:      "2000",
+			TxFee:        "0",
+			MinerReward:  "0",
+			UnclesReward: "0",
 		})
 		Expect(err).Should(BeNil())
 		// Insert ether total balance
 		err = subStore.InsertTotalBalance(&model.TotalBalance{
-			Token:       model.ETHBytes,
-			BlockNumber: 99,
-			Group:       1,
-			Balance:     "1000",
-			TxFee:       "0",
+			Token:        model.ETHBytes,
+			BlockNumber:  99,
+			Group:        1,
+			Balance:      "1000",
+			TxFee:        "0",
+			MinerReward:  "0",
+			UnclesReward: "0",
 		})
 		Expect(err).Should(BeNil())
 
@@ -246,17 +249,6 @@ var _ = Describe("Subscription Test", func() {
 				},
 			},
 		}
-		dumps = []*state.DirtyDump{
-			{
-				Root: "root1",
-			},
-			{
-				Root: "root2",
-			},
-			{
-				Root: "root3",
-			},
-		}
 		events = [][]*types.TransferLog{
 			{
 				{
@@ -379,7 +371,7 @@ var _ = Describe("Subscription Test", func() {
 			},
 		}, nil).Once()
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, dumps, events, ModeReOrg)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 
 		// Verify total balances
@@ -387,35 +379,51 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(t1_100.Balance).Should(Equal("2150"))
 		Expect(t1_100.TxFee).Should(Equal("0"))
+		Expect(t1_100.MinerReward).Should(Equal("0"))
+		Expect(t1_100.UnclesReward).Should(Equal("0"))
 		t2_100, err := subStore.FindTotalBalance(100, gethCommon.BytesToAddress(erc20.Address), 2)
 		Expect(err).Should(BeNil())
 		Expect(t2_100.Balance).Should(Equal("1000"))
 		Expect(t2_100.TxFee).Should(Equal("0"))
+		Expect(t2_100.MinerReward).Should(Equal("0"))
+		Expect(t2_100.UnclesReward).Should(Equal("0"))
 		et1_100, err := subStore.FindTotalBalance(100, model.ETHAddress, 1)
 		Expect(err).Should(BeNil())
 		Expect(et1_100.Balance).Should(Equal("1099"))
 		Expect(et1_100.TxFee).Should(Equal("40"))
+		Expect(et1_100.MinerReward).Should(Equal("5000000000000000040"))
+		Expect(et1_100.UnclesReward).Should(Equal("0"))
 		et2_100, err := subStore.FindTotalBalance(100, model.ETHAddress, 2)
 		Expect(err).Should(BeNil())
 		Expect(et2_100.Balance).Should(Equal("500"))
 		Expect(et2_100.TxFee).Should(Equal("0"))
+		Expect(et2_100.MinerReward).Should(Equal("0"))
+		Expect(et2_100.UnclesReward).Should(Equal("0"))
 
 		t1_101, err := subStore.FindTotalBalance(101, gethCommon.BytesToAddress(erc20.Address), 1)
 		Expect(err).Should(BeNil())
 		Expect(t1_101.Balance).Should(Equal("2151"))
 		Expect(t1_101.TxFee).Should(Equal("0"))
+		Expect(t1_101.MinerReward).Should(Equal("0"))
+		Expect(t1_101.UnclesReward).Should(Equal("0"))
 		t2_101, err := subStore.FindTotalBalance(101, gethCommon.BytesToAddress(erc20.Address), 2)
 		Expect(err).Should(BeNil())
 		Expect(t2_101.Balance).Should(Equal("999"))
 		Expect(t2_101.TxFee).Should(Equal("0"))
+		Expect(t2_101.MinerReward).Should(Equal("0"))
+		Expect(t2_101.UnclesReward).Should(Equal("0"))
 		et1_101, err := subStore.FindTotalBalance(101, model.ETHAddress, 1)
 		Expect(err).Should(BeNil())
 		Expect(et1_101.Balance).Should(Equal("1101"))
 		Expect(et1_101.TxFee).Should(Equal("0"))
+		Expect(et1_101.MinerReward).Should(Equal("0"))
+		Expect(et1_101.UnclesReward).Should(Equal("0"))
 		et2_101, err := subStore.FindTotalBalance(101, model.ETHAddress, 2)
 		Expect(err).Should(BeNil())
 		Expect(et2_101.Balance).Should(Equal("458"))
 		Expect(et2_101.TxFee).Should(Equal("40"))
+		Expect(et2_101.MinerReward).Should(Equal("0"))
+		Expect(et2_101.UnclesReward).Should(Equal("0"))
 
 		t1_102, err := subStore.FindTotalBalance(102, gethCommon.BytesToAddress(erc20.Address), 1)
 		Expect(err).Should(BeNil())
@@ -427,10 +435,14 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(et1_102.Balance).Should(Equal("1201"))
 		Expect(et1_102.TxFee).Should(Equal("0"))
+		Expect(et1_102.MinerReward).Should(Equal("5000000000000000020"))
+		Expect(et1_102.UnclesReward).Should(Equal("0"))
 		et2_102, err := subStore.FindTotalBalance(102, model.ETHAddress, 2)
 		Expect(err).Should(BeNil())
 		Expect(et2_102.Balance).Should(Equal("438"))
 		Expect(et2_102.TxFee).Should(Equal("20"))
+		Expect(et2_102.MinerReward).Should(Equal("0"))
+		Expect(et2_102.UnclesReward).Should(Equal("0"))
 
 		// Verify new subscriptions' block numbers updated
 		res, err := subStore.FindOldSubscriptions([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
@@ -440,34 +452,49 @@ var _ = Describe("Subscription Test", func() {
 		Expect(res[2].BlockNumber).Should(Equal(int64(100)))
 
 		// Verify recorded eth transfers
+		newTs := []*model.Transfer{}
 		ts, err := acctStore.FindAllTransfers(model.ETHAddress, acc0Addr)
-		Expect(err).Should(BeNil())
-		Expect(len(ts)).Should(Equal(2))
-		for _, t := range ts {
-			t.Address = model.ETHBytes
-		}
-		Expect(ts[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][1])))
-		Expect(ts[1]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][0])))
-
-		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc1Addr)
 		Expect(err).Should(BeNil())
 		Expect(len(ts)).Should(Equal(3))
 		for _, t := range ts {
+			if t.IsMinerRewardEvent() || t.IsUncleRewardEvent() {
+				continue
+			}
 			t.Address = model.ETHBytes
+			newTs = append(newTs, t)
 		}
-		Expect(ts[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][0])))
-		Expect(ts[1]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][0])))
-		Expect(ts[2]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][1])))
+		Expect(newTs[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][1])))
+		Expect(newTs[1]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][0])))
 
+		newTs = newTs[:0]
+		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc1Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(Equal(4))
+		for _, t := range ts {
+			if t.IsMinerRewardEvent() || t.IsUncleRewardEvent() {
+				continue
+			}
+			t.Address = model.ETHBytes
+			newTs = append(newTs, t)
+		}
+		Expect(newTs[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][0])))
+		Expect(newTs[1]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][0])))
+		Expect(newTs[2]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][1])))
+
+		newTs = newTs[:0]
 		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc2Addr)
 		Expect(err).Should(BeNil())
 		Expect(len(ts)).Should(Equal(3))
 		for _, t := range ts {
+			if t.IsMinerRewardEvent() || t.IsUncleRewardEvent() {
+				continue
+			}
 			t.Address = model.ETHBytes
+			newTs = append(newTs, t)
 		}
-		Expect(ts[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][0])))
-		Expect(ts[1]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][1])))
-		Expect(ts[2]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][1])))
+		Expect(newTs[0]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][0])))
+		Expect(newTs[1]).Should(Equal(common.EthTransferEvent(blocks[1], events[1][1])))
+		Expect(newTs[2]).Should(Equal(common.EthTransferEvent(blocks[0], events[0][1])))
 
 		// Verify recorded erc20 transfers
 		ts, err = acctStore.FindAllTransfers(gethCommon.BytesToAddress(erc20.Address), acc0Addr)
@@ -479,5 +506,181 @@ var _ = Describe("Subscription Test", func() {
 		ts, err = acctStore.FindAllTransfers(gethCommon.BytesToAddress(erc20.Address), acc2Addr)
 		Expect(err).Should(BeNil())
 		Expect(len(ts)).Should(Equal(2))
+
+		By("Reorg blocks comes")
+		blocks = []*types.Block{
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(100),
+				Coinbase: unknownRecipientAddr,
+			}),
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(101),
+				Coinbase: unknownRecipientAddr,
+			}),
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(102),
+				Coinbase: unknownRecipientAddr,
+			}).WithBody(nil, []*types.Header{{Coinbase: acc0Addr, Number: big.NewInt(101)}}),
+		}
+
+		receipts = [][]*types.Receipt{
+			{},
+			{},
+			{},
+		}
+		events = [][]*types.TransferLog{
+			{},
+			{},
+			{},
+		}
+
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
+				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
+			},
+			gethCommon.BytesToAddress(erc20.Address): {
+				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
+				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
+			},
+		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(112),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(113),
+			},
+			gethCommon.BytesToAddress(erc20.Address): {
+				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(212),
+				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(213),
+			},
+		}, nil).Once()
+
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), map[gethCommon.Address]map[gethCommon.Address]struct{}{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
+			},
+		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
+			model.ETHAddress: {
+				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(1000),
+			},
+		}, nil).Once()
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
+		Expect(err).Should(BeNil())
+
+		// Verify total balances
+		t1_100, err = subStore.FindTotalBalance(100, gethCommon.BytesToAddress(erc20.Address), 1)
+		Expect(err).Should(BeNil())
+		Expect(t1_100.Balance).Should(Equal("2212"))
+		Expect(t1_100.TxFee).Should(Equal("0"))
+		t2_100, err = subStore.FindTotalBalance(100, gethCommon.BytesToAddress(erc20.Address), 2)
+		Expect(err).Should(BeNil())
+		Expect(t2_100.Balance).Should(Equal("213"))
+		Expect(t2_100.TxFee).Should(Equal("0"))
+		et1_100, err = subStore.FindTotalBalance(100, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_100.Balance).Should(Equal("1112"))
+		Expect(et1_100.TxFee).Should(Equal("0"))
+		et2_100, err = subStore.FindTotalBalance(100, model.ETHAddress, 2)
+		Expect(err).Should(BeNil())
+		Expect(et2_100.Balance).Should(Equal("113"))
+		Expect(et2_100.TxFee).Should(Equal("0"))
+
+		t1_101, err = subStore.FindTotalBalance(101, gethCommon.BytesToAddress(erc20.Address), 1)
+		Expect(err).Should(BeNil())
+		Expect(t1_101).Should(Equal(t1_100))
+		t2_101, err = subStore.FindTotalBalance(101, gethCommon.BytesToAddress(erc20.Address), 2)
+		Expect(err).Should(BeNil())
+		Expect(t2_101).Should(Equal(t2_100))
+		et1_101, err = subStore.FindTotalBalance(101, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_101).Should(Equal(et1_100))
+		et2_101, err = subStore.FindTotalBalance(101, model.ETHAddress, 2)
+		Expect(err).Should(BeNil())
+		Expect(et2_101).Should(Equal(et2_100))
+
+		t1_102, err = subStore.FindTotalBalance(102, gethCommon.BytesToAddress(erc20.Address), 1)
+		Expect(err).Should(BeNil())
+		Expect(t1_102).Should(Equal(t1_100))
+		t2_102, err = subStore.FindTotalBalance(102, gethCommon.BytesToAddress(erc20.Address), 2)
+		Expect(err).Should(BeNil())
+		Expect(t2_102).Should(Equal(t2_100))
+
+		et1_102, err = subStore.FindTotalBalance(102, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_102.Balance).Should(Equal("1112"))
+		Expect(et1_102.TxFee).Should(Equal("0"))
+		Expect(et1_102.UnclesReward).Should(Equal("4375000000000000000"))
+		Expect(et1_102.MinerReward).Should(Equal("0"))
+		et2_102, err = subStore.FindTotalBalance(102, model.ETHAddress, 2)
+		Expect(err).Should(BeNil())
+		Expect(et2_102).Should(Equal(et2_100))
+
+		// Verify new subscriptions' block numbers updated
+		res, err = subStore.FindOldSubscriptions([][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
+		Expect(err).Should(BeNil())
+		Expect(res[0].BlockNumber).Should(Equal(int64(90)))
+		Expect(res[1].BlockNumber).Should(Equal(int64(100)))
+		Expect(res[2].BlockNumber).Should(Equal(int64(100)))
+
+		// Verify recorded eth transfers
+		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc0Addr)
+		newTs = newTs[:0]
+		for _, t := range newTs {
+			if t.IsMinerRewardEvent() || t.IsUncleRewardEvent() {
+				continue
+			}
+			newTs = append(newTs, t)
+		}
+		Expect(err).Should(BeNil())
+		Expect(len(newTs)).Should(BeZero())
+		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc1Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(BeZero())
+		ts, err = acctStore.FindAllTransfers(model.ETHAddress, acc2Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(BeZero())
+
+		// Verify recorded erc20 transfers
+		ts, err = acctStore.FindAllTransfers(gethCommon.BytesToAddress(erc20.Address), acc0Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(BeZero())
+		ts, err = acctStore.FindAllTransfers(gethCommon.BytesToAddress(erc20.Address), acc1Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(BeZero())
+		ts, err = acctStore.FindAllTransfers(gethCommon.BytesToAddress(erc20.Address), acc2Addr)
+		Expect(err).Should(BeNil())
+		Expect(len(ts)).Should(BeZero())
+
+		// Verify account
+		a0_0, err := acctStore.FindAccount(model.ETHAddress, acc0Addr, 100)
+		Expect(err).Should(BeNil())
+		Expect(a0_0.Balance).Should(Equal("1000"))
+		a0_1, err := acctStore.FindAccount(model.ETHAddress, acc0Addr, 101)
+		Expect(err).Should(BeNil())
+		Expect(a0_1).Should(Equal(a0_0))
+		a0_2, err := acctStore.FindAccount(model.ETHAddress, acc0Addr, 102)
+		Expect(err).Should(BeNil())
+		Expect(a0_2.BlockNumber).Should(Equal(int64(102)))
+		Expect(a0_2.Balance).Should(Equal("1000"))
+		Expect(a0_2.Address).Should(Equal(acc0Addr.Bytes()))
+
+		a1_0, err := acctStore.FindAccount(model.ETHAddress, acc1Addr, 100)
+		Expect(err).Should(BeNil())
+		Expect(a1_0.Balance).Should(Equal("112"))
+		a1_1, err := acctStore.FindAccount(model.ETHAddress, acc1Addr, 101)
+		Expect(err).Should(BeNil())
+		Expect(a1_1).Should(Equal(a1_0))
+		a1_2, err := acctStore.FindAccount(model.ETHAddress, acc1Addr, 102)
+		Expect(err).Should(BeNil())
+		Expect(a1_2).Should(Equal(a1_0))
+
+		a2_0, err := acctStore.FindAccount(model.ETHAddress, acc2Addr, 100)
+		Expect(err).Should(BeNil())
+		Expect(a2_0.Balance).Should(Equal("113"))
+		a2_1, err := acctStore.FindAccount(model.ETHAddress, acc2Addr, 101)
+		Expect(err).Should(BeNil())
+		Expect(a2_1).Should(Equal(a2_0))
+		a2_2, err := acctStore.FindAccount(model.ETHAddress, acc2Addr, 102)
+		Expect(err).Should(BeNil())
+		Expect(a2_2).Should(Equal(a2_0))
 	})
 })

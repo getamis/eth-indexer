@@ -21,7 +21,6 @@ import (
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
@@ -45,9 +44,6 @@ const (
 	// ModeSync represents update blocks by ethereum sync
 	// Stop if any errors occur, but return nil error if it's a duplicate error
 	ModeSync
-	// ModeForceSync represents update erc20 storage data forcibly
-	// Update all erc20 storage data even if duplicate errors occur.
-	ModeForceSync
 )
 
 //go:generate mockery -name Manager
@@ -69,12 +65,12 @@ type Manager interface {
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data. 'delete' indicates whether deletes all data before update.
-	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) error
+	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) error
 }
 
 type manager struct {
 	db        *gorm.DB
-	erc20List map[string]*model.ERC20
+	tokenList map[gethCommon.Address]struct{}
 	balancer  client.Balancer
 }
 
@@ -90,11 +86,12 @@ func (m *manager) Init(balancer client.Balancer) error {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
-	erc20List := make(map[string]*model.ERC20, len(list))
+	tokenList := make(map[gethCommon.Address]struct{}, len(list))
+	tokenList[model.ETHAddress] = struct{}{}
 	for _, e := range list {
-		erc20List[common.BytesToHex(e.Address)] = e
+		tokenList[gethCommon.BytesToAddress(e.Address)] = struct{}{}
 	}
-	m.erc20List = erc20List
+	m.tokenList = tokenList
 
 	// Init balance of function
 	m.balancer = balancer
@@ -105,10 +102,10 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	return block_header.NewWithDB(m.db).InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, dumps []*state.DirtyDump, events [][]*types.TransferLog, mode UpdateMode) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) (err error) {
 	size := len(blocks)
-	if size != len(receipts) || size != len(dumps) || size != len(events) {
-		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts), "dumps", len(dumps))
+	if size != len(receipts) || size != len(events) {
+		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
 		return common.ErrInconsistentStates
 	}
 
@@ -121,11 +118,6 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 
 	dbTx := m.db.Begin()
 	defer func() {
-		// In ModeSync, return nil error if it's a duplicate error
-		if (mode == ModeSync) && common.DuplicateError(err) {
-			err = nil
-		}
-
 		if err != nil {
 			dbTx.Rollback()
 			return
@@ -141,20 +133,9 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 		}
 	}
 
-	// In ModeForceSync, ignore the duplicate error and continue to process it.
-	ignoreDupErr := (mode == ModeForceSync)
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
-		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], dumps[i], events[i])
-		if ignoreDupErr && common.DuplicateError(err) {
-			err = nil
-		}
-
-		if err != nil {
-			return
-		}
-
-		err = m.updateERC20(dbTx, blocks[i], dumps[i], ignoreDupErr)
+		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], events[i])
 		if err != nil {
 			return
 		}
@@ -175,7 +156,7 @@ func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
-func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, dump *state.DirtyDump, ethEvents []*types.TransferLog) (err error) {
+func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
 	headerStore := block_header.NewWithDB(dbTx)
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
@@ -229,58 +210,43 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 
 	// Insert blocks
 	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
-	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, unclesHash)
+	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 	if err != nil {
 		return err
 	}
-	headerStore.Insert(h)
-	if err != nil {
-		return err
-	}
-
-	// Insert erc20 balance & events
-	coinbases := append(uncleCBs, block.Coinbase())
-	err = newTransferProcessor(blockNumber, m.erc20List, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events, coinbases)
+	err = headerStore.Insert(h)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-// updateERC20 updates erc20 storages. If 'ignoreDuplicateError' is true, ignore duplicate key error, and continue to process
-func (m *manager) updateERC20(dbTx *gorm.DB, block *types.Block, dump *state.DirtyDump, ignoreDuplicateError bool) error {
-	if dump.Accounts == nil {
-		dump.Accounts = make(map[string]state.DirtyDumpAccount)
+	// Insert uncles
+	for i, u := range block.Uncles() {
+		// Insert a transfer event to represent uncle reward
+		events = append(events, &model.Transfer{
+			Address:     model.ETHBytes,
+			BlockNumber: block.Number().Int64(),
+			TxHash:      u.Hash().Bytes(),
+			From:        model.RewardToUncle.Bytes(),
+			To:          u.Coinbase.Bytes(),
+			Value:       unclesReward[i].String(),
+		})
 	}
 
-	// There is no erc20 storage updates
-	accountStore := account.NewWithDB(dbTx)
-	blockNumber := block.Number().Int64()
+	// Insert a transfer event to represent miner reward
+	events = append(events, &model.Transfer{
+		Address:     model.ETHBytes,
+		BlockNumber: block.Number().Int64(),
+		TxHash:      block.Hash().Bytes(),
+		From:        model.RewardToMiner.Bytes(),
+		To:          block.Coinbase().Bytes(),
+		Value:       h.MinerReward,
+	})
 
-	for erc20Addr, erc20 := range m.erc20List {
-		// This erc20 contract is not deployed yet
-		if blockNumber < erc20.BlockNumber {
-			continue
-		}
-
-		account, ok := dump.Accounts[erc20Addr]
-		if ok {
-			// Update storage record if it's in modified accounts
-			for key, value := range account.Storage {
-				s := &model.ERC20Storage{
-					BlockNumber: blockNumber,
-					Address:     common.HexToBytes(erc20Addr),
-					Key:         common.HexToBytes(key),
-					Value:       common.HexToBytes(value),
-				}
-				err := accountStore.InsertERC20Storage(s)
-				if err != nil && !(ignoreDuplicateError && common.DuplicateError(err)) {
-					return err
-				}
-			}
-		}
+	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -304,31 +270,21 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 	if err != nil {
 		return
 	}
-	err = accountStore.DeleteAccounts(model.ETHAddress, from, to)
-	if err != nil {
-		return
-	}
 
 	err = subscriptionStore.Reset(from, to)
 	if err != nil {
 		return
 	}
 
-	for hexAddr := range m.erc20List {
+	for addr := range m.tokenList {
 		// Delete erc20 balances
-		err = accountStore.DeleteAccounts(gethCommon.HexToAddress(hexAddr), from, to)
-		if err != nil {
-			return
-		}
-
-		// Delete storage diff
-		err = accountStore.DeleteERC20Storage(gethCommon.HexToAddress(hexAddr), from, to)
+		err = accountStore.DeleteAccounts(addr, from, to)
 		if err != nil {
 			return
 		}
 
 		// Delete erc20 events
-		err = accountStore.DeleteTransfer(gethCommon.HexToAddress(hexAddr), from, to)
+		err = accountStore.DeleteTransfer(addr, from, to)
 		if err != nil {
 			return
 		}

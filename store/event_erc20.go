@@ -38,8 +38,8 @@ func (m *manager) erc20Events(blockNumber int64, txHash gethCommon.Hash, logs []
 	// Parse the logs
 	for _, l := range logs {
 		// Insert transfer event if the contract address is in our erc20 list and it's a transfer event
-		addr := common.BytesToHex(l.ContractAddress)
-		if _, ok := m.erc20List[addr]; ok && bytes.Equal(l.EventName, sha3TransferEvent) {
+		addr := gethCommon.BytesToAddress(l.ContractAddress)
+		if _, ok := m.tokenList[addr]; ok && bytes.Equal(l.EventName, sha3TransferEvent) {
 			// Get the tranfer event
 			event := &contracts.ERC20TokenTransfer{}
 			err := erc20ABI.Unpack(event, "Transfer", l.Data)

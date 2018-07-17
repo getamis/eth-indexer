@@ -77,13 +77,10 @@ var _ = Describe("Account Database Test", func() {
 	BeforeEach(func() {
 		db.Delete(&model.Header{})
 
-		// Drop erc20 contract storage table
+		// Drop erc20 contract table
 		codes := []model.ERC20{}
 		db.Find(&codes)
 		for _, code := range codes {
-			db.DropTable(model.ERC20Storage{
-				Address: code.Address,
-			})
 			db.DropTable(model.Transfer{
 				Address: code.Address,
 			})
@@ -313,6 +310,10 @@ var _ = Describe("Account Database Test", func() {
 			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data4.Address))
 			Expect(err).Should(Succeed())
 			Expect(account).Should(Equal(data4))
+
+			// Not found data3
+			account, err = store.FindAccount(model.ETHAddress, gethCommon.BytesToAddress(data3.Address), data3.BlockNumber)
+			Expect(err).ShouldNot(Succeed())
 		})
 
 		It("deletes erc20 account states from a block number", func() {
@@ -523,6 +524,23 @@ var _ = Describe("Account Database Test", func() {
 			// DeleteTransfer
 			err = store.DeleteTransfer(addr, int64(105), int64(110))
 			Expect(err).Should(Succeed())
+
+			// FindAllTransfers
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr1))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(Equal(1))
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr2))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(Equal(1))
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr3))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(BeZero())
+
+			events, err = store.FindAllTransfers(addr, gethCommon.BytesToAddress(addr4))
+			Expect(err).Should(Succeed())
+			Expect(len(events)).Should(BeZero())
 		})
 	})
 
@@ -533,9 +551,6 @@ var _ = Describe("Account Database Test", func() {
 			data := makeERC20(hexAddr)
 			err := store.InsertERC20(data)
 			Expect(err).Should(Succeed())
-			Expect(db.HasTable(model.ERC20Storage{
-				Address: data.Address,
-			})).Should(BeTrue())
 
 			err = store.InsertERC20(data)
 			Expect(err).ShouldNot(BeNil())
@@ -562,16 +577,10 @@ var _ = Describe("Account Database Test", func() {
 			data1 := makeERC20("0xB287a379e6caCa6732E50b88D23c290aA990A892")
 			err := store.InsertERC20(data1)
 			Expect(err).Should(Succeed())
-			Expect(db.HasTable(model.ERC20Storage{
-				Address: data1.Address,
-			})).Should(BeTrue())
 
 			data2 := makeERC20("0xC287a379e6caCa6732E50b88D23c290aA990A892")
 			err = store.InsertERC20(data2)
 			Expect(err).Should(Succeed())
-			Expect(db.HasTable(model.ERC20Storage{
-				Address: data2.Address,
-			})).Should(BeTrue())
 
 			code, err := store.FindERC20(gethCommon.BytesToAddress(data1.Address))
 			Expect(err).Should(Succeed())
@@ -584,107 +593,6 @@ var _ = Describe("Account Database Test", func() {
 			// non-existent contract address
 			code, err = store.FindERC20(gethCommon.HexToAddress("0xF287a379e6caCa6732E50b88D23c290aA990A892"))
 			Expect(common.NotFoundError(err)).Should(BeTrue())
-		})
-	})
-
-	Context("FindERC20Storage()", func() {
-		It("finds the right storage", func() {
-			store := NewWithDB(db)
-
-			// Insert code to create table
-			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
-			addr := gethCommon.HexToAddress(hexAddr)
-			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data)
-			Expect(err).Should(Succeed())
-
-			storage1 := &model.ERC20Storage{
-				Address:     addr.Bytes(),
-				BlockNumber: 101,
-				Key:         gethCommon.HexToHash("01").Bytes(),
-				Value:       gethCommon.HexToHash("02").Bytes(),
-			}
-			err = store.InsertERC20Storage(storage1)
-			Expect(err).Should(Succeed())
-
-			storage2 := &model.ERC20Storage{
-				Address:     addr.Bytes(),
-				BlockNumber: 102,
-				Key:         gethCommon.HexToHash("01").Bytes(),
-				Value:       gethCommon.HexToHash("03").Bytes(),
-			}
-			err = store.InsertERC20Storage(storage2)
-			Expect(err).Should(Succeed())
-
-			s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage1.Key), storage1.BlockNumber)
-			Expect(err).Should(Succeed())
-			Expect(s).Should(Equal(storage1))
-
-			s, err = store.FindERC20Storage(addr, gethCommon.BytesToHash(storage2.Key), storage2.BlockNumber)
-			Expect(err).Should(Succeed())
-			Expect(s).Should(Equal(storage2))
-
-			num, err := store.LastSyncERC20Storage(addr, int64(1000))
-			Expect(err).Should(Succeed())
-			Expect(num).Should(Equal(storage2.BlockNumber))
-		})
-	})
-
-	Context("DeleteERC20Storage()", func() {
-		It("deletes the right storage", func() {
-			store := NewWithDB(db)
-
-			// Insert code to create table
-			hexAddr := "0xB287a379e6caCa6732E50b88D23c290aA990A892"
-			addr := gethCommon.HexToAddress(hexAddr)
-			data := makeERC20(hexAddr)
-			err := store.InsertERC20(data)
-			Expect(err).Should(Succeed())
-
-			storage1 := &model.ERC20Storage{
-				Address:     addr.Bytes(),
-				BlockNumber: 101,
-				Key:         gethCommon.HexToHash("01").Bytes(),
-				Value:       gethCommon.HexToHash("02").Bytes(),
-			}
-			err = store.InsertERC20Storage(storage1)
-			Expect(err).Should(Succeed())
-
-			storage2 := &model.ERC20Storage{
-				Address:     addr.Bytes(),
-				BlockNumber: 106,
-				Key:         gethCommon.HexToHash("01").Bytes(),
-				Value:       gethCommon.HexToHash("03").Bytes(),
-			}
-			err = store.InsertERC20Storage(storage2)
-			Expect(err).Should(Succeed())
-
-			storage3 := &model.ERC20Storage{
-				Address:     addr.Bytes(),
-				BlockNumber: 110,
-				Key:         gethCommon.HexToHash("01").Bytes(),
-				Value:       gethCommon.HexToHash("04").Bytes(),
-			}
-			err = store.InsertERC20Storage(storage3)
-			Expect(err).Should(Succeed())
-
-			for _, storage := range []*model.ERC20Storage{storage1, storage2, storage3} {
-				s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(s).Should(Equal(storage))
-			}
-
-			err = store.DeleteERC20Storage(addr, int64(105), int64(110))
-			Expect(err).Should(Succeed())
-
-			s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage1.Key), storage1.BlockNumber)
-			Expect(err).Should(Succeed())
-			Expect(s).Should(Equal(storage1))
-			for _, storage := range []*model.ERC20Storage{storage2, storage3} {
-				s, err := store.FindERC20Storage(addr, gethCommon.BytesToHash(storage.Key), storage.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(s).Should(Equal(storage1))
-			}
 		})
 	})
 })

@@ -31,10 +31,17 @@ var (
 	ETHAddress = common.BytesToAddress([]byte("ETH"))
 	// ETHBytes represents ether type in bytes array type
 	ETHBytes = ETHAddress.Bytes()
+	// RewardToMiner represents a constant at from field in transfer event
+	RewardToMiner = common.BytesToAddress([]byte("MINER REWARD"))
+	// RewardToUncle represents a constant at from field in transfer event
+	RewardToUncle = common.BytesToAddress([]byte("UNCLE REWARD"))
 
 	// Maximum number of uncles allowed in a single block
-	maxUncles         = 2
-	ErrTooManyUncles  = errors.New("too many uncles or confused numbers of uncle")
+	MaxUncles = 2
+	// ErrTooManyUncles is returned if uncles is larger than 2
+	ErrTooManyUncles = errors.New("too many uncles")
+	// ErrTooManyMiners is returned if miner is larger than 1
+	ErrTooManyMiners  = errors.New("too many miners")
 	ErrConfusedUncles = errors.New("confused numbers of uncle")
 )
 
@@ -60,9 +67,13 @@ type Header struct {
 	UnclesInclusionReward string
 	TxsFee                string
 	// Total of uncles reward. At most 2.
-	UnclesReward string
-	Uncle1Hash   []byte
-	Uncle2Hash   []byte
+	Uncle1Reward   string
+	Uncle1Coinbase []byte
+	Uncle1Hash     []byte
+	Uncle2Reward   string
+	Uncle2Coinbase []byte
+	Uncle2Hash     []byte
+
 	// golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
@@ -76,18 +87,22 @@ func (h Header) TableName() string {
 
 // AddReward adds reward to header.
 // Verify that there are at most 2 uncles
-func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int, unclesReward []*big.Int, unclesHash []common.Hash) (*Header, error) {
-	if len(unclesReward) != len(unclesHash) {
+func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int, unclesReward []*big.Int, uncleCBs []common.Address, unclesHash []common.Hash) (*Header, error) {
+	if len(unclesReward) != len(unclesHash) || len(unclesReward) != len(uncleCBs) {
 		return nil, ErrConfusedUncles
 	}
-	if len(unclesReward) > maxUncles {
+	if len(unclesReward) > MaxUncles {
 		return nil, ErrTooManyUncles
 	}
-	totalUnclesReward := new(big.Int)
-	ush := make([][]byte, maxUncles)
+
+	urd := []*big.Int{big.NewInt(0), big.NewInt(0)}
+	ush := [][]byte{{}, {}}
+	ucb := [][]byte{{}, {}}
+	// We assume that the length of coinbases, rewards and hashes are the same.
 	for i, u := range unclesHash {
+		urd[i] = unclesReward[i]
 		ush[i] = u.Bytes()
-		totalUnclesReward.Add(totalUnclesReward, unclesReward[i])
+		ucb[i] = uncleCBs[i].Bytes()
 	}
 	minerReward := new(big.Int).Add(txsFee, minerBaseReward)
 	minerReward.Add(minerReward, uncleInclusionReward)
@@ -95,9 +110,12 @@ func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int
 	h.MinerReward = minerReward.String()
 	h.UnclesInclusionReward = uncleInclusionReward.String()
 	h.TxsFee = txsFee.String()
-	h.UnclesReward = totalUnclesReward.String()
+	h.Uncle1Reward = urd[0].String()
 	h.Uncle1Hash = ush[0]
+	h.Uncle1Coinbase = ucb[0]
+	h.Uncle2Reward = urd[1].String()
 	h.Uncle2Hash = ush[1]
+	h.Uncle2Coinbase = ucb[1]
 	return &h, nil
 }
 
@@ -207,13 +225,29 @@ func (e Transfer) TableName() string {
 	return "erc20_transfer_" + hexutil.Encode(e.Address)
 }
 
+// IsMinerRewardEvent represents a miner or uncle event.
+//
+// Note that the event is defined by us. It's not a standard ethereum event.
+func (e Transfer) IsMinerRewardEvent() bool {
+	return bytes.Equal(e.From, RewardToMiner.Bytes())
+}
+
+// IsUncleRewardEvent represents a miner or uncle event.
+//
+// Note that the event is defined by us. It's not a standard ethereum event.
+func (e Transfer) IsUncleRewardEvent() bool {
+	return bytes.Equal(e.From, RewardToUncle.Bytes())
+}
+
 // TotalBalance represents the total balance of subscription accounts in different group
 type TotalBalance struct {
-	Token       []byte
-	BlockNumber int64
-	Group       int64
-	Balance     string
-	TxFee       string
+	Token        []byte
+	BlockNumber  int64
+	Group        int64
+	Balance      string
+	TxFee        string
+	MinerReward  string
+	UnclesReward string
 }
 
 // TableName retruns the table name of this model
@@ -234,19 +268,6 @@ type ERC20 struct {
 // TableName returns the table name of this model
 func (e ERC20) TableName() string {
 	return "erc20"
-}
-
-// ERC20Storage represents the contract storage
-type ERC20Storage struct {
-	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"size:8;index;unique_index:idx_block_number_key_hash"`
-	Key         []byte `gorm:"column:key_hash;size:32;unique_index:idx_block_number_key_hash"`
-	Value       []byte `gorm:"size:32"`
-}
-
-// TableName retruns the table name of this erc20 contract
-func (s ERC20Storage) TableName() string {
-	return "erc20_" + hexutil.Encode(s.Address)
 }
 
 // Subscription represents the Subscription model
