@@ -119,7 +119,7 @@ func (t *store) FindLatestAccounts(contractAddress common.Address, addrs [][]byt
 	// "select address, balance, MAX(block_number) as block_number from %s where address in (?) group by (address, balance)"
 	// is not what we want, because (address, balance) isn't unique
 	query := fmt.Sprintf(
-		"select * from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
+		"select t1.address, t1.block_number, t1.balance from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
 		acct.TableName(), acct.TableName())
 	err = t.db.Raw(query, addrs).Scan(&result).Error
 	if err != nil {
