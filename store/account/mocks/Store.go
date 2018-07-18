@@ -68,6 +68,29 @@ func (_m *Store) FindAccount(contractAddress common.Address, address common.Addr
 	return r0, r1
 }
 
+// FindAllTransfers provides a mock function with given fields: contractAddress, address
+func (_m *Store) FindAllTransfers(contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
+	ret := _m.Called(contractAddress, address)
+
+	var r0 []*model.Transfer
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*model.Transfer); ok {
+		r0 = rf(contractAddress, address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Transfer)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
+		r1 = rf(contractAddress, address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FindERC20 provides a mock function with given fields: address
 func (_m *Store) FindERC20(address common.Address) (*model.ERC20, error) {
 	ret := _m.Called(address)

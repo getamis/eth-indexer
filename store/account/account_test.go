@@ -34,7 +34,6 @@ import (
 func makeERC20(hexAddr string) *model.ERC20 {
 	return &model.ERC20{
 		Address: common.HexToBytes(hexAddr),
-		Code:    []byte("code"),
 	}
 }
 

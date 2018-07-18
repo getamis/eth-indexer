@@ -45,7 +45,6 @@ var _ = Describe("Subscription Test", func() {
 	// ERC20 contract
 	erc20 := &model.ERC20{
 		Address:     gethCommon.HexToAddress("1234567892").Bytes(),
-		Code:        []byte("1334"),
 		BlockNumber: 0,
 	}
 
