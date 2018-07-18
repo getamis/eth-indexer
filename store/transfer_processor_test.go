@@ -29,6 +29,7 @@ import (
 	subsStore "github.com/getamis/eth-indexer/store/subscription"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 )
 
 var _ = Describe("Subscription Test", func() {
@@ -308,67 +309,33 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(999),
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(100),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(500),
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(2000),
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(150),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(1000),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := *args.Get(2).(*map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(999)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(100)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(500)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(2000)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(150)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1000)
+		}).Return(nil).Once()
 
 		// For the 101 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(101), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(1000),
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(101),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(458),
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(2000),
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(151),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(999),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(101), mock.Anything).Run(func(args mock.Arguments) {
+			result := *args.Get(2).(*map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1000)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(101)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(458)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(2000)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(151)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(999)
+		}).Return(nil).Once()
 
 		// For the 102 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(201),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(438),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), mock.Anything).Run(func(args mock.Arguments) {
+			result := *args.Get(2).(*map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(201)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(438)
+		}).Return(nil).Once()
 
 		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
@@ -533,35 +500,19 @@ var _ = Describe("Subscription Test", func() {
 			{},
 		}
 
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(112),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(113),
-			},
-			gethCommon.BytesToAddress(erc20.Address): {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(212),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(213),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := *args.Get(2).(*map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(112)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(113)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(212)
+			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(213)
+		}).Return(nil).Once()
 
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[0].Address): big.NewInt(1000),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), mock.Anything).Run(func(args mock.Arguments) {
+			result := *args.Get(2).(*map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1000)
+		}).Return(nil).Once()
+
 		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
 		Expect(err).Should(BeNil())
 
