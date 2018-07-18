@@ -11,17 +11,26 @@ type Store struct {
 }
 
 // BatchInsert provides a mock function with given fields: subs
-func (_m *Store) BatchInsert(subs []*model.Subscription) error {
+func (_m *Store) BatchInsert(subs []*model.Subscription) ([]common.Address, error) {
 	ret := _m.Called(subs)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]*model.Subscription) error); ok {
+	var r0 []common.Address
+	if rf, ok := ret.Get(0).(func([]*model.Subscription) []common.Address); ok {
 		r0 = rf(subs)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]common.Address)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]*model.Subscription) error); ok {
+		r1 = rf(subs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // BatchUpdateBlockNumber provides a mock function with given fields: blockNumber, addrs
