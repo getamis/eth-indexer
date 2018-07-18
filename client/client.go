@@ -145,6 +145,9 @@ func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big
 	if err != nil {
 		return nil, err
 	}
+	if len(r) <= 2 {
+		return nil, ethereum.NotFound
+	}
 	// Remove the '0x' prefix
 	td, ok := new(big.Int).SetString(r[2:], 16)
 	if !ok {
