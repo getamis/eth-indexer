@@ -32,8 +32,6 @@ import (
 )
 
 var (
-	//ErrInconsistentLength returns if the length of ERC20 addresses and block numbers are not eqaul
-	ErrInconsistentLength = errors.New("inconsistent length")
 	//ErrInvalidAddress returns if invalid ERC20 address is detected
 	ErrInvalidAddress = errors.New("invalid address")
 )
@@ -54,13 +52,8 @@ type indexer struct {
 }
 
 // Init ensures all tables for erc20 contracts are created
-func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string, numbers []int64) error {
-	if len(addresses) != len(numbers) {
-		log.Error("Inconsistent array length", "addrs", len(addresses), "numbers", len(numbers))
-		return ErrInconsistentLength
-	}
-
-	for i, addr := range addresses {
+func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string) error {
+	for _, addr := range addresses {
 		if !ethCommon.IsHexAddress(addr) {
 			return ErrInvalidAddress
 		}
@@ -76,7 +69,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 			return err
 		}
 
-		erc20, err := idx.client.GetERC20(ctx, address, int64(numbers[i]))
+		erc20, err := idx.client.GetERC20(ctx, address)
 		if err != nil {
 			log.Error("Failed to get ERC20", "addr", addr, "err", err)
 			return err

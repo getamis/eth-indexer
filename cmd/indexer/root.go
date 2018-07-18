@@ -101,14 +101,14 @@ var ServerCmd = &cobra.Command{
 		indexer := indexer.New(ethClient, store.NewManager(db))
 
 		if subscribeErc20token {
-			erc20Addresses, erc20BlockNumbers, err := LoadTokensFromConfig()
+			erc20Addresses, err := LoadTokensFromConfig()
 			if err != nil {
 				log.Error("Fail to load ERC20Token List from Config File", "err", err)
 				return err
 			}
 			log.Debug("erc20Addresses Successfully Loaded")
 
-			if err := indexer.SubscribeErc20Tokens(ctx, erc20Addresses, erc20BlockNumbers); err != nil {
+			if err := indexer.SubscribeErc20Tokens(ctx, erc20Addresses); err != nil {
 				log.Error("Fail to subscribe ERC20Tokens and write to database", "err", err)
 				return err
 			}

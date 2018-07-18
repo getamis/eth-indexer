@@ -289,6 +289,95 @@ var _ = Describe("Database Test", func() {
 		})
 	})
 
+	Context("ListOldSubscriptions", func() {
+		var (
+			store Store
+		)
+
+		BeforeEach(func() {
+			store = NewWithDB(db)
+		})
+
+		It("should get subscriptions", func() {
+			subs := []*model.Subscription{
+				{
+					Group:       1,
+					Address:     common.HexToBytes("0xdfbba377a6d55d26d7dc6acd28279dc1f31308ed"),
+					BlockNumber: 100,
+				},
+				{
+					Group:       2,
+					Address:     common.HexToBytes("0x52384b72f5582996d30f493ffc8518f6dc93f7c8"),
+					BlockNumber: 101,
+				},
+				// Cannot get the new subscription
+				{
+					Group:       3,
+					Address:     common.HexToBytes("0x52384b72f5582996d30f493ffc8518f6dc93f7c9"),
+					BlockNumber: 0,
+				},
+			}
+
+			By("Should be successful to insert", func() {
+				_, err := store.BatchInsert(subs)
+				Expect(err).Should(Succeed())
+			})
+
+			By("Should be successful to get subscriptions with page 1", func() {
+				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
+					Page:    1,
+					Limit:   1,
+					OrderBy: "created_at",
+					Order:   "asc",
+				})
+				Expect(err).Should(Succeed())
+				Expect(total).Should(Equal(uint64(2)))
+				Expect(len(result)).Should(Equal(1))
+				Expect(result[0].Group).Should(Equal(subs[0].Group))
+				Expect(result[0].Address).Should(Equal(subs[0].Address))
+			})
+
+			By("Should be successful to get subscriptions with page 2", func() {
+				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
+					Page:    2,
+					Limit:   1,
+					OrderBy: "created_at",
+					Order:   "asc",
+				})
+				Expect(err).Should(Succeed())
+				Expect(total).Should(Equal(uint64(2)))
+				Expect(len(result)).Should(Equal(1))
+				Expect(result[0].Group).Should(Equal(subs[1].Group))
+				Expect(result[0].Address).Should(Equal(subs[1].Address))
+			})
+
+			By("Should be successful to get subscriptions with page 3", func() {
+				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
+					Page:    3,
+					Limit:   1,
+					OrderBy: "created_at",
+					Order:   "asc",
+				})
+				Expect(err).Should(Succeed())
+				Expect(total).Should(Equal(uint64(2)))
+				Expect(len(result)).Should(BeZero())
+			})
+		})
+
+		It("should get empty subscriptions", func() {
+			result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
+				Page:    1,
+				Limit:   1,
+				OrderBy: "created_at",
+				Order:   "asc",
+			})
+			Expect(err).Should(Succeed())
+			Expect(total).Should(Equal(uint64(0)))
+			Expect(len(result)).Should(Equal(0))
+		})
+
+	})
+
 	Context("Total balance database", func() {
 		It("should insert", func() {
 			store := NewWithDB(db)
@@ -377,22 +466,16 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 
 			res, err = store.FindTotalBalance(data1.BlockNumber, gethCommon.BytesToAddress(data1.Token), data1.Group)
-			data1.Balance = "0"
-			data1.TxFee = "0"
-			Expect(err).Should(Succeed())
-			Expect(res).Should(Equal(data1))
+			Expect(err).ShouldNot(Succeed())
+			Expect(res).Should(BeNil())
 
 			res, err = store.FindTotalBalance(data2.BlockNumber, gethCommon.BytesToAddress(data2.Token), data2.Group)
-			data2.Balance = "0"
-			data2.TxFee = "0"
-			Expect(err).Should(Succeed())
-			Expect(res).Should(Equal(data2))
+			Expect(err).ShouldNot(Succeed())
+			Expect(res).Should(BeNil())
 
 			res, err = store.FindTotalBalance(data3.BlockNumber, gethCommon.BytesToAddress(data3.Token), data3.Group)
-			data3.Balance = "0"
-			data3.TxFee = "0"
-			Expect(err).Should(Succeed())
-			Expect(res).Should(Equal(data3))
+			Expect(err).ShouldNot(Succeed())
+			Expect(res).Should(BeNil())
 		})
 	})
 })

@@ -227,13 +227,13 @@ func (_m *EthClient) GetBlockReceipts(ctx context.Context, hash common.Hash) (ty
 	return r0, r1
 }
 
-// GetERC20 provides a mock function with given fields: ctx, addr, num
-func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
-	ret := _m.Called(ctx, addr, num)
+// GetERC20 provides a mock function with given fields: ctx, addr
+func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error) {
+	ret := _m.Called(ctx, addr)
 
 	var r0 *model.ERC20
-	if rf, ok := ret.Get(0).(func(context.Context, common.Address, int64) *model.ERC20); ok {
-		r0 = rf(ctx, addr, num)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address) *model.ERC20); ok {
+		r0 = rf(ctx, addr)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.ERC20)
@@ -241,8 +241,8 @@ func (_m *EthClient) GetERC20(ctx context.Context, addr common.Address, num int6
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, common.Address, int64) error); ok {
-		r1 = rf(ctx, addr, num)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address) error); ok {
+		r1 = rf(ctx, addr)
 	} else {
 		r1 = ret.Error(1)
 	}
