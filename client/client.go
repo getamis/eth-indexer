@@ -19,14 +19,12 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -37,9 +35,6 @@ import (
 
 var (
 	ErrInvalidTDFormat = errors.New("invalid td format")
-
-	// maxUncles represents maximum number of uncles allowed in a single block
-	maxUncles = 2
 )
 
 //go:generate mockery -name EthClient
@@ -54,10 +49,8 @@ type EthClient interface {
 	UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error)
 	UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
-	DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
-	ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error)
 	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
@@ -133,7 +126,7 @@ func (c *client) UncleByBlockHashAndPosition(ctx context.Context, hash common.Ha
 
 func (c *client) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error) {
 	var result []*types.Header
-	for i := 0; i < maxUncles; i++ {
+	for i := 0; i < model.MaxUncles; i++ {
 		h, err := c.UncleByBlockHashAndPosition(ctx, blockHash, uint(i))
 		if err != ethereum.NotFound {
 			return nil, err
@@ -144,12 +137,6 @@ func (c *client) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) (
 		result = append(result, h)
 	}
 	return result, nil
-}
-
-func (c *client) DumpBlock(ctx context.Context, blockNr int64) (*state.Dump, error) {
-	r := &state.Dump{}
-	err := c.rpc.CallContext(ctx, r, "debug_dumpBlock", fmt.Sprintf("0x%x", blockNr))
-	return r, err
 }
 
 func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
@@ -169,12 +156,6 @@ func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big
 func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	var r types.Receipts
 	err := c.rpc.CallContext(ctx, &r, "debug_getBlockReceipts", hash.Hex())
-	return r, err
-}
-
-func (c *client) ModifiedAccountStatesByNumber(ctx context.Context, num uint64) (*state.DirtyDump, error) {
-	r := &state.DirtyDump{}
-	err := c.rpc.CallContext(ctx, r, "debug_getModifiedAccountStatesByNumber", num)
 	return r, err
 }
 

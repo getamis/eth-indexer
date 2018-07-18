@@ -30,8 +30,6 @@ const (
 var (
 	// ErrWrongSigner is returned if it's a wrong signer
 	ErrWrongSigner = errors.New("wrong signer")
-	// ErrInconsistentRoot is returned if the block and dump states have different root
-	ErrInconsistentRoot = errors.New("inconsistent root")
 	// ErrInconsistentStates is returned if the number of blocks, dumps or receipts are different
 	ErrInconsistentStates = errors.New("inconsistent states")
 	// ErrInvalidTD is returned when a block has invalid TD
