@@ -164,13 +164,8 @@ func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.
 
 func (c *client) GetERC20(ctx context.Context, addr common.Address, num int64) (*model.ERC20, error) {
 	logger := log.New("addr", addr, "number", num)
-	code, err := c.CodeAt(ctx, addr, nil)
-	if err != nil {
-		return nil, err
-	}
 	erc20 := &model.ERC20{
 		Address:     addr.Bytes(),
-		Code:        code,
 		BlockNumber: num,
 	}
 
