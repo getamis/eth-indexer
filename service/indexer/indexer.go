@@ -322,7 +322,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 	targetTD.Add(targetTD, rootTD)
 
 	// Compare currentTd with the new branch
-	if idx.currentTD.Cmp(targetTD) >= 0 {
+	if idx.currentTD.Cmp(targetTD) > 0 {
 		logger.Debug("Ignore this block due to lower TD", "targetTD", targetTD)
 		return nil, nil, nil
 	}
