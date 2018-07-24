@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_15_064231) do
+ActiveRecord::Schema.define(version: 2018_07_18_053750) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -39,9 +39,12 @@ ActiveRecord::Schema.define(version: 2018_07_15_064231) do
     t.string "miner_reward", limit: 32, null: false
     t.string "uncles_inclusion_reward", limit: 32, null: false
     t.string "txs_fee", limit: 32, null: false
-    t.string "uncles_reward", limit: 32
     t.binary "uncle1_hash", limit: 32
     t.binary "uncle2_hash", limit: 32
+    t.string "uncle1_reward", limit: 32
+    t.binary "uncle1_coinbase", limit: 20
+    t.string "uncle2_reward", limit: 32
+    t.binary "uncle2_coinbase", limit: 20
     t.index ["hash"], name: "index_block_headers_on_hash", unique: true
     t.index ["number"], name: "index_block_headers_on_number", unique: true
   end
@@ -49,7 +52,6 @@ ActiveRecord::Schema.define(version: 2018_07_15_064231) do
   create_table "erc20", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
     t.bigint "block_number", null: false
-    t.binary "code", limit: 16777215, null: false
     t.string "name", limit: 32
     t.string "total_supply", limit: 32
     t.bigint "decimals"

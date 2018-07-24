@@ -34,7 +34,6 @@ import (
 func makeERC20(hexAddr string) *model.ERC20 {
 	return &model.ERC20{
 		Address: common.HexToBytes(hexAddr),
-		Code:    []byte("code"),
 	}
 }
 
@@ -94,6 +93,72 @@ var _ = Describe("Account Database Test", func() {
 		db.Delete(&model.Account{
 			ContractAddress: model.ETHBytes,
 		})
+	})
+
+	It("ListOldERC20(), ListNewERC20(), BatchUpdateERC20BlockNumber()", func() {
+		store := NewWithDB(db)
+		By("empty erc20 old list")
+		r, err := store.ListOldERC20()
+		Expect(err).Should(Succeed())
+		Expect(len(r)).Should(BeZero())
+
+		By("empty erc20 new list")
+		r, err = store.ListNewERC20()
+		Expect(err).Should(Succeed())
+		Expect(len(r)).Should(BeZero())
+
+		By("insert a new erc20")
+		newTokens := []*model.ERC20{
+			{
+				Address: []byte("new0"),
+			},
+			{
+				Address: []byte("new1"),
+			},
+		}
+		for _, token := range newTokens {
+			err = store.InsertERC20(token)
+			Expect(err).Should(Succeed())
+		}
+
+		By("insert an old erc20")
+		oldToken := &model.ERC20{
+			BlockNumber: 100,
+			Address:     []byte("old"),
+		}
+		err = store.InsertERC20(oldToken)
+		Expect(err).Should(Succeed())
+
+		By("found new erc20s")
+		r, err = store.ListNewERC20()
+		Expect(err).Should(Succeed())
+		Expect(r).Should(Equal(newTokens))
+
+		By("found one old erc20")
+		r, err = store.ListOldERC20()
+		Expect(err).Should(Succeed())
+		Expect(len(r)).Should(Equal(1))
+		Expect(r[0]).Should(Equal(oldToken))
+
+		By("set erc20 block number")
+		for _, token := range newTokens {
+			token.BlockNumber = 199
+		}
+		err = store.BatchUpdateERC20BlockNumber(199, [][]byte{
+			newTokens[0].Address,
+			newTokens[1].Address,
+		})
+		Expect(err).Should(Succeed())
+
+		By("found no new erc20")
+		r, err = store.ListNewERC20()
+		Expect(err).Should(Succeed())
+		Expect(len(r)).Should(BeZero())
+
+		By("found three old erc20s")
+		r, err = store.ListOldERC20()
+		Expect(err).Should(Succeed())
+		Expect(len(r)).Should(Equal(3))
 	})
 
 	Context("InsertAccount()", func() {
@@ -564,7 +629,7 @@ var _ = Describe("Account Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(reflect.DeepEqual(*code, *data)).Should(BeTrue())
 
-			list, err := store.ListERC20()
+			list, err := store.ListNewERC20()
 			Expect(err).Should(Succeed())
 			Expect(list).Should(Equal([]*model.ERC20{data}))
 		})

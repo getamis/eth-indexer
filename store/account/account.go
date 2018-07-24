@@ -29,8 +29,10 @@ import (
 type Store interface {
 	// ERC 20
 	InsertERC20(code *model.ERC20) error
+	BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error
 	FindERC20(address common.Address) (result *model.ERC20, err error)
-	ListERC20() ([]*model.ERC20, error)
+	ListOldERC20() ([]*model.ERC20, error)
+	ListNewERC20() ([]*model.ERC20, error)
 
 	// Accounts
 	InsertAccount(account *model.Account) error
@@ -83,10 +85,23 @@ func (t *store) FindERC20(address common.Address) (result *model.ERC20, err erro
 	return
 }
 
-func (t *store) ListERC20() (results []*model.ERC20, err error) {
+func (t *store) ListOldERC20() (results []*model.ERC20, err error) {
 	results = []*model.ERC20{}
-	err = t.db.Find(&results).Error
+	err = t.db.Where("block_number > 0").Find(&results).Error
 	return
+}
+
+func (t *store) ListNewERC20() (results []*model.ERC20, err error) {
+	results = []*model.ERC20{}
+	err = t.db.Where("block_number = 0").Find(&results).Error
+	return
+}
+
+func (t *store) BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error {
+	if len(addrs) == 0 {
+		return nil
+	}
+	return t.db.Model(model.ERC20{}).Where("address in (?)", addrs).Updates(map[string]interface{}{"block_number": blockNumber}).Error
 }
 
 func (t *store) InsertAccount(account *model.Account) error {
@@ -119,7 +134,7 @@ func (t *store) FindLatestAccounts(contractAddress common.Address, addrs [][]byt
 	// "select address, balance, MAX(block_number) as block_number from %s where address in (?) group by (address, balance)"
 	// is not what we want, because (address, balance) isn't unique
 	query := fmt.Sprintf(
-		"select * from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
+		"select t1.address, t1.block_number, t1.balance from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
 		acct.TableName(), acct.TableName())
 	err = t.db.Raw(query, addrs).Scan(&result).Error
 	if err != nil {

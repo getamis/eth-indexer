@@ -10,6 +10,20 @@ type Store struct {
 	mock.Mock
 }
 
+// BatchUpdateERC20BlockNumber provides a mock function with given fields: blockNumber, addrs
+func (_m *Store) BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error {
+	ret := _m.Called(blockNumber, addrs)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64, [][]byte) error); ok {
+		r0 = rf(blockNumber, addrs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // DeleteAccounts provides a mock function with given fields: contractAddress, from, to
 func (_m *Store) DeleteAccounts(contractAddress common.Address, from int64, to int64) error {
 	ret := _m.Called(contractAddress, from, to)
@@ -61,6 +75,52 @@ func (_m *Store) FindAccount(contractAddress common.Address, address common.Addr
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.Address, common.Address, ...int64) error); ok {
 		r1 = rf(contractAddress, address, blockNr...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FindAllTransfers provides a mock function with given fields: contractAddress, address
+func (_m *Store) FindAllTransfers(contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
+	ret := _m.Called(contractAddress, address)
+
+	var r0 []*model.Transfer
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*model.Transfer); ok {
+		r0 = rf(contractAddress, address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Transfer)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
+		r1 = rf(contractAddress, address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// FindAllTransfers provides a mock function with given fields: contractAddress, address
+func (_m *Store) FindAllTransfers(contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
+	ret := _m.Called(contractAddress, address)
+
+	var r0 []*model.Transfer
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*model.Transfer); ok {
+		r0 = rf(contractAddress, address)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Transfer)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
+		r1 = rf(contractAddress, address)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -186,8 +246,31 @@ func (_m *Store) InsertTransfer(event *model.Transfer) error {
 	return r0
 }
 
-// ListERC20 provides a mock function with given fields:
-func (_m *Store) ListERC20() ([]*model.ERC20, error) {
+// ListNewERC20 provides a mock function with given fields:
+func (_m *Store) ListNewERC20() ([]*model.ERC20, error) {
+	ret := _m.Called()
+
+	var r0 []*model.ERC20
+	if rf, ok := ret.Get(0).(func() []*model.ERC20); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.ERC20)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListOldERC20 provides a mock function with given fields:
+func (_m *Store) ListOldERC20() ([]*model.ERC20, error) {
 	ret := _m.Called()
 
 	var r0 []*model.ERC20

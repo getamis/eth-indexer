@@ -259,7 +259,6 @@ func (s TotalBalance) TableName() string {
 type ERC20 struct {
 	BlockNumber int64
 	Address     []byte
-	Code        []byte
 	TotalSupply string
 	Decimals    int
 	Name        string

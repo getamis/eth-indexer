@@ -28,13 +28,14 @@ import (
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/sirius/log"
+	"github.com/jinzhu/gorm"
 )
 
 type transferProcessor struct {
 	logger      log.Logger
 	blockNumber int64
 	// tokenList includes ETH and erc20 tokens
-	tokenList    map[gethCommon.Address]struct{}
+	tokenList    map[gethCommon.Address]*model.ERC20
 	subStore     subscription.Store
 	accountStore account.Store
 	balancer     client.Balancer
@@ -45,7 +46,7 @@ type transferProcessor struct {
 }
 
 func newTransferProcessor(blockNumber int64,
-	tokenList map[gethCommon.Address]struct{},
+	tokenList map[gethCommon.Address]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
 	subStore subscription.Store,
@@ -298,8 +299,20 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			tb, ok := totalBalances[sub.Group][token]
 			if !ok {
 				b, err := s.subStore.FindTotalBalance(s.blockNumber-1, token, sub.Group)
-				if err != nil {
-					s.logger.Error("Failed to find total balance", "err", err)
+				if err == gorm.ErrRecordNotFound {
+					s.logger.Debug("Total balance cannot be found", "group", sub.Group, "number", s.blockNumber-1, "token", token.Hex())
+					b = &model.TotalBalance{
+						BlockNumber:  s.blockNumber - 1,
+						Token:        token.Bytes(),
+						Group:        sub.Group,
+						Balance:      "0",
+						TxFee:        "0",
+						MinerReward:  "0",
+						UnclesReward: "0",
+					}
+					err = nil
+				} else if err != nil {
+					s.logger.Error("Failed to find total balance", "group", sub.Group, "number", s.blockNumber-1, "token", token.Hex(), "err", err)
 					return err
 				}
 

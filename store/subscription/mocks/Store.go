@@ -11,17 +11,26 @@ type Store struct {
 }
 
 // BatchInsert provides a mock function with given fields: subs
-func (_m *Store) BatchInsert(subs []*model.Subscription) error {
+func (_m *Store) BatchInsert(subs []*model.Subscription) ([]common.Address, error) {
 	ret := _m.Called(subs)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func([]*model.Subscription) error); ok {
+	var r0 []common.Address
+	if rf, ok := ret.Get(0).(func([]*model.Subscription) []common.Address); ok {
 		r0 = rf(subs)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]common.Address)
+		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]*model.Subscription) error); ok {
+		r1 = rf(subs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // BatchUpdateBlockNumber provides a mock function with given fields: blockNumber, addrs
@@ -149,6 +158,36 @@ func (_m *Store) InsertTotalBalance(data *model.TotalBalance) error {
 	}
 
 	return r0
+}
+
+// ListOldSubscriptions provides a mock function with given fields: query
+func (_m *Store) ListOldSubscriptions(query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(query)
+
+	var r0 []*model.Subscription
+	if rf, ok := ret.Get(0).(func(*model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Subscription)
+		}
+	}
+
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(*model.QueryParameters) uint64); ok {
+		r1 = rf(query)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(*model.QueryParameters) error); ok {
+		r2 = rf(query)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // Reset provides a mock function with given fields: from, to
