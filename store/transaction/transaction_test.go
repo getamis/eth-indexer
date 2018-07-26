@@ -34,7 +34,7 @@ func makeTx(blockNum int64, blockHex, txHex string) *model.Transaction {
 		BlockHash:   common.HexToBytes(blockHex),
 		From:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
 		Nonce:       10013,
-		GasPrice:    "123456789",
+		GasPrice:    123456789,
 		GasLimit:    45000,
 		Amount:      "4840283445",
 		Payload:     []byte{12, 34},

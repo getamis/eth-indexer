@@ -128,7 +128,7 @@ type Transaction struct {
 	From        []byte
 	To          []byte
 	Nonce       int64
-	GasPrice    string
+	GasPrice    int64
 	GasLimit    int64
 	Amount      string
 	Payload     []byte

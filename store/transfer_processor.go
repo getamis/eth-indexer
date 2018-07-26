@@ -206,7 +206,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 		// Assume the tx and receipt are in the same order
 		r := s.receipts[i]
-		price, _ := new(big.Int).SetString(tx.GasPrice, 10)
+		price := big.NewInt(tx.GasPrice)
 		fee := new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
 		if feeDiff[from] == nil {
 			feeDiff[from] = new(big.Int).Set(fee)
