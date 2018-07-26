@@ -344,6 +344,11 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	blockNumber := block.Number().Int64()
 	logger := log.New("number", blockNumber, "hash", block.Hash().Hex())
 
+	// Return empty receipts and transfer logs if it's a genesis block
+	if blockNumber == 0 {
+		return []*types.Receipt{}, []*types.TransferLog{}, nil
+	}
+
 	// Get receipts
 	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
