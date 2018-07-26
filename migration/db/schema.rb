@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_26_041306) do
+ActiveRecord::Schema.define(version: 2018_07_26_081811) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -140,7 +140,7 @@ ActiveRecord::Schema.define(version: 2018_07_26_041306) do
     t.binary "from", limit: 20, null: false
     t.binary "to", limit: 20
     t.bigint "nonce", null: false
-    t.string "gas_price", limit: 32, null: false
+    t.bigint "gas_price", null: false
     t.bigint "gas_limit", null: false
     t.string "amount", limit: 32, null: false
     t.binary "payload", limit: 16777215, null: false
