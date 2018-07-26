@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_18_053750) do
+ActiveRecord::Schema.define(version: 2018_07_26_041306) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -45,6 +45,8 @@ ActiveRecord::Schema.define(version: 2018_07_18_053750) do
     t.binary "uncle1_coinbase", limit: 20
     t.string "uncle2_reward", limit: 32
     t.binary "uncle2_coinbase", limit: 20
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_block_headers_on_created_at"
     t.index ["hash"], name: "index_block_headers_on_hash", unique: true
     t.index ["number"], name: "index_block_headers_on_number", unique: true
   end
