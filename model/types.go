@@ -78,6 +78,8 @@ type Header struct {
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
+
+	CreatedAt *time.Time
 }
 
 // TableName returns the table name of this model

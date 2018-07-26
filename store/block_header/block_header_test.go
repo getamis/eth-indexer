@@ -85,14 +85,17 @@ var _ = Describe("Block Header Database Test", func() {
 
 		result, err := store.FindBlockByHash(data1.Hash)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data1.CreatedAt
 		Expect(*result).Should(Equal(*data1))
 
 		result, err = store.FindBlockByHash(data2.Hash)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data2.CreatedAt
 		Expect(*result).Should(Equal(*data2))
 
 		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
+		lastResult.CreatedAt = data2.CreatedAt
 		Expect(*lastResult).Should(Equal(*data2))
 	})
 
@@ -107,10 +110,12 @@ var _ = Describe("Block Header Database Test", func() {
 
 		result, err := store.FindBlockByNumber(data1.Number)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data1.CreatedAt
 		Expect(*result).Should(Equal(*data1))
 
 		result, err = store.FindBlockByNumber(data2.Number)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data2.CreatedAt
 		Expect(*result).Should(Equal(*data2))
 	})
 
@@ -142,11 +147,13 @@ var _ = Describe("Block Header Database Test", func() {
 
 		result, err := store.FindBlockByNumber(data1.Number)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data1.CreatedAt
 		Expect(result).Should(Equal(data1))
 		_, err = store.FindBlockByNumber(data2.Number)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
 		result, err = store.FindBlockByNumber(data3.Number)
 		Expect(err).Should(Succeed())
+		result.CreatedAt = data3.CreatedAt
 		Expect(result).Should(Equal(data3))
 	})
 
@@ -163,6 +170,7 @@ var _ = Describe("Block Header Database Test", func() {
 
 		lastResult, err := store.FindLatestBlock()
 		Expect(err).Should(Succeed())
+		lastResult.CreatedAt = data3.CreatedAt
 		Expect(*lastResult).Should(Equal(*data3))
 	})
 
