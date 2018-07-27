@@ -111,15 +111,12 @@
     "accounts/abi",
     "accounts/abi/bind",
     "accounts/keystore",
-    "accounts/usbwallet",
-    "accounts/usbwallet/internal/trezor",
     "common",
     "common/bitutil",
     "common/hexutil",
     "common/math",
     "common/mclock",
     "consensus",
-    "consensus/clique",
     "consensus/ethash",
     "consensus/misc",
     "core",
@@ -132,32 +129,15 @@
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
-    "crypto/ecies",
     "crypto/randentropy",
     "crypto/secp256k1",
     "crypto/sha3",
-    "eth",
-    "eth/downloader",
-    "eth/fetcher",
     "eth/filters",
-    "eth/gasprice",
-    "eth/tracers",
-    "eth/tracers/internal/tracers",
     "ethclient",
     "ethdb",
     "event",
-    "internal/debug",
-    "internal/ethapi",
     "log",
-    "log/term",
     "metrics",
-    "metrics/exp",
-    "miner",
-    "node",
-    "p2p",
-    "p2p/discover",
-    "p2p/discv5",
-    "p2p/nat",
     "p2p/netutil",
     "params",
     "rlp",
@@ -166,15 +146,6 @@
   ]
   revision = "eeed4ff1db0b23d926a39e50462805aca03ef930"
   source = "github.com/getamis/go-ethereum"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/fjl/memsize"
-  packages = [
-    ".",
-    "memsizeui"
-  ]
-  revision = "f6d5545993d68e9e42df43eb57958f898dea3623"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -189,7 +160,6 @@
   version = "v1.2.0"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/getamis/sirius"
   packages = [
     "crypto/rand",
@@ -199,7 +169,8 @@
     "log",
     "test"
   ]
-  revision = "d65c366c4b8fffe22d9314ac931381644151f951"
+  revision = "10abc6819b876cb480e394cb187eef5c648daf2f"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/go-sql-driver/mysql"
@@ -218,15 +189,6 @@
   packages = ["proto"]
   revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
   version = "v1.0.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/golang/protobuf"
-  packages = [
-    "proto",
-    "protoc-gen-go/descriptor"
-  ]
-  revision = "3a3da3a4e26776cc22a79ef46d5d58477532dede"
 
 [[projects]]
   branch = "master"
@@ -261,30 +223,10 @@
   revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/huin/goupnp"
-  packages = [
-    ".",
-    "dcps/internetgateway1",
-    "dcps/internetgateway2",
-    "httpu",
-    "scpd",
-    "soap",
-    "ssdp"
-  ]
-  revision = "1395d1447324cbea88d249fbfcfd70ea878fdfca"
-
-[[projects]]
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  name = "github.com/jackpal/go-nat-pmp"
-  packages = ["."]
-  revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
-  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/jinzhu/gorm"
@@ -299,28 +241,10 @@
   revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/karalabe/hid"
-  packages = ["."]
-  revision = "2b4488a37358b7283de4f9622553e85ebbe73125"
-
-[[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
   revision = "c2353362d570a7bfa228149c62842019201cfb71"
   version = "v1.8.0"
-
-[[projects]]
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
-  version = "v0.0.9"
-
-[[projects]]
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
-  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -419,12 +343,6 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
-
-[[projects]]
-  name = "github.com/prometheus/prometheus"
-  packages = ["util/flock"]
-  revision = "85f23d82a045d103ea7f3c89a91fba4a93e6367a"
-  version = "v2.1.0"
 
 [[projects]]
   branch = "master"
@@ -624,12 +542,6 @@
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
 
 [[projects]]
-  branch = "v3"
-  name = "gopkg.in/olebedev/go-duktape.v3"
-  packages = ["."]
-  revision = "abf0ba0be5d5d36b1f9266463cc320b9a5ab224e"
-
-[[projects]]
   name = "gopkg.in/redis.v5"
   packages = [
     ".",
@@ -643,12 +555,6 @@
   version = "v5.2.9"
 
 [[projects]]
-  name = "gopkg.in/urfave/cli.v1"
-  packages = ["."]
-  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
-  version = "v1.20.0"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
@@ -657,6 +563,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d33a516535816f7270374d8edfc5ea37c830dd9dded79d1fabd06becfec1691d"
+  inputs-digest = "987111ce22c18455538d8b860309b0a6015c7bcbb913c7ffd9e2a4514df5bd11"
   solver-name = "gps-cdcl"
   solver-version = 1
