@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_26_081811) do
+ActiveRecord::Schema.define(version: 2018_07_30_070451) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -86,6 +86,15 @@ ActiveRecord::Schema.define(version: 2018_07_26_081811) do
     t.index ["block_number", "contract_address"], name: "index_receipt_logs_on_block_number_and_contract_address"
     t.index ["block_number"], name: "index_receipt_logs_on_block_number"
     t.index ["tx_hash"], name: "index_receipt_logs_on_tx_hash"
+  end
+
+  create_table "reorgs", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
+    t.bigint "from", null: false
+    t.binary "from_hash", limit: 32, null: false
+    t.bigint "to", null: false
+    t.binary "to_hash", limit: 32, null: false
+    t.datetime "created_at", null: false
+    t.index ["from", "to"], name: "index_reorgs_on_from_and_to"
   end
 
   create_table "subscriptions", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
