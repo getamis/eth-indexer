@@ -231,7 +231,7 @@ func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err er
 	return common.ParseTd(ltd)
 }
 
-func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mode store.UpdateMode) (*types.Block, *big.Int, error) {
+func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reorgEvent *model.Reorg) (*types.Block, *big.Int, error) {
 	var lastTd *big.Int
 	// Insert td
 	for i := len(blocks) - 1; i >= 0; i-- {
@@ -257,7 +257,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, mod
 		receipts = append(receipts, receipt)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, mode)
+	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, reorgEvent)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -280,10 +280,16 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 	var blocksToInsert []*types.Block
 	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
-		return idx.insertBlocks(ctx, blocksToInsert, store.ModeSync)
+		return idx.insertBlocks(ctx, blocksToInsert, nil)
 	}
 
 	logger.Trace("Reorg tracing: Start")
+	reorgEvent := &model.Reorg{
+		From:     idx.currentHeader.Number,
+		FromHash: idx.currentHeader.Hash,
+		To:       idx.currentHeader.Number,
+		ToHash:   idx.currentHeader.Hash,
+	}
 	targetTD := block.Difficulty()
 	blocks := []*types.Block{block}
 	for {
@@ -294,6 +300,9 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 				if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
 					break
 				}
+				// Update reorg event
+				reorgEvent.From = dbHeader.Number
+				reorgEvent.FromHash = dbHeader.Hash
 			} else if !common.NotFoundError(err) {
 				logger.Error("Reorg tracing: Failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
 				return nil, nil, err
@@ -330,7 +339,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 
 	// Now atomically update the reorg'ed blocks
 	logger.Trace("Reorg: Starting at", "branch", branchBlock.Number(), "hash", branchBlock.Hash().Hex())
-	block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert, store.ModeReOrg)
+	block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert, reorgEvent)
 	if err != nil {
 		logger.Error("Reorg: Failed to insert blocks", "err", err)
 		return nil, nil, err

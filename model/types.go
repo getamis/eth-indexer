@@ -47,6 +47,7 @@ var (
 
 // Header represents the header of a block
 type Header struct {
+	ID          int64
 	Hash        []byte
 	ParentHash  []byte
 	UncleHash   []byte
@@ -284,4 +285,18 @@ type Subscription struct {
 // TableName retruns the table name of this erc20 contract
 func (s Subscription) TableName() string {
 	return "subscriptions"
+}
+
+// Reorg represents the Reorg model
+type Reorg struct {
+	From      int64
+	FromHash  []byte
+	To        int64
+	ToHash    []byte
+	CreatedAt time.Time `deepequal:"-"`
+}
+
+// TableName retruns the table name of this Reorg event
+func (s Reorg) TableName() string {
+	return "reorgs"
 }
