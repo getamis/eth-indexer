@@ -64,15 +64,24 @@ var _ = Describe("New ERC20 Test", func() {
 		db.Delete(&model.Header{})
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
-		db.Delete(&model.Account{})
+		db.Delete(&model.Account{
+			ContractAddress: model.ETHBytes,
+		})
 		db.Delete(&model.ERC20{})
 		db.Delete(&model.TotalBalance{})
 		db.Delete(&model.Subscription{})
+		db.Delete(&model.Reorg{})
 		db.DropTable(model.Transfer{
 			Address: erc20s[0].Address,
 		})
 		db.DropTable(model.Transfer{
 			Address: erc20s[1].Address,
+		})
+		db.DropTable(model.Account{
+			ContractAddress: erc20s[0].Address,
+		})
+		db.DropTable(model.Account{
+			ContractAddress: erc20s[1].Address,
 		})
 	})
 
@@ -195,7 +204,7 @@ var _ = Describe("New ERC20 Test", func() {
 			}, nil).Once()
 		}
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 
 		// block 100
@@ -293,7 +302,12 @@ var _ = Describe("New ERC20 Test", func() {
 				},
 			}, nil).Once()
 		}
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, ModeReOrg)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, &model.Reorg{
+			From:     blocks[0].Number().Int64(),
+			To:       blocks[len(blocks)-1].Number().Int64(),
+			FromHash: blocks[0].Hash().Bytes(),
+			ToHash:   blocks[len(blocks)-1].Hash().Bytes(),
+		})
 		Expect(err).Should(BeNil())
 
 		// block 100
