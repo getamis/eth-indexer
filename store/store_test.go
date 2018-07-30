@@ -252,6 +252,7 @@ var _ = Describe("Manager Test", func() {
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 		})
 
@@ -288,6 +289,7 @@ var _ = Describe("Manager Test", func() {
 			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 			reorgStore := reorg.NewWithDB(db)
 			rs, err := reorgStore.List()
@@ -334,6 +336,7 @@ var _ = Describe("Manager Test", func() {
 				h, err := common.Header(block).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 				Expect(err).Should(BeNil())
 				h.CreatedAt = header.CreatedAt
+				h.ID = header.ID
 				Expect(header).Should(Equal(h))
 			}
 		})
@@ -348,6 +351,7 @@ var _ = Describe("Manager Test", func() {
 			h, err := common.Header(blocks[1]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
 			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 		})
 	})

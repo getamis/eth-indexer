@@ -47,6 +47,7 @@ var (
 
 // Header represents the header of a block
 type Header struct {
+	ID          int64
 	Hash        []byte
 	ParentHash  []byte
 	UncleHash   []byte
