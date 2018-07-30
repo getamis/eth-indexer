@@ -57,8 +57,8 @@ first time to run indexer you need to create the database schema
 ```shell
 $ mkdir -p ~/indexer-data/mysql ~/indexer-data/geth
 # Create database sechema
-MYSQL_DATA_PATH="$HOME/indexer-data/mysql" docker-compose up ws-database ws-migration
-# press Ctrl + C when see `eth-indexer_ws-migration_1 exited with code 0`
+MYSQL_DATA_PATH="$HOME/indexer-data/mysql" docker-compose up idx-database idx-migration
+# press Ctrl + C when see `eth-indexer_idx-migration_1 exited with code 0`
 ```
 
 then use `docker-compose up` with environment variables to start indexer:
