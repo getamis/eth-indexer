@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_18_053750) do
+ActiveRecord::Schema.define(version: 2018_07_26_081811) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -45,6 +45,8 @@ ActiveRecord::Schema.define(version: 2018_07_18_053750) do
     t.binary "uncle1_coinbase", limit: 20
     t.string "uncle2_reward", limit: 32
     t.binary "uncle2_coinbase", limit: 20
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_block_headers_on_created_at"
     t.index ["hash"], name: "index_block_headers_on_hash", unique: true
     t.index ["number"], name: "index_block_headers_on_number", unique: true
   end
@@ -138,7 +140,7 @@ ActiveRecord::Schema.define(version: 2018_07_18_053750) do
     t.binary "from", limit: 20, null: false
     t.binary "to", limit: 20
     t.bigint "nonce", null: false
-    t.string "gas_price", limit: 32, null: false
+    t.bigint "gas_price", null: false
     t.bigint "gas_limit", null: false
     t.string "amount", limit: 32, null: false
     t.binary "payload", limit: 16777215, null: false

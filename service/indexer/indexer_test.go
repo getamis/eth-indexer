@@ -325,10 +325,8 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				blocks[0] = block
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(block, nil).Once()
-				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockStoreManager.On("InsertTd", block, big.NewInt(1)).Return(nil).Once()
-				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, store.ModeSync).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, store.ModeSync).Return(nil).Once()
 
 				for i := int64(1); i <= 19; i++ {
 					block = types.NewBlock(

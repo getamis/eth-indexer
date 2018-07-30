@@ -130,7 +130,7 @@ func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, err
 		BlockHash:   b.Hash().Bytes(),
 		From:        msg.From().Bytes(),
 		Nonce:       int64(msg.Nonce()),
-		GasPrice:    msg.GasPrice().String(),
+		GasPrice:    msg.GasPrice().Int64(),
 		GasLimit:    int64(msg.Gas()),
 		Amount:      msg.Value().String(),
 		Payload:     msg.Data(),
