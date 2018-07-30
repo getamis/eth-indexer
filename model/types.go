@@ -285,3 +285,17 @@ type Subscription struct {
 func (s Subscription) TableName() string {
 	return "subscriptions"
 }
+
+// Reorg represents the Reorg model
+type Reorg struct {
+	From      int64
+	FromHash  []byte
+	To        int64
+	ToHash    []byte
+	CreatedAt time.Time `deepequal:"-"`
+}
+
+// TableName retruns the table name of this Reorg event
+func (s Reorg) TableName() string {
+	return "reorgs"
+}
