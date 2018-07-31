@@ -29,6 +29,7 @@ import (
 	subsStore "github.com/getamis/eth-indexer/store/subscription"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 )
 
 var _ = Describe("New ERC20 Test", func() {
@@ -171,38 +172,27 @@ var _ = Describe("New ERC20 Test", func() {
 		Expect(err).Should(BeNil())
 
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20s[0].Address): {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(112),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(113),
-			},
-			gethCommon.BytesToAddress(erc20s[0].Address): {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(212),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(213),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(112)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(113)
+			result[gethCommon.BytesToAddress(erc20s[0].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(212)
+			result[gethCommon.BytesToAddress(erc20s[0].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(213)
+		}).Return(nil).Once()
 
 		// For new token
-		for i, sub := range subs {
-			mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-				gethCommon.BytesToAddress(erc20s[1].Address): {
-					gethCommon.BytesToAddress(sub.Address): struct{}{},
-				},
-			}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-				gethCommon.BytesToAddress(erc20s[1].Address): {
-					gethCommon.BytesToAddress(sub.Address): big.NewInt(310 + int64(i)),
-				},
-			}, nil).Once()
-		}
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(310)
+		}).Return(nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(311)
+		}).Return(nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(312)
+		}).Return(nil).Once()
 
 		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
@@ -270,38 +260,28 @@ var _ = Describe("New ERC20 Test", func() {
 
 		By("Reorg blocks comes")
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-			gethCommon.BytesToAddress(erc20s[0].Address): {
-				gethCommon.BytesToAddress(subs[1].Address): struct{}{},
-				gethCommon.BytesToAddress(subs[2].Address): struct{}{},
-			},
-		}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-			model.ETHAddress: {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(1112),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(1113),
-			},
-			gethCommon.BytesToAddress(erc20s[0].Address): {
-				gethCommon.BytesToAddress(subs[1].Address): big.NewInt(1212),
-				gethCommon.BytesToAddress(subs[2].Address): big.NewInt(1213),
-			},
-		}, nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(1112)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1113)
+			result[gethCommon.BytesToAddress(erc20s[0].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(1212)
+			result[gethCommon.BytesToAddress(erc20s[0].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1213)
+		}).Return(nil).Once()
 
 		// For new token
-		for i, sub := range subs {
-			mockBalancer.On("BalanceOf", ctx, big.NewInt(100), map[gethCommon.Address]map[gethCommon.Address]struct{}{
-				gethCommon.BytesToAddress(erc20s[1].Address): {
-					gethCommon.BytesToAddress(sub.Address): struct{}{},
-				},
-			}).Return(map[gethCommon.Address]map[gethCommon.Address]*big.Int{
-				gethCommon.BytesToAddress(erc20s[1].Address): {
-					gethCommon.BytesToAddress(sub.Address): big.NewInt(1310 + int64(i)),
-				},
-			}, nil).Once()
-		}
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1310)
+		}).Return(nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(1311)
+		}).Return(nil).Once()
+		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1312)
+		}).Return(nil).Once()
+
 		err = manager.UpdateBlocks(ctx, blocks, receipts, events, &model.Reorg{
 			From:     blocks[0].Number().Int64(),
 			To:       blocks[len(blocks)-1].Number().Int64(),

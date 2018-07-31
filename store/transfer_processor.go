@@ -107,7 +107,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		return err
 	}
 
-	contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
+	balancesByContracts := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 	newSubs := make(map[gethCommon.Address]*model.Subscription)
 	var newAddrs [][]byte
 	for _, sub := range newSubResults {
@@ -116,10 +116,10 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		newSubs[newAddr] = sub
 		// Make sure to collect ETH/ERC20 balances for the new subscriptions too.
 		for token := range s.tokenList {
-			if contractsAddrs[token] == nil {
-				contractsAddrs[token] = make(map[gethCommon.Address]struct{})
+			if balancesByContracts[token] == nil {
+				balancesByContracts[token] = make(map[gethCommon.Address]*big.Int)
 			}
-			contractsAddrs[token][newAddr] = struct{}{}
+			balancesByContracts[token][newAddr] = new(big.Int)
 		}
 	}
 
@@ -159,16 +159,16 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			return err
 		}
 		contractAddr := gethCommon.BytesToAddress(e.Address)
-		if contractsAddrs[contractAddr] == nil {
-			contractsAddrs[contractAddr] = make(map[gethCommon.Address]struct{})
+		if balancesByContracts[contractAddr] == nil {
+			balancesByContracts[contractAddr] = make(map[gethCommon.Address]*big.Int)
 		}
 		if hasFrom {
 			from := gethCommon.BytesToAddress(e.From)
-			contractsAddrs[contractAddr][from] = struct{}{}
+			balancesByContracts[contractAddr][from] = new(big.Int)
 		}
 		if hasTo {
 			to := gethCommon.BytesToAddress(e.To)
-			contractsAddrs[contractAddr][to] = struct{}{}
+			balancesByContracts[contractAddr][to] = new(big.Int)
 		}
 
 		if e.IsMinerRewardEvent() {
@@ -213,23 +213,23 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		} else {
 			feeDiff[from] = new(big.Int).Add(feeDiff[from], fee)
 		}
-		if contractsAddrs[model.ETHAddress] == nil {
-			contractsAddrs[model.ETHAddress] = make(map[gethCommon.Address]struct{})
+		if balancesByContracts[model.ETHAddress] == nil {
+			balancesByContracts[model.ETHAddress] = make(map[gethCommon.Address]*big.Int)
 		}
-		contractsAddrs[model.ETHAddress][from] = struct{}{}
+		balancesByContracts[model.ETHAddress][from] = new(big.Int)
 	}
 
 	// Get balances
-	results, err := s.balancer.BalanceOf(ctx, big.NewInt(s.blockNumber), contractsAddrs)
+	err = s.balancer.BalanceOf(ctx, big.NewInt(s.blockNumber), balancesByContracts)
 	if err != nil {
-		s.logger.Error("Failed to get ERC20 balance with ethclient", "len", len(contractsAddrs), "err", err)
+		s.logger.Error("Failed to get ERC20 balance with ethclient", "len", len(balancesByContracts), "err", err)
 		return err
 	}
 
 	// Insert balance and calculate diff to total balances
 	addrDiff := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 	allAddrs := append(addrs, newAddrs...)
-	for contractAddr, addrs := range results {
+	for contractAddr, addrs := range balancesByContracts {
 		// Get last recorded balance for these accounts
 		latestBalances, err := s.getLatestBalances(contractAddr, allAddrs)
 		if err != nil {
