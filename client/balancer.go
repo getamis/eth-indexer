@@ -93,6 +93,7 @@ func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, balances m
 	}
 
 	// Get ethers
+	lens = len(addrList)
 	for begin := 0; begin < lens; begin += chunkSize {
 		end := begin + chunkSize
 		if end > lens {
