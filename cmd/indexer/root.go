@@ -64,6 +64,9 @@ var (
 
 	// flags for functions
 	subscribeErc20token bool
+
+	// flag for chain tests
+	chainTest bool
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -98,7 +101,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexer := indexer.New(ethClient, store.NewManager(db))
+		indexer := indexer.New(ethClient, store.NewManager(db, chainTest))
 
 		if subscribeErc20token {
 			erc20Addresses, err := LoadTokensFromConfig()
@@ -172,6 +175,9 @@ func init() {
 
 	// erc20 flags
 	ServerCmd.Flags().Bool(flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
+
+	// Profling flags
+	ServerCmd.Flags().Bool(flags.ChainTest, false, "Enable to load test chain config")
 }
 
 func initViper() {
@@ -213,4 +219,5 @@ func assignVarFromViper() {
 
 	// flags for enabled functions
 	subscribeErc20token = viper.GetBool(flags.SubscribeErc20token)
+	chainTest = viper.GetBool(flags.ChainTest)
 }

@@ -59,14 +59,16 @@ type Manager interface {
 
 type manager struct {
 	db        *gorm.DB
+	chainTest bool
 	tokenList map[gethCommon.Address]*model.ERC20
 	balancer  client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB) Manager {
+func NewManager(db *gorm.DB, chainTest bool) Manager {
 	return &manager{
-		db: db,
+		db:        db,
+		chainTest: chainTest,
 	}
 }
 
@@ -167,7 +169,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	// Insert txs
 	var txs []*model.Transaction
 	for _, t := range block.Transactions() {
-		tx, err := common.Transaction(block, t)
+		tx, err := common.Transaction(m.chainTest, block, t)
 		if err != nil {
 			return err
 		}

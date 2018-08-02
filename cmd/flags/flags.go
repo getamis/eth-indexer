@@ -49,4 +49,7 @@ const (
 
 	// flags for enabled functions
 	SubscribeErc20token = "functions.erc20token"
+
+	// flags for enable test chain config
+	ChainTest = "chain.test"
 )

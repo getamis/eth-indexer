@@ -151,7 +151,7 @@ var _ = Describe("New ERC20 Test", func() {
 		events = [][]*types.TransferLog{{}, {}, {}}
 
 		ctx := context.Background()
-		manager = NewManager(db)
+		manager = NewManager(db, false)
 
 		for _, erc20 := range erc20s {
 			err = manager.InsertERC20(erc20)
