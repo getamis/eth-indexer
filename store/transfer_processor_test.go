@@ -289,7 +289,7 @@ var _ = Describe("Subscription Test", func() {
 		}
 
 		ctx := context.Background()
-		manager = NewManager(db)
+		manager = NewManager(db, false)
 
 		err = manager.InsertERC20(erc20)
 		Expect(err).Should(BeNil())

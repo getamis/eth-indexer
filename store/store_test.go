@@ -188,7 +188,7 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db)
+		manager = NewManager(db, false)
 		err = manager.Init(nil)
 		Expect(err).Should(BeNil())
 

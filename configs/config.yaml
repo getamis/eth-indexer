@@ -17,3 +17,5 @@ pprof:
   address: "0.0.0.0"
 functions:
   erc20token: true
+chain:
+  test: false
