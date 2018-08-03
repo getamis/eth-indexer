@@ -169,27 +169,32 @@ func (c *client) GetERC20(ctx context.Context, addr common.Address) (*model.ERC2
 	}
 	caller, err := contracts.NewERC20TokenCaller(addr, c)
 	if err != nil {
-		logger.Warn("Failed to initiate contract caller", "err", err)
+		logger.Error("Failed to initiate contract caller", "err", err)
+		return nil, err
+	}
+
+	// Set total supply
+	supply, err := caller.TotalSupply(&bind.CallOpts{})
+	if err != nil {
+		logger.Error("Failed to get total supply", "err", err)
+		return nil, err
+	}
+	erc20.TotalSupply = supply.String()
+
+	// Get optional methods
+	// Set decimals
+	decimal, err := caller.Decimals(&bind.CallOpts{})
+	if err != nil {
+		logger.Warn("Failed to get decimals", "err", err)
 	} else {
-		// Set decimals
-		decimal, err := caller.Decimals(&bind.CallOpts{})
-		if err != nil {
-			logger.Warn("Failed to get decimals", "err", err)
-		}
 		erc20.Decimals = int(decimal)
+	}
 
-		// Set total supply
-		supply, err := caller.TotalSupply(&bind.CallOpts{})
-		if err != nil {
-			logger.Warn("Failed to get total supply", "err", err)
-		}
-		erc20.TotalSupply = supply.String()
-
-		// Set name
-		name, err := caller.Name(&bind.CallOpts{})
-		if err != nil {
-			logger.Warn("Failed to get name", "err", err)
-		}
+	// Set name
+	name, err := caller.Name(&bind.CallOpts{})
+	if err != nil {
+		logger.Warn("Failed to get name", "err", err)
+	} else {
 		erc20.Name = name
 	}
 	return erc20, nil
