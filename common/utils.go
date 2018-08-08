@@ -117,8 +117,14 @@ func Header(b *types.Block) *model.Header {
 }
 
 // Transaction converts ethereum transaction to db transaction
-func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, error) {
-	signer := types.MakeSigner(params.MainnetChainConfig, b.Number())
+func Transaction(chainTest bool, b *types.Block, tx *types.Transaction) (*model.Transaction, error) {
+	var signer types.Signer
+	if chainTest {
+		signer = types.MakeSigner(params.TestChainConfig, b.Number())
+	} else {
+		signer = types.MakeSigner(params.MainnetChainConfig, b.Number())
+	}
+
 	msg, err := tx.AsMessage(signer)
 	if err != nil {
 		log.Error("Failed to get transaction message", "err", err)
@@ -130,7 +136,7 @@ func Transaction(b *types.Block, tx *types.Transaction) (*model.Transaction, err
 		BlockHash:   b.Hash().Bytes(),
 		From:        msg.From().Bytes(),
 		Nonce:       int64(msg.Nonce()),
-		GasPrice:    msg.GasPrice().String(),
+		GasPrice:    msg.GasPrice().Int64(),
 		GasLimit:    int64(msg.Gas()),
 		Amount:      msg.Value().String(),
 		Payload:     msg.Data(),

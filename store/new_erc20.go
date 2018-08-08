@@ -75,27 +75,27 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 
 		// Construct a set of subscription for membership testing
 		subMap := make(map[gethCommon.Address]*model.Subscription)
-		contractsAddrs := make(map[gethCommon.Address]map[gethCommon.Address]struct{})
+		balancesByContracts := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 		for _, sub := range subs {
 			subAddr := gethCommon.BytesToAddress(sub.Address)
 			subMap[subAddr] = sub
 			for _, token := range newTokens {
 				tokenAddr := gethCommon.BytesToAddress(token.Address)
-				if contractsAddrs[tokenAddr] == nil {
-					contractsAddrs[tokenAddr] = make(map[gethCommon.Address]struct{})
+				if balancesByContracts[tokenAddr] == nil {
+					balancesByContracts[tokenAddr] = make(map[gethCommon.Address]*big.Int)
 				}
-				contractsAddrs[tokenAddr][subAddr] = struct{}{}
+				balancesByContracts[tokenAddr][subAddr] = new(big.Int)
 			}
 		}
 		// Get balances
-		results, err := m.balancer.BalanceOf(ctx, big.NewInt(blockNumber), contractsAddrs)
+		err = m.balancer.BalanceOf(ctx, big.NewInt(blockNumber), balancesByContracts)
 		if err != nil {
-			logger.Error("Failed to get ERC20 balance", "len", len(contractsAddrs), "err", err)
+			logger.Error("Failed to get ERC20 balance", "len", len(balancesByContracts), "err", err)
 			return nil, err
 		}
 
 		// Update total balances
-		for contractAddr, addrs := range results {
+		for contractAddr, addrs := range balancesByContracts {
 			for addr, balance := range addrs {
 				sub, ok := subMap[addr]
 				if !ok {

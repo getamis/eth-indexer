@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/reorg"
 	"github.com/getamis/sirius/test"
 	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
@@ -187,7 +188,7 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db)
+		manager = NewManager(db, false)
 		err = manager.Init(nil)
 		Expect(err).Should(BeNil())
 
@@ -198,7 +199,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
+		err = manager.UpdateBlocks(context.Background(), blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 	})
 
@@ -207,8 +208,11 @@ var _ = Describe("Manager Test", func() {
 		db.Delete(&model.Header{})
 		db.Delete(&model.Transaction{})
 		db.Delete(&model.Receipt{})
-		db.Delete(&model.Account{})
+		db.Delete(&model.Account{
+			ContractAddress: model.ETHBytes,
+		})
 		db.Delete(&model.ERC20{})
+		db.Delete(&model.Reorg{})
 		db.DropTable(model.Account{
 			ContractAddress: erc20.Address,
 		})
@@ -239,7 +243,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeSync)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, nil)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -247,6 +251,8 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
+			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 		})
 
@@ -269,7 +275,12 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, &model.Reorg{
+				From:     blocks[0].Number().Int64(),
+				To:       blocks[len(blocks)-1].Number().Int64(),
+				FromHash: blocks[0].Hash().Bytes(),
+				ToHash:   blocks[len(blocks)-1].Hash().Bytes(),
+			})
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -277,7 +288,13 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
+			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
+			reorgStore := reorg.NewWithDB(db)
+			rs, err := reorgStore.List()
+			Expect(err).Should(Succeed())
+			Expect(len(rs)).Should(BeNumerically("==", 1))
 		})
 
 		It("failed due to wrong signer", func() {
@@ -288,7 +305,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(context.Background(), blocks, receipts, events, ModeReOrg)
+			err := manager.UpdateBlocks(context.Background(), blocks, receipts, events, nil)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
@@ -318,6 +335,8 @@ var _ = Describe("Manager Test", func() {
 
 				h, err := common.Header(block).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 				Expect(err).Should(BeNil())
+				h.CreatedAt = header.CreatedAt
+				h.ID = header.ID
 				Expect(header).Should(Equal(h))
 			}
 		})
@@ -331,6 +350,8 @@ var _ = Describe("Manager Test", func() {
 
 			h, err := common.Header(blocks[1]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
+			h.CreatedAt = header.CreatedAt
+			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 		})
 	})

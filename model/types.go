@@ -47,6 +47,7 @@ var (
 
 // Header represents the header of a block
 type Header struct {
+	ID          int64
 	Hash        []byte
 	ParentHash  []byte
 	UncleHash   []byte
@@ -78,6 +79,8 @@ type Header struct {
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
+
+	CreatedAt *time.Time
 }
 
 // TableName returns the table name of this model
@@ -126,7 +129,7 @@ type Transaction struct {
 	From        []byte
 	To          []byte
 	Nonce       int64
-	GasPrice    string
+	GasPrice    int64
 	GasLimit    int64
 	Amount      string
 	Payload     []byte
@@ -282,4 +285,18 @@ type Subscription struct {
 // TableName retruns the table name of this erc20 contract
 func (s Subscription) TableName() string {
 	return "subscriptions"
+}
+
+// Reorg represents the Reorg model
+type Reorg struct {
+	From      int64
+	FromHash  []byte
+	To        int64
+	ToHash    []byte
+	CreatedAt time.Time `deepequal:"-"`
+}
+
+// TableName retruns the table name of this Reorg event
+func (s Reorg) TableName() string {
+	return "reorgs"
 }

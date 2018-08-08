@@ -27,23 +27,12 @@ import (
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/block_header"
+	"github.com/getamis/eth-indexer/store/reorg"
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/eth-indexer/store/transaction"
 	"github.com/getamis/eth-indexer/store/transaction_receipt"
 	"github.com/getamis/sirius/log"
 	"github.com/jinzhu/gorm"
-)
-
-// UpdateMode defines the mode to update blocks
-type UpdateMode = int
-
-const (
-	// ModeReOrg represents update blocks by reorg
-	// Stop if any errors occur.
-	ModeReOrg UpdateMode = iota
-	// ModeSync represents update blocks by ethereum sync
-	// Stop if any errors occur, but return nil error if it's a duplicate error
-	ModeSync
 )
 
 //go:generate mockery -name Manager
@@ -64,20 +53,22 @@ type Manager interface {
 	GetHeaderByNumber(number int64) (*model.Header, error)
 	// GetTd returns the TD of the given block hash
 	GetTd(hash []byte) (*model.TotalDifficulty, error)
-	// UpdateBlocks updates all block data. 'delete' indicates whether deletes all data before update.
-	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) error
+	// UpdateBlocks updates all block data
+	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
 }
 
 type manager struct {
 	db        *gorm.DB
+	chainTest bool
 	tokenList map[gethCommon.Address]*model.ERC20
 	balancer  client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB) Manager {
+func NewManager(db *gorm.DB, chainTest bool) Manager {
 	return &manager{
-		db: db,
+		db:        db,
+		chainTest: chainTest,
 	}
 }
 
@@ -105,7 +96,7 @@ func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
 	return block_header.NewWithDB(m.db).InsertTd(common.TotalDifficulty(block, td))
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, mode UpdateMode) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
 	size := len(blocks)
 	if size != len(receipts) || size != len(events) {
 		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
@@ -129,7 +120,13 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 	}()
 
 	// In ModeReOrg, delete all blocks, recipients and states within this range before insertions
-	if mode == ModeReOrg {
+	isReorg := reorgEvent != nil
+	if isReorg {
+		reorgStore := reorg.NewWithDB(dbTx)
+		err = reorgStore.Insert(reorgEvent)
+		if err != nil {
+			return err
+		}
 		err = m.delete(dbTx, from, to)
 		if err != nil {
 			return err
@@ -172,7 +169,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	// Insert txs
 	var txs []*model.Transaction
 	for _, t := range block.Transactions() {
-		tx, err := common.Transaction(block, t)
+		tx, err := common.Transaction(m.chainTest, block, t)
 		if err != nil {
 			return err
 		}

@@ -14,42 +14,35 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the eth-indexer library. If not, see <http://www.gnu.org/licenses/>.
 
-package flags
+package reorg
 
-const (
-	// flag names for server
-	Host = "host"
-	Port = "port"
-
-	// flag names for ethereum service
-	Eth         = "eth"
-	EthProtocol = "eth.protocol"
-	EthHost     = "eth.host"
-	EthPort     = "eth.port"
-
-	// flag names for database
-	DbDriver   = "db.driver"
-	DbHost     = "db.host"
-	DbPort     = "db.port"
-	DbName     = "db.name"
-	DbUser     = "db.user"
-	DbPassword = "db.password"
-
-	// flags for syncing
-	SyncFromBlock = "sync.fromBlock"
-
-	// flags for metrics
-	MetricsHost = "metrics.host"
-	MetricsPort = "metrics.port"
-
-	// flags for pprof
-	PprofEnable = "pprof"
-	PprofPort   = "pprof.port"
-	PprofHost   = "pprof.host"
-
-	// flags for enabled functions
-	SubscribeErc20token = "functions.erc20token"
-
-	// flags for enable test chain config
-	ChainTest = "chain.test"
+import (
+	"github.com/getamis/eth-indexer/model"
+	"github.com/jinzhu/gorm"
 )
+
+//go:generate mockery -name Store
+type Store interface {
+	Insert(data *model.Reorg) error
+	// For testing
+	List() ([]*model.Reorg, error)
+}
+
+type store struct {
+	db *gorm.DB
+}
+
+func NewWithDB(db *gorm.DB) Store {
+	return &store{
+		db: db,
+	}
+}
+
+func (s *store) Insert(data *model.Reorg) error {
+	return s.db.Create(data).Error
+}
+
+func (s *store) List() (results []*model.Reorg, err error) {
+	err = s.db.Find(&results).Error
+	return
+}
