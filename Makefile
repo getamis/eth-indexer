@@ -28,7 +28,7 @@ coverage.txt:
 	@touch $@
 
 test: coverage.txt FORCE
-	@$(MAKE) migration-docker -e DOCKER_IMAGE_TAG=latest
+	@$(MAKE) migration-docker
 	@for d in `go list ./... | grep -v vendor | grep -v mock`; do		\
 		go test -v -coverprofile=profile.out -covermode=atomic $$d;	\
 		if [ $$? -eq 0 ]; then						\
@@ -50,9 +50,11 @@ contracts: FORCE
 
 eth-indexer-docker:
 	@docker build -f ./cmd/Dockerfile -t $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) .
+	@docker tag $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) $(DOCKER_IMAGE):latest
 
 eth-indexer-docker.push:
 	@docker push $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG)
+	@docker push $(DOCKER_IMAGE):latest
 
 PHONY += clean
 clean:

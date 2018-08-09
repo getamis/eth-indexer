@@ -5,9 +5,11 @@ LOCAL_TARGET := $(notdir $(LOCAL_PATH))
 
 $(LOCAL_TARGET)-docker:
 	@docker build -t $(DOCKER_IMAGE)-db-migration:$(DOCKER_IMAGE_TAG) $(LOCAL_PATH)
+	@docker tag $(DOCKER_IMAGE)-db-migration:$(DOCKER_IMAGE_TAG) $(DOCKER_IMAGE)-db-migration:latest
 
 $(LOCAL_TARGET)-docker.push:
 	@docker push $(DOCKER_IMAGE)-db-migration:$(DOCKER_IMAGE_TAG)
+	@docker push $(DOCKER_IMAGE)-db-migration:latest
 
 PHONY += $(LOCAL_TARGET)
 
