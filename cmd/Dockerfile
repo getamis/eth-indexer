@@ -1,5 +1,5 @@
 # Build indexer in a stock Go builder container
-FROM golang:1.9-alpine as builder
+FROM golang:1.10.3-alpine3.8 as builder
 
 RUN apk add --no-cache make gcc musl-dev linux-headers
 
