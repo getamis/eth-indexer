@@ -22,6 +22,7 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
@@ -289,7 +290,7 @@ var _ = Describe("Subscription Test", func() {
 		}
 
 		ctx := context.Background()
-		manager = NewManager(db, false)
+		manager = NewManager(db, params.MainnetChainConfig)
 
 		err = manager.InsertERC20(erc20)
 		Expect(err).Should(BeNil())
