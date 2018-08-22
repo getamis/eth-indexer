@@ -25,7 +25,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/cmd/flags"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/service/indexer"
@@ -41,11 +41,15 @@ const (
 	cfgFilePath = "./configs"
 )
 
+type EthClient struct {
+	Protocol string
+	Host     string
+	Port     int
+}
+
 var (
 	// flags for ethereum service
-	ethProtocol string
-	ethHost     string
-	ethPort     int
+	ethClients []EthClient
 
 	// flags for database
 	dbDriver   string
@@ -84,12 +88,17 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// eth-client
-		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		if err != nil {
-			log.Error("Failed to new a eth client", "err", err)
-			return err
+		var clients []client.EthClient
+		for _, cfg := range ethClients {
+			ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", cfg.Protocol, cfg.Host, cfg.Port))
+			if err != nil {
+				log.Error("Failed to new a eth client", "err", err)
+				return err
+			}
+			defer ethClient.Close()
+
+			clients = append(clients, ethClient)
 		}
-		defer ethClient.Close()
 
 		// database
 		db, err := NewDatabase()
@@ -109,7 +118,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexer := indexer.New(ethClient, store.NewManager(db, config))
+		indexer := indexer.New(clients, store.NewManager(db, config))
 
 		if subscribeErc20token {
 			erc20Addresses, err := LoadTokensFromConfig()
@@ -136,8 +145,7 @@ var ServerCmd = &cobra.Command{
 		}
 
 		log.Info("Starting eth-indexer", "from", fromBlock)
-		ch := make(chan *types.Header)
-		err = indexer.Listen(ctx, ch, fromBlock)
+		err = indexer.Listen(ctx, fromBlock)
 
 		// Ignore if listener is stopped by signal
 		if err == context.Canceled {
@@ -161,9 +169,9 @@ func init() {
 	cobra.OnInitialize(initViper)
 
 	// eth-client flags
-	ServerCmd.Flags().String(flags.EthProtocol, "ws", "The eth-client protocol")
-	ServerCmd.Flags().String(flags.EthHost, "127.0.0.1", "The eth-client host")
-	ServerCmd.Flags().Int(flags.EthPort, 8546, "The eth-client port")
+	// ServerCmd.Flags().String(flags.EthProtocol, "ws", "The eth-client protocol")
+	// ServerCmd.Flags().String(flags.EthHost, "127.0.0.1", "The eth-client host")
+	// ServerCmd.Flags().Int(flags.EthPort, 8546, "The eth-client port")
 
 	// Database flags
 	ServerCmd.Flags().String(flags.DbDriver, "mysql", "The database driver")
@@ -205,9 +213,10 @@ func initViper() {
 
 func assignVarFromViper() {
 	// flags for ethereum service
-	ethProtocol = viper.GetString(flags.EthProtocol)
-	ethHost = viper.GetString(flags.EthHost)
-	ethPort = viper.GetInt(flags.EthPort)
+	// ethProtocol = viper.GetString(flags.EthProtocol)
+	// ethHost = viper.GetString(flags.EthHost)
+	// ethPort = viper.GetInt(flags.EthPort)
+	viper.UnmarshalKey(flags.Eth, &ethClients)
 
 	// flags for database
 	dbDriver = viper.GetString(flags.DbDriver)

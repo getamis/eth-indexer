@@ -18,6 +18,7 @@ package indexer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
 	"testing"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/eth-indexer/client"
 	clientMocks "github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/model"
 	storeMocks "github.com/getamis/eth-indexer/store/mocks"
@@ -50,6 +52,7 @@ var _ = Describe("Indexer Test", func() {
 	var (
 		mockSub          *testSub
 		mockEthClient    *clientMocks.EthClient
+		mockEthClients   []client.EthClient
 		mockStoreManager *storeMocks.Manager
 		idx              *indexer
 		nilTransferLogs  []*types.TransferLog
@@ -59,7 +62,8 @@ var _ = Describe("Indexer Test", func() {
 		mockSub = &testSub{make(chan error)}
 		mockStoreManager = new(storeMocks.Manager)
 		mockEthClient = new(clientMocks.EthClient)
-		idx = New(mockEthClient, mockStoreManager)
+		mockEthClients = []client.EthClient{mockEthClient}
+		idx = New(mockEthClients, mockStoreManager)
 	})
 
 	AfterEach(func() {
@@ -73,7 +77,7 @@ var _ = Describe("Indexer Test", func() {
 		It("with valid parameters", func() {
 			addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 			ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-			mockStoreManager.On("Init", idx.client).Return(nil).Once()
+			mockStoreManager.On("Init", idx.latestClient).Return(nil).Once()
 			// The first erc20 is not found
 			mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
 			erc20 := &model.ERC20{
@@ -96,7 +100,7 @@ var _ = Describe("Indexer Test", func() {
 			It("failed to init store manager", func() {
 				addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 				ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-				mockStoreManager.On("Init", idx.client).Return(unknownErr).Once()
+				mockStoreManager.On("Init", idx.latestClient).Return(unknownErr).Once()
 				// The first erc20 is not found
 				mockStoreManager.On("FindERC20", ethAddresses[0]).Return(nil, gorm.ErrRecordNotFound).Once()
 				erc20 := &model.ERC20{
@@ -324,6 +328,7 @@ var _ = Describe("Indexer Test", func() {
 						Difficulty: big.NewInt(1),
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				blocks[0] = block
+				fmt.Printf("hex: %#x\n", block.ParentHash().Bytes())
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(block, nil).Once()
 				mockStoreManager.On("InsertTd", block, big.NewInt(1)).Return(nil).Once()
 				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
@@ -427,6 +432,7 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 					mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(i)).Return(block, nil).Once()
 					parent := block.ParentHash().Bytes()
+					fmt.Printf("i: %v, Hash: %#x\n", i, block.Hash().Bytes())
 					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
 						i - i, parent, strconv.Itoa(int(i - 1))}, nil).Once()
 					mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
@@ -453,6 +459,7 @@ var _ = Describe("Indexer Test", func() {
 					Number: 12,
 					Hash:   blocks[12].Hash().Bytes(),
 				}, nil).Once()
+				mockStoreManager.On("GetTd", blocks[13].Hash().Bytes()).Return(nil, nil).Once()
 				mockStoreManager.On("GetTd", blocks[13].ParentHash().Bytes()).Return(&model.TotalDifficulty{
 					13, block.Hash().Bytes(), strconv.Itoa(13)}, nil).Once()
 

@@ -1,10 +1,13 @@
 eth:
-  protocol: ws
-  host: geth
-  port: 8546
+  - protocol: ws
+    host: 127.0.0.1
+    port: 8546
+  - protocol: ws
+    host: 127.0.0.1
+    port: 8547
 db:
   driver: mysql
-  host: idx-database
+  host: 127.0.0.1
   port: 3306
   name: ethdb
   user: root
