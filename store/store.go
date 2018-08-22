@@ -22,6 +22,7 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
@@ -58,17 +59,17 @@ type Manager interface {
 }
 
 type manager struct {
-	db        *gorm.DB
-	chainTest bool
-	tokenList map[gethCommon.Address]*model.ERC20
-	balancer  client.Balancer
+	db          *gorm.DB
+	chainConfig *params.ChainConfig
+	tokenList   map[gethCommon.Address]*model.ERC20
+	balancer    client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB, chainTest bool) Manager {
+func NewManager(db *gorm.DB, chainConfig *params.ChainConfig) Manager {
 	return &manager{
-		db:        db,
-		chainTest: chainTest,
+		db:          db,
+		chainConfig: chainConfig,
 	}
 }
 
@@ -169,7 +170,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	// Insert txs
 	var txs []*model.Transaction
 	for _, t := range block.Transactions() {
-		tx, err := common.Transaction(m.chainTest, block, t)
+		tx, err := common.Transaction(m.chainConfig, block, t)
 		if err != nil {
 			return err
 		}

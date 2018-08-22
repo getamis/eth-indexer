@@ -27,6 +27,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/cmd/flags"
+	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/service/indexer"
 	"github.com/getamis/eth-indexer/store"
 	"github.com/getamis/sirius/log"
@@ -65,8 +66,8 @@ var (
 	// flags for functions
 	subscribeErc20token bool
 
-	// flag for chain tests
-	chainTest bool
+	// flag for chain config
+	chain int
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -75,6 +76,13 @@ var ServerCmd = &cobra.Command{
 	Short: "blockchain data indexer",
 	Long:  `Blockchain data indexer. You can setup the options value via configs/config.yaml file or pass by flags.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// check chain config
+		config, err := common.GetChain(common.Chain(chain))
+		if err != nil {
+			log.Error("Failed to get chain config", "chain", chain, "err", err)
+			return err
+		}
+
 		// eth-client
 		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
 		if err != nil {
@@ -101,7 +109,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexer := indexer.New(ethClient, store.NewManager(db, chainTest))
+		indexer := indexer.New(ethClient, store.NewManager(db, config))
 
 		if subscribeErc20token {
 			erc20Addresses, err := LoadTokensFromConfig()
@@ -177,7 +185,7 @@ func init() {
 	ServerCmd.Flags().Bool(flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
 
 	// Profling flags
-	ServerCmd.Flags().Bool(flags.ChainTest, false, "Enable to load test chain config")
+	ServerCmd.Flags().Int(flags.Chain, 0, "Set chain config, 0: Mainnet, 1: Testnet, 2: Ropsten")
 }
 
 func initViper() {
@@ -219,5 +227,5 @@ func assignVarFromViper() {
 
 	// flags for enabled functions
 	subscribeErc20token = viper.GetBool(flags.SubscribeErc20token)
-	chainTest = viper.GetBool(flags.ChainTest)
+	chain = viper.GetInt(flags.Chain)
 }

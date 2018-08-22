@@ -14,42 +14,37 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the eth-indexer library. If not, see <http://www.gnu.org/licenses/>.
 
-package flags
+package common
+
+import (
+	"errors"
+
+	"github.com/ethereum/go-ethereum/params"
+)
+
+// Chain represents the chain type
+type Chain int
 
 const (
-	// flag names for server
-	Host = "host"
-	Port = "port"
-
-	// flag names for ethereum service
-	Eth         = "eth"
-	EthProtocol = "eth.protocol"
-	EthHost     = "eth.host"
-	EthPort     = "eth.port"
-
-	// flag names for database
-	DbDriver   = "db.driver"
-	DbHost     = "db.host"
-	DbPort     = "db.port"
-	DbName     = "db.name"
-	DbUser     = "db.user"
-	DbPassword = "db.password"
-
-	// flags for syncing
-	SyncFromBlock = "sync.fromBlock"
-
-	// flags for metrics
-	MetricsHost = "metrics.host"
-	MetricsPort = "metrics.port"
-
-	// flags for pprof
-	PprofEnable = "pprof"
-	PprofPort   = "pprof.port"
-	PprofHost   = "pprof.host"
-
-	// flags for enabled functions
-	SubscribeErc20token = "functions.erc20token"
-
-	// flags for enable test chain config
-	Chain = "chain"
+	// MainChain represents the main chain config
+	MainChain Chain = iota
+	// TestChain represents the test chain config
+	TestChain
+	// RopstenChain represents the ropsten chain config
+	RopstenChain
 )
+
+var ErrUnknownChain = errors.New("unknown chain")
+
+func GetChain(chain Chain) (*params.ChainConfig, error) {
+	if chain == MainChain {
+		return params.MainnetChainConfig, nil
+	}
+	if chain == TestChain {
+		return params.TestChainConfig, nil
+	}
+	if chain == RopstenChain {
+		return params.TestnetChainConfig, nil
+	}
+	return nil, ErrUnknownChain
+}

@@ -26,6 +26,7 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/reorg"
@@ -188,7 +189,7 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db, false)
+		manager = NewManager(db, params.MainnetChainConfig)
 		err = manager.Init(nil)
 		Expect(err).Should(BeNil())
 
