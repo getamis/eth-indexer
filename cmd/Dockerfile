@@ -4,10 +4,11 @@ FROM golang:1.10.3-alpine3.8 as builder
 RUN apk add --no-cache make gcc musl-dev linux-headers
 
 ADD . $GOPATH/src/github.com/getamis/eth-indexer
-RUN cd $GOPATH/src/github.com/getamis/eth-indexer && make indexer && mv build/bin/indexer /indexer
+RUN mkdir /indexer
+RUN cd $GOPATH/src/github.com/getamis/eth-indexer && make all && mv build/bin/* /indexer
 
 # Pull indexer into a second stage deploy alpine container
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /indexer /usr/local/bin/
+COPY --from=builder /indexer/* /usr/local/bin/
