@@ -100,11 +100,9 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	outChannel := make(chan ethResult)
 	errChannel := make(chan error)
 
-	for i, client := range idx.clients {
-		index := i
-		client := client
+	for idx, cli := range idx.clients {
 
-		go func() {
+		go func(index int, client client.EthClient) {
 			sub, err := client.SubscribeNewHead(childCtx, ch)
 			if err != nil {
 				log.Error("Failed to subscribe event for new header from ethereum", "err", err)
@@ -123,10 +121,11 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 					errChannel <- childCtx.Err()
 				case err := <-sub.Err():
 					log.Error("Failed to subscribe new chain head", "err", err)
-					// don't return error to restart indexer
+					// TODO: don't return error to restart indexer
+
 				}
 			}
-		}()
+		}(idx, cli)
 	}
 
 	for {
@@ -243,13 +242,13 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 		return nil, err
 	}
 	log.Trace("Inserted TD for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex())
+
 	return td, nil
 }
 
 // getTd gets td from db, and try to get from ethereum if db not found.
 func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err error) {
 	ltd, err := idx.manager.GetTd(hash)
-
 	if err != nil {
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
@@ -311,17 +310,21 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 		return nil, nil, err
 	}
 
-	// If in the same chain, we don't need to check reorg
+	// Check total difficulty to see if the block with the same height have fork situation
+	// e.g, given the previous latestClient geth1, and current latestClient geth2:
+	//      with the same block number 1001 are actually different blocks for geth1 and geth2 ( which means fork has happened,)
+	//      we suppose to have different total difficulties and need to deal with blocks data reorg
+	_, err = idx.getTd(ctx, block.Hash().Bytes())
+	if err == nil {
+		logger.Info("Block is already in our indexer database", "number", block.Number().Int64())
+		return nil, nil, nil
+	}
+
+	// If on the same chain, we don't need to reorg
 	var blocksToInsert []*types.Block
 	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
 		return idx.insertBlocks(ctx, blocksToInsert, nil)
-	}
-
-	_, err = idx.manager.GetTd(block.Hash().Bytes())
-	if err == nil {
-		logger.Info("Block is already in our indexer database", "number", block.Number().Int64())
-		return nil, nil, nil
 	}
 
 	logger.Trace("Reorg tracing: Start")

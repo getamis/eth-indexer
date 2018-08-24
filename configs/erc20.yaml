@@ -1,0 +1,11 @@
+erc20:	
+  mith:	
+    address: "0x3893b9422Cd5D70a81eDeFfe3d5A1c6A978310BB"	
+  usdt:	
+    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"	
+  eos:	
+    address: "0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0"	
+  trx:	
+    address: "0xf230b790e05390fc8295f4d3f60332c93bed42e2"	
+  ven:	
+    address: "0xd850942ef8811f2a866692a623011bde52a462c1"

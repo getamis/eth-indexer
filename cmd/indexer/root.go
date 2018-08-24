@@ -25,6 +25,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/cmd/flags"
 	"github.com/getamis/eth-indexer/common"
@@ -145,7 +146,8 @@ var ServerCmd = &cobra.Command{
 		}
 
 		log.Info("Starting eth-indexer", "from", fromBlock)
-		err = indexer.Listen(ctx, fromBlock)
+		ch := make(chan *types.Header)
+		err = indexer.Listen(ctx, ch, fromBlock)
 
 		// Ignore if listener is stopped by signal
 		if err == context.Canceled {
