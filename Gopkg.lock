@@ -129,6 +129,7 @@
     "crypto/bn256",
     "crypto/bn256/cloudflare",
     "crypto/bn256/google",
+    "crypto/ecies",
     "crypto/randentropy",
     "crypto/secp256k1",
     "crypto/sha3",
@@ -138,6 +139,10 @@
     "event",
     "log",
     "metrics",
+    "p2p",
+    "p2p/discover",
+    "p2p/discv5",
+    "p2p/nat",
     "p2p/netutil",
     "params",
     "rlp",
@@ -223,10 +228,30 @@
   revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/huin/goupnp"
+  packages = [
+    ".",
+    "dcps/internetgateway1",
+    "dcps/internetgateway2",
+    "httpu",
+    "scpd",
+    "soap",
+    "ssdp"
+  ]
+  revision = "1395d1447324cbea88d249fbfcfd70ea878fdfca"
+
+[[projects]]
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  name = "github.com/jackpal/go-nat-pmp"
+  packages = ["."]
+  revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/jinzhu/gorm"
@@ -563,6 +588,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "987111ce22c18455538d8b860309b0a6015c7bcbb913c7ffd9e2a4514df5bd11"
+  inputs-digest = "95b6ebe344a43139511e1d55604c7040f9c48477db2c69fd0b7ed3f16d1dc373"
   solver-name = "gps-cdcl"
   solver-version = 1

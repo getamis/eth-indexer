@@ -23,6 +23,7 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
@@ -151,7 +152,7 @@ var _ = Describe("New ERC20 Test", func() {
 		events = [][]*types.TransferLog{{}, {}, {}}
 
 		ctx := context.Background()
-		manager = NewManager(db, false)
+		manager = NewManager(db, params.MainnetChainConfig)
 
 		for _, erc20 := range erc20s {
 			err = manager.InsertERC20(erc20)
