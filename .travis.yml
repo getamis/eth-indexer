@@ -21,17 +21,17 @@ jobs:
         - go get -u gopkg.in/alecthomas/gometalinter.v2
         - gometalinter.v2 --install
         - gometalinter.v2 --exclude="(vendor/.*|.*/mocks/.*)" --disable-all --deadline=10m --enable=vet --enable=gofmt --enable=misspell --enable=goconst --enable=unconvert --enable=gosimple --min-occurrences=6 ./...
-      if: branch = develop AND type IN (pull_request)
+      if: branch IN (develop, master) AND type IN (pull_request)
     - stage: Build
       script: make clean all
-      if: branch = develop AND type IN (pull_request)
+      if: branch IN (develop, master) AND type IN (pull_request)
     - stage: Unit test
       script:
         - docker pull mysql:5.7
         - make test
       after_success:
         - bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
-      if: branch = develop AND type IN (pull_request)
+      if: branch IN (develop, master) AND type IN (pull_request)
     - stage: Develop Release
       script:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin quay.io/amis
