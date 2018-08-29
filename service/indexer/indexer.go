@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strconv"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -97,16 +98,25 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// outChannel collects heads from ethClients
 	outChannel := make(chan ethResult)
+	// errChannel receives the errors from ethClients and decides whether to restart the indexer by thowing out the error
 	errChannel := make(chan error)
+	// cancelChannel simply terminates the indexer when receiving message
+	cancelChannel := make(chan error)
 
-	for idx, cli := range idx.clients {
-
+	// each ethClient will run in different go routines and push messages to channels
+	for i, c := range idx.clients {
 		go func(index int, client client.EthClient) {
 			sub, err := client.SubscribeNewHead(childCtx, ch)
+
 			if err != nil {
-				log.Error("Failed to subscribe event for new header from ethereum", "err", err)
+				log.Warn("Failed to subscribe event for new header from EthClient ["+strconv.Itoa(index)+"].", "warn", err)
 				errChannel <- err
+				if sub != nil {
+					sub.Unsubscribe()
+				}
+				return
 			}
 
 			for {
@@ -118,16 +128,24 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 					}
 					outChannel <- result
 				case <-childCtx.Done():
-					errChannel <- childCtx.Err()
+					cancelChannel <- childCtx.Err()
+					return
 				case err := <-sub.Err():
-					log.Error("Failed to subscribe new chain head", "err", err)
-					// TODO: don't return error to restart indexer
-
+					// Err returns the subscription error channel. The error channel receives
+					// a value if there is an issue with the subscription (e.g. the network connection
+					// delivering the events has been closed). Only one value will ever be sent.
+					// The error channel is closed by Unsubscribe.
+					log.Warn("Failed to subscribe for new header from EthClient ["+strconv.Itoa(index)+"].", "warn", err)
+					errChannel <- err
+					sub.Unsubscribe()
 				}
 			}
-		}(idx, cli)
+		}(i, c)
 	}
-
+	// failureCount records the total errors we have from subscribing ethClients
+	// strong assumption: everyClient will return sub.Err() once
+	failureCount := 0
+	// single thread to process the messages from channel in sequential
 	for {
 		select {
 		case result := <-outChannel:
@@ -136,14 +154,21 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 				continue
 			}
 			log.Trace("Got new header", "number", result.head.Number, "hash", result.head.Hash().Hex(), "index", result.clientIndex)
+			// switch the current ethClient to the source
 			idx.latestClient = idx.clients[result.clientIndex]
-			err := idx.sync(childCtx, fromBlock, result.head.Number.Int64()) // TODO: 確認一下來個舊的 block 來會不會有什麼問題
+			err := idx.sync(childCtx, fromBlock, result.head.Number.Int64())
 			if err != nil {
-				log.Error("Failed to sync to header from ethereum", "number", result.head.Number, "err", err)
+				log.Error("Failed to sync from ethereum", "number", result.head.Number, "err", err)
 				return err
 			}
 		case err := <-errChannel:
-			return err
+			failureCount++
+			if failureCount >= len(idx.clients) {
+				log.Error("Failed to subscribe event from all the "+strconv.Itoa(len(idx.clients))+" EthClient(s) we have.", "err", err)
+				return err
+			}
+		case canceled := <-cancelChannel:
+			return canceled
 		}
 	}
 	return nil

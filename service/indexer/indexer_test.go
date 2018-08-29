@@ -61,6 +61,8 @@ var _ = Describe("Indexer Test", func() {
 		mockSub = &testSub{make(chan error)}
 		mockStoreManager = new(storeMocks.Manager)
 		mockEthClient = new(clientMocks.EthClient)
+
+		// make mockEthClient the idx.latestClient
 		mockEthClients = []client.EthClient{mockEthClient}
 		idx = New(mockEthClients, mockStoreManager)
 	})
@@ -180,7 +182,6 @@ var _ = Describe("Indexer Test", func() {
 	})
 
 	Context("Listen()", func() {
-		ctx, cancel := context.WithCancel(context.Background())
 		ch := make(chan *types.Header)
 		unknownErr := errors.New("unknown error")
 
@@ -248,7 +249,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- blocks[18].Header()
@@ -328,7 +329,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- blocks[18].Header()
@@ -399,7 +400,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- blocks[19].Header()
@@ -519,7 +520,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- blocks[15].Header()
@@ -534,18 +535,10 @@ var _ = Describe("Indexer Test", func() {
 		})
 
 		Context("something goes wrong", func() {
-			XIt("failed to subscribe new head", func() {
-				var recvCh chan<- *types.Header
-				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, unknownErr).Once()
-
-				err := idx.Listen(ctx, ch, 0)
-				Expect(err).Should(Equal(unknownErr))
-			})
-
 			It("failed to GetTd()", func() {
 				// Given init state has the block 10 but failed to get its total difficulty.
 
+				ctx, cancel := context.WithCancel(context.Background())
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 				receipt := types.NewReceipt([]byte{}, false, 0)
 				block := types.NewBlock(
@@ -565,7 +558,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- block.Header()
@@ -581,6 +574,7 @@ var _ = Describe("Indexer Test", func() {
 				// Given init state has the block 10.
 				// Received new header 11 but failed to insert total difficulty.
 
+				ctx, cancel := context.WithCancel(context.Background())
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 				receipt := types.NewReceipt([]byte{}, false, 0)
 				block := types.NewBlock(
@@ -618,7 +612,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					// new header: 11
@@ -635,6 +629,7 @@ var _ = Describe("Indexer Test", func() {
 				// Given init state has the block 10.
 				// Received new header 11 but failed to update the block 11.
 
+				ctx, cancel := context.WithCancel(context.Background())
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 				receipt := types.NewReceipt([]byte{}, false, 0)
 
@@ -678,7 +673,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					// New heaser: block 11
@@ -695,6 +690,7 @@ var _ = Describe("Indexer Test", func() {
 				// Given init state has the block 10.
 				// Received new header 11 but failed to get the receipt of block 11.
 
+				ctx, cancel := context.WithCancel(context.Background())
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 				receipt := types.NewReceipt([]byte{}, false, 0)
 
@@ -736,7 +732,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					// new header 11
@@ -753,6 +749,7 @@ var _ = Describe("Indexer Test", func() {
 				// Given init state has the block 9.
 				// Received new header 11 but failed to get the block info of 10.
 
+				ctx, cancel := context.WithCancel(context.Background())
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
 				receipt := types.NewReceipt([]byte{}, false, 0)
 
@@ -776,7 +773,7 @@ var _ = Describe("Indexer Test", func() {
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- block.Header()
@@ -789,11 +786,13 @@ var _ = Describe("Indexer Test", func() {
 			})
 
 			It("failed to get latest header", func() {
-				mockStoreManager.On("LatestHeader").Return(nil, unknownErr).Once()
+				ctx, cancel := context.WithCancel(context.Background())
 
 				var recvCh chan<- *types.Header
 				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+				mockStoreManager.On("LatestHeader").Return(nil, unknownErr).Once()
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 				go func() {
 					ch <- &types.Header{
@@ -807,17 +806,111 @@ var _ = Describe("Indexer Test", func() {
 				Expect(err).Should(Equal(unknownErr))
 			})
 
-			XIt("subscribe error", func() {
-				subError := errors.New("client is closed")
-				var recvCh chan<- *types.Header
-				recvCh = ch
-				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+			Context("test connection with multiple ethClients", func() {
+				var (
+					mockSub          *testSub
+					newMockSub       *testSub
+					mockEthClient    *clientMocks.EthClient
+					newMockEthClient *clientMocks.EthClient
+					idx              *indexer
+				)
+				BeforeEach(func() {
+					mockSub = &testSub{make(chan error)}
+					newMockSub = &testSub{make(chan error)}
+					mockEthClient = new(clientMocks.EthClient)
+					newMockEthClient = new(clientMocks.EthClient)
+					mockEthClients = []client.EthClient{newMockEthClient, mockEthClient}
+					idx = New(mockEthClients, mockStoreManager)
+				})
 
-				go func() {
-					mockSub.mychan <- subError
-				}()
-				err := idx.Listen(ctx, ch, 0)
-				Expect(err).Should(Equal(subError))
+				It("failed to subscribe new event", func() {
+					ctx := context.Background()
+					var recvCh chan<- *types.Header
+					recvCh = ch
+
+					// make all the ethClients have this failure
+					newMockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, unknownErr).Once()
+					mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(nil, unknownErr).Once()
+
+					err := idx.Listen(ctx, ch, 0)
+					Expect(err).Should(Equal(unknownErr))
+				})
+
+				It("all ethClients return subscribe event errors", func() {
+					ctx := context.Background()
+					var recvCh chan<- *types.Header
+					recvCh = ch
+
+					// all the EthClients are gone
+					// in this case, we will return error and restart indexer
+					newMockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(newMockSub, unknownErr).Once()
+					mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, unknownErr).Once()
+
+					err := idx.Listen(ctx, ch, 0)
+					Expect(err).Should(Equal(unknownErr))
+				})
+
+				It("not all ethClients return subscribe event errors", func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					var recvCh chan<- *types.Header
+					recvCh = ch
+
+					// all the EthClients except the last one are gone
+					// in this case, we will keep indexer alive
+					newMockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(newMockSub, unknownErr).Once()
+					// the latest ethClient works
+					mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+					// finish the test case by sending context cancel message
+					go func() {
+						time.Sleep(time.Second)
+						cancel()
+					}()
+
+					err := idx.Listen(ctx, ch, 0)
+					Expect(err).Should(Equal(context.Canceled))
+				})
+
+				It("all ethClients return subscribe head errors", func() {
+					ctx := context.Background()
+					subError := errors.New("client is closed")
+					var recvCh chan<- *types.Header
+					recvCh = ch
+
+					// all the EthClients are gone
+					// in this case, we will return error and restart indexer
+					newMockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(newMockSub, nil).Once()
+					mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+					go func() {
+						mockSub.mychan <- subError
+						newMockSub.mychan <- subError
+					}()
+
+					err := idx.Listen(ctx, ch, 0)
+					Expect(err).Should(Equal(subError))
+				})
+
+				It("not all ethClients return subscribe head errors", func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					subError := errors.New("client is closed")
+					var recvCh chan<- *types.Header
+					recvCh = ch
+
+					newMockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(newMockSub, nil).Once()
+					mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+					// one of the ethClient throwed subscription error
+					go func() {
+						newMockSub.mychan <- subError
+						// finish the test case by sending context cancel message
+						time.Sleep(time.Second)
+						cancel()
+					}()
+
+					err := idx.Listen(ctx, ch, 0)
+					Expect(err).Should(Equal(context.Canceled))
+				})
 			})
 		})
 	})
@@ -944,7 +1037,7 @@ var _ = Describe("Indexer Test", func() {
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
-			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 			go func() {
 				ch <- newBlocks[18].Header()
@@ -1052,7 +1145,7 @@ var _ = Describe("Indexer Test", func() {
 
 			var recvCh chan<- *types.Header
 			recvCh = ch
-			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+			mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Times(len(idx.clients))
 
 			go func() {
 				ch <- newBlocks[16].Header()
