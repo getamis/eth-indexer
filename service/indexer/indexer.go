@@ -100,6 +100,10 @@ func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock
 	for {
 		select {
 		case head := <-ch:
+			if fromBlock > head.Number.Int64() {
+				log.Trace("Ignore old header", "number", head.Number, "hash", head.Hash().Hex())
+				continue
+			}
 			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
 			err = idx.sync(childCtx, fromBlock, head.Number.Int64())
 			if err != nil {

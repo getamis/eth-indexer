@@ -362,6 +362,45 @@ var _ = Describe("Indexer Test", func() {
 				Expect(err).Should(Equal(context.Canceled))
 			})
 
+			It("ignore old block", func() {
+				ctx, cancel := context.WithCancel(context.Background())
+				blocks := make([]*types.Block, 20)
+				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
+				receipt := types.NewReceipt([]byte{}, false, 0)
+				block := types.NewBlock(
+					&types.Header{
+						Number: big.NewInt(10),
+						Root:   common.HexToHash("1234567890" + strconv.Itoa(int(10))),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+				blocks[10] = block
+				for i := int64(11); i <= 15; i++ {
+					block = types.NewBlock(
+						&types.Header{
+							Number:     big.NewInt(i),
+							ParentHash: blocks[i-1].Hash(),
+							Root:       common.HexToHash("1234567890" + strconv.Itoa(int(i))),
+							Difficulty: big.NewInt(1),
+						}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+					blocks[i] = block
+				}
+
+				var recvCh chan<- *types.Header
+				recvCh = ch
+				mockEthClient.On("SubscribeNewHead", mock.Anything, recvCh).Return(mockSub, nil).Once()
+
+				go func() {
+					// Ignore old block
+					ch <- blocks[10].Header()
+					// Ignore old block
+					ch <- blocks[14].Header()
+					time.Sleep(time.Second)
+					cancel()
+				}()
+
+				err := idx.Listen(ctx, ch, 15)
+				Expect(err).Should(Equal(context.Canceled))
+			})
+
 			It("disordered blocks", func() {
 				ctx, cancel := context.WithCancel(context.Background())
 
