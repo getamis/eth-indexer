@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -171,9 +173,7 @@ func init() {
 	cobra.OnInitialize(initViper)
 
 	// eth-client flags
-	// ServerCmd.Flags().String(flags.EthProtocol, "ws", "The eth-client protocol")
-	// ServerCmd.Flags().String(flags.EthHost, "127.0.0.1", "The eth-client host")
-	// ServerCmd.Flags().Int(flags.EthPort, 8546, "The eth-client port")
+	ServerCmd.Flags().StringSlice(flags.Eth, []string{""}, "The eth clients. Please separate each with comma in a string. Ex: \"ws://127.0.0.1:8585,ws://127.0.0.1:8586\"")
 
 	// Database flags
 	ServerCmd.Flags().String(flags.DbDriver, "mysql", "The database driver")
@@ -214,10 +214,20 @@ func initViper() {
 }
 
 func assignVarFromViper() {
-	// flags for ethereum service
-	// ethProtocol = viper.GetString(flags.EthProtocol)
-	// ethHost = viper.GetString(flags.EthHost)
-	// ethPort = viper.GetInt(flags.EthPort)
+	// flags for eth
+	// eth value has been passed via flag "--eth"
+	ethList := viper.GetStringSlice(flags.Eth)
+	for _, eth := range ethList {
+		u, _ := url.Parse(eth)
+
+		port, _ := strconv.Atoi(u.Port())
+		ethClients = append(ethClients, EthClient{
+			Protocol: u.Scheme,
+			Host:     u.Hostname(),
+			Port:     port,
+		})
+	}
+	// "eth" has been defined in config.yaml
 	viper.UnmarshalKey(flags.Eth, &ethClients)
 
 	// flags for database

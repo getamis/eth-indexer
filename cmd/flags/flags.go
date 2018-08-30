@@ -22,10 +22,7 @@ const (
 	Port = "port"
 
 	// flag names for ethereum service
-	Eth         = "eth"
-	EthProtocol = "eth.protocol"
-	EthHost     = "eth.host"
-	EthPort     = "eth.port"
+	Eth = "eth"
 
 	// flag names for database
 	DbDriver   = "db.driver"
