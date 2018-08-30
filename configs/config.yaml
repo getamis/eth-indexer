@@ -2,9 +2,6 @@ eth:
   - protocol: ws
     host: 127.0.0.1
     port: 8546
-  - protocol: ws
-    host: 127.0.0.1
-    port: 8547
 db:
   driver: mysql
   host: 127.0.0.1

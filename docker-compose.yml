@@ -7,18 +7,7 @@ services:
       - "30303:30303"
       - "8546:8546"
     volumes:
-      - /Users/yurenju/go/src/github.com/getamis/geth_1:/root/.ethereum
-    command: "--gcmode=archive --syncmode=full --wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
-    restart: always
-    depends_on:
-      - idx-database
-  geth_2:
-    image: quay.io/amis/geth:indexer_diff_tx_1.8.10
-    ports:
-      - "30302:30303"
-      - "8547:8546"
-    volumes:
-      - /Users/yurenju/go/src/github.com/getamis/geth_2:/root/.ethereum
+      - ${GETH_DATA_PATH}:/root/.ethereum
     command: "--gcmode=archive --syncmode=full --wsapi \"eth,debug\" --ws --wsaddr 0.0.0.0 --wsport 8546 --wsorigins \"*\""
     restart: always
     depends_on:
@@ -58,7 +47,6 @@ services:
       - idx-database
       - idx-migration
       - geth_1
-      - geth_2
     volumes:
       - ./configs:/configs
   peer-monitor:
@@ -79,4 +67,4 @@ services:
       - ${GETH_DATA_PATH}:/root/.ethereum
     restart: on-failure
     depends_on:
-      - geth
+      - geth_1
