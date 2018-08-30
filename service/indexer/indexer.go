@@ -335,7 +335,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 		return nil, nil, err
 	}
 
-	// Check total difficulty to see if the block with the same height have fork situation
+	// Check total difficulty to see if the block with the same height has been different
 	// e.g, given the previous latestClient geth1, and current latestClient geth2:
 	//      with the same block number 1001 are actually different blocks for geth1 and geth2 ( which means fork has happened,)
 	//      we suppose to have different total difficulties and need to deal with blocks data reorg
