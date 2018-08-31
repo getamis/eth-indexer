@@ -28,12 +28,13 @@ const (
 	EthPort     = "eth.port"
 
 	// flag names for database
-	DbDriver   = "db.driver"
-	DbHost     = "db.host"
-	DbPort     = "db.port"
-	DbName     = "db.name"
-	DbUser     = "db.user"
-	DbPassword = "db.password"
+	DbHost     = "indexer.db.cred.host"
+	DbPort     = "indexer.db.cred.port"
+	DbUser     = "indexer.db.cred.user"
+	DbPassword = "indexer.db.cred.password"
+
+	DbDriver = "indexer.db.config.driver"
+	DbName   = "indexer.db.config.name"
 
 	// flags for syncing
 	SyncFromBlock = "sync.fromBlock"
@@ -52,4 +53,8 @@ const (
 
 	// flags for enable test chain config
 	Chain = "chain"
+
+	// flag names for vault
+	VaultHostFlag   = "vault.host"
+	VaultCAPathFlag = "vault.ca.path"
 )
