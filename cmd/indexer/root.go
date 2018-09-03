@@ -42,7 +42,7 @@ const (
 	cfgFileType = "yaml"
 	cfgFilePath = "./configs"
 
-	vaultIndexerDbCredPath = "indexer-db-credentials"
+	vaultIndexerDbCredPath = "secret/indexer-db-credentials"
 )
 
 var (
