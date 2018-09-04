@@ -140,18 +140,10 @@ func (c *client) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) (
 }
 
 func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
-	var r string
-	err := c.rpc.CallContext(ctx, &r, "debug_getTotalDifficulty", hash.Hex())
+	var td *big.Int
+	err := c.rpc.CallContext(ctx, &td, "debug_getTotalDifficulty", hash.Hex())
 	if err != nil {
 		return nil, err
-	}
-	if len(r) <= 2 {
-		return nil, ethereum.NotFound
-	}
-	// Remove the '0x' prefix
-	td, ok := new(big.Int).SetString(r[2:], 16)
-	if !ok {
-		return nil, ErrInvalidTDFormat
 	}
 	return td, nil
 }
