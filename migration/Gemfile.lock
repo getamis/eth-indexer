@@ -26,6 +26,7 @@ GEM
       minitest (~> 5.1)
       tzinfo (~> 1.1)
     arel (9.0.0)
+    aws-sigv4 (1.0.3)
     builder (3.2.3)
     concurrent-ruby (1.0.5)
     crass (1.0.4)
@@ -64,6 +65,8 @@ GEM
     thread_safe (0.3.6)
     tzinfo (1.2.5)
       thread_safe (~> 0.1)
+    vault (0.12.0)
+      aws-sigv4
 
 PLATFORMS
   ruby
@@ -71,6 +74,7 @@ PLATFORMS
 DEPENDENCIES
   mysql2 (~> 0.5.1)
   standalone_migrations (~> 5.2.5)
+  vault (~> 0.1)
 
 BUNDLED WITH
    1.16.1
