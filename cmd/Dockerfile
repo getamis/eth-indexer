@@ -12,3 +12,8 @@ FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /indexer/* /usr/local/bin/
+
+RUN addgroup -S app -g 699
+RUN adduser -S -u 699 -G app -s /sbin/nologin app
+
+USER app
