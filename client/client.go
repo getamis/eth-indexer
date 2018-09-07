@@ -44,21 +44,17 @@ type EthClient interface {
 
 	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 	BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error)
-	TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error)
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error)
 	UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
-	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
-	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
-	CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error)
 	GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	// Get ETH transfer logs
 	GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error)
-	BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error)
-	BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockNumber *big.Int) ([][]byte, error)
+	BatchBalanceAt(ctx context.Context, accounts []common.Address, blockHash common.Hash) ([]*big.Int, error)
+	BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockHash common.Hash) ([][]byte, error)
 	Close()
 }
 
@@ -77,42 +73,6 @@ func NewClient(url string) (EthClient, error) {
 		rpc:    rpcClient,
 	}
 	return newCacheMiddleware(client), nil
-}
-
-func (c *client) TransactionReceipts(ctx context.Context, txs types.Transactions) ([]*types.Receipt, error) {
-	lens := len(txs)
-	if lens == 0 {
-		// Don't need to process this requests
-		return nil, nil
-	}
-
-	// Construct batch requests
-	method := "eth_getTransactionReceipt"
-	var reqs []rpc.BatchElem
-	receipts := make([]*types.Receipt, lens)
-	for i, tx := range txs {
-		receipts[i] = &types.Receipt{}
-		reqs = append(reqs, rpc.BatchElem{
-			Method: method,
-			Args:   []interface{}{tx.Hash()},
-			Result: receipts[i],
-		})
-	}
-
-	// Batch calls
-	err := c.rpc.BatchCallContext(ctx, reqs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Ensure all requests are ok
-	for _, req := range reqs {
-		if req.Error != nil {
-			return nil, req.Error
-		}
-	}
-
-	return receipts, nil
 }
 
 func (c *client) UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error) {
@@ -206,21 +166,20 @@ func (c *client) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*type
 	return r, err
 }
 
-func (c *client) BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error) {
+func (c *client) BatchBalanceAt(ctx context.Context, accounts []common.Address, blockHash common.Hash) ([]*big.Int, error) {
 	lens := len(accounts)
 	if lens == 0 {
 		return nil, nil
 	}
 
-	blockNumStr := hexutil.EncodeBig(blockNumber)
 	// Construct batch requests
-	method := "eth_getBalance"
+	method := "eth_getBalanceByHash"
 	reqs := make([]rpc.BatchElem, lens)
 	for i, account := range accounts {
 		var result hexutil.Big
 		reqs[i] = rpc.BatchElem{
 			Method: method,
-			Args:   []interface{}{account, blockNumStr},
+			Args:   []interface{}{account, blockHash.Hex()},
 			Result: &result,
 		}
 	}
@@ -242,21 +201,20 @@ func (c *client) BatchBalanceAt(ctx context.Context, accounts []common.Address, 
 	return balances, nil
 }
 
-func (c *client) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockNumber *big.Int) ([][]byte, error) {
+func (c *client) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockHash common.Hash) ([][]byte, error) {
 	lens := len(msgs)
 	if lens == 0 {
 		return nil, nil
 	}
 
-	blockNumStr := hexutil.EncodeBig(blockNumber)
 	// Construct batch requests
-	method := "eth_call"
+	method := "eth_callByHash"
 	reqs := make([]rpc.BatchElem, lens)
 	for i, msg := range msgs {
 		var hex hexutil.Bytes
 		reqs[i] = rpc.BatchElem{
 			Method: method,
-			Args:   []interface{}{toCallArg(msg), blockNumStr},
+			Args:   []interface{}{toCallArg(msg), blockHash.Hex()},
 			Result: &hex,
 		}
 

@@ -35,12 +35,12 @@ const (
 // Balancer is a wrapper interface to batch get balances
 type Balancer interface {
 	// BalanceOf returns the balances of ETH and multiple erc20 tokens for multiple accounts
-	BalanceOf(context.Context, *big.Int, map[ethCommon.Address]map[ethCommon.Address]*big.Int) error
+	BalanceOf(context.Context, ethCommon.Hash, map[ethCommon.Address]map[ethCommon.Address]*big.Int) error
 }
 
 // BalanceOf returns the balances of ETH and multiple erc20 tokens for multiple accounts
-func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, balances map[ethCommon.Address]map[ethCommon.Address]*big.Int) (err error) {
-	logger := log.New("number", blockNumber.Int64())
+func (c *client) BalanceOf(ctx context.Context, blockHash ethCommon.Hash, balances map[ethCommon.Address]map[ethCommon.Address]*big.Int) (err error) {
+	logger := log.New("hash", blockHash.Hex())
 
 	var msgs []*ethereum.CallMsg
 	var owners []ethCommon.Address
@@ -66,7 +66,7 @@ func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, balances m
 
 		chunk := msgs[begin:end]
 		logger.Info("processing ERC20 balance chunk", "total", lens, "begin", begin, "end", end)
-		outputs, err := c.BatchCallContract(ctx, chunk, blockNumber)
+		outputs, err := c.BatchCallContract(ctx, chunk, blockHash)
 		if err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (c *client) BalanceOf(ctx context.Context, blockNumber *big.Int, balances m
 
 		chunk := addrList[begin:end]
 		logger.Info("processing ETH balance chunk", "total", lens, "begin", begin, "end", end)
-		ethers, err := c.BatchBalanceAt(ctx, chunk, blockNumber)
+		ethers, err := c.BatchBalanceAt(ctx, chunk, blockHash)
 		if err != nil {
 			return err
 		}
