@@ -243,13 +243,13 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 		Value:       h.MinerReward,
 	})
 
-	err = newTransferProcessor(blockNumber, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	err = newTransferProcessor(block, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
 	if err != nil {
 		return err
 	}
 
 	// Init new erc20 tokens if existed
-	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, blockNumber)
+	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, block)
 	if err != nil {
 		return err
 	}
