@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -26,7 +27,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/cmd/flags"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/service/indexer"
@@ -47,9 +48,7 @@ const (
 
 var (
 	// flags for ethereum service
-	ethProtocol string
-	ethHost     string
-	ethPort     int
+	ethClients []string
 
 	// flags for database
 	dbDriver   string
@@ -92,12 +91,21 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// eth-client
-		ethClient, err := NewEthConn(fmt.Sprintf("%s://%s:%d", ethProtocol, ethHost, ethPort))
-		if err != nil {
-			log.Error("Failed to new a eth client", "err", err)
-			return err
+		if len(ethClients) == 0 {
+			log.Error("No ETH clients")
+			return errors.New("no ETH clients")
 		}
-		defer ethClient.Close()
+		var clients []client.EthClient
+		for _, c := range ethClients {
+			ethClient, err := NewEthConn(c)
+			if err != nil {
+				log.Error("Failed to new a eth client", "err", err)
+				return err
+			}
+			defer ethClient.Close()
+
+			clients = append(clients, ethClient)
+		}
 
 		// database
 		db, err := NewDatabase()
@@ -117,7 +125,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexer := indexer.New(ethClient, store.NewManager(db, config))
+		indexService := indexer.New(clients, store.NewManager(db, config))
 
 		if subscribeErc20token {
 			erc20Addresses, err := LoadTokensFromConfig()
@@ -127,7 +135,7 @@ var ServerCmd = &cobra.Command{
 			}
 			log.Debug("erc20Addresses Successfully Loaded")
 
-			if err := indexer.SubscribeErc20Tokens(ctx, erc20Addresses); err != nil {
+			if err := indexService.SubscribeErc20Tokens(ctx, erc20Addresses); err != nil {
 				log.Error("Fail to subscribe ERC20Tokens and write to database", "err", err)
 				return err
 			}
@@ -144,8 +152,7 @@ var ServerCmd = &cobra.Command{
 		}
 
 		log.Info("Starting eth-indexer", "from", fromBlock)
-		ch := make(chan *types.Header)
-		err = indexer.Listen(ctx, ch, fromBlock)
+		err = indexService.Listen(ctx, fromBlock)
 
 		// Ignore if listener is stopped by signal
 		if err == context.Canceled {
@@ -169,9 +176,7 @@ func init() {
 	cobra.OnInitialize(initViper)
 
 	// eth-client flags
-	ServerCmd.Flags().String(flags.EthProtocol, "ws", "The eth-client protocol")
-	ServerCmd.Flags().String(flags.EthHost, "127.0.0.1", "The eth-client host")
-	ServerCmd.Flags().Int(flags.EthPort, 8546, "The eth-client port")
+	ServerCmd.Flags().StringSlice(flags.Eth, []string{""}, "The eth clients. Please separate each with comma in a string. Ex: \"ws://127.0.0.1:8585,ws://127.0.0.1:8586\"")
 
 	// Database flags
 	ServerCmd.Flags().String(flags.DbDriver, "mysql", "The database driver")
@@ -217,10 +222,8 @@ func initViper() {
 }
 
 func assignVarFromViper() {
-	// flags for ethereum service
-	ethProtocol = viper.GetString(flags.EthProtocol)
-	ethHost = viper.GetString(flags.EthHost)
-	ethPort = viper.GetInt(flags.EthPort)
+	// flags for eth
+	ethClients = viper.GetStringSlice(flags.Eth)
 
 	// flags for database
 	dbDriver = viper.GetString(flags.DbDriver)
