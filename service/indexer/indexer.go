@@ -157,15 +157,15 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 		select {
 		case result := <-outChannel:
 			header := result.header
-			if fromBlock > header.Number.Int64() {
-				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex())
+			if idx.currentHeader != nil && idx.currentHeader.Number >= header.Number.Int64() {
+				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
 				continue
 			}
 
 			log.Trace("Got new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
 			// switch the current ethClient to the source
 			idx.latestClient = idx.clients[result.clientIndex]
-			err := idx.sync(listenCtx, fromBlock, header.Number.Int64())
+			err := idx.sync(listenCtx, fromBlock, header)
 			if err != nil {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
 				return err
@@ -176,70 +176,45 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 	}
 }
 
-func (idx *indexer) getLocalState(ctx context.Context, from int64) (header *model.Header, currentTd *big.Int, err error) {
+func (idx *indexer) getLocalState(ctx context.Context, from int64) (*model.Header, *big.Int, error) {
 	// Get latest header from db
-	header, err = idx.manager.LatestHeader()
+	header, err := idx.manager.LatestHeader()
 	if err != nil {
 		if common.NotFoundError(err) {
-			log.Info("The header db is empty")
-			header = &model.Header{
-				Number: -1,
-				Hash:   ethCommon.Hash{}.Bytes(),
-			}
-			err = nil
-			currentTd = big.NewInt(0)
-		} else {
-			log.Error("Failed to get latest header from db", "err", err)
-			return
+			log.Warn("The latest header doesn't exist", "from", from)
+			return &model.Header{
+				Number: from,
+			}, big.NewInt(0), nil
 		}
+		log.Error("Failed to get latest header from db", "err", err)
+		return nil, nil, err
 	}
 
-	// Ensure the from block is lager than current block
-	if from-1 > header.Number {
-		block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(from-1))
-		if err != nil {
-			log.Error("Failed to get block", "number", from, "err", err)
-			return nil, nil, err
-		}
-		header = common.Header(block)
+	// Get TD
+	currentTd, err := idx.getTd(ctx, header.Hash)
+	if err != nil {
+		log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
+		return nil, nil, err
 	}
-
-	if header.Number >= 0 {
-		currentTd, err = idx.getTd(ctx, header.Hash)
-		if err != nil {
-			log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
-			return nil, nil, err
-		}
-	}
-	return
+	return header, currentTd, nil
 }
 
-func (idx *indexer) sync(ctx context.Context, from int64, to int64) error {
-	// Update existing blocks from ethereum to db
+func (idx *indexer) sync(ctx context.Context, from int64, header *types.Header) error {
+	// Update existing blocks and TD from ethereum to db
 	var err error
 	idx.currentHeader, idx.currentTD, err = idx.getLocalState(ctx, from)
 	if err != nil {
 		return err
 	}
 
-	// Ensure the from block is lager than current block
-	from = idx.currentHeader.Number + 1
-
-	if from > to {
-		// Only check `to` block
-		from = to
+	block, td, err := idx.addBlockMaybeReorg(ctx, header)
+	if err != nil {
+		return err
 	}
-
-	for i := from; i <= to; i++ {
-		block, td, err := idx.addBlockMaybeReorg(ctx, i)
-		if err != nil {
-			return err
-		}
-		// If a block is inserted, update current td and header
-		if block != nil {
-			idx.currentHeader = common.Header(block)
-			idx.currentTD = td
-		}
+	// If the block is inserted, update current td and header
+	if block != nil {
+		idx.currentHeader = common.Header(block)
+		idx.currentTD = td
 	}
 	return nil
 }
@@ -275,7 +250,6 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 // getTd gets td from db, and try to get from ethereum if db not found.
 func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err error) {
 	ltd, err := idx.manager.GetTd(hash)
-
 	if err != nil {
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
@@ -328,20 +302,39 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 
 // addBlockMaybeReorg checks whether target block's parent hash is consistent with local db.
 // if not, reorg and returns the highest TD inserted. Assume target is larger than prevHdr.
-func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*types.Block, *big.Int, error) {
-	logger := log.New("from", idx.currentHeader.Number, "fromTD", idx.currentTD, "to", target)
+func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header) (*types.Block, *big.Int, error) {
+	logger := log.New("from", idx.currentHeader.Number, "fromHash", common.BytesTo0xHex(idx.currentHeader.Hash), "fromTD", idx.currentTD, "to", header.Number, "toHash", header.Hash().Hex())
 	logger.Trace("Syncing block")
-	block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(target))
+	if idx.currentHeader.Number >= header.Number.Int64() {
+		logger.Info("Only handle the block with larger block number")
+		return nil, nil, nil
+	}
+
+	block, err := idx.latestClient.BlockByHash(ctx, header.Hash())
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
 		return nil, nil, err
 	}
-
-	// If on the same chain, we don't need to reorg
+	// If
+	// 1. no block exists in DB
+	// 2. on the same chain, we don't need to reorg
 	var blocksToInsert []*types.Block
-	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
+	if idx.currentHeader.Number+1 == header.Number.Int64() && bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
 		return idx.insertBlocks(ctx, blocksToInsert, nil)
+	}
+
+	// Find targetTD to check whether we need to handle it
+	targetTD, err := idx.latestClient.GetTotalDifficulty(ctx, header.Hash())
+	if err != nil {
+		logger.Error("Failed to get target TD", "err", err)
+		return nil, nil, err
+	}
+	logger = logger.New("toTD", targetTD)
+	// Compare currentTd with targetTD
+	if idx.currentTD.Cmp(targetTD) >= 0 {
+		logger.Debug("Ignore this block due to lower TD")
+		return nil, nil, nil
 	}
 
 	logger.Trace("Reorg tracing: Start")
@@ -351,24 +344,30 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 		To:       idx.currentHeader.Number,
 		ToHash:   idx.currentHeader.Hash,
 	}
-	targetTD := block.Difficulty()
 	blocks := []*types.Block{block}
 	for {
-		// Get old blocks from db only if the number is not equal to current block number
-		if idx.currentHeader.Number != block.Number().Int64()-1 {
+		// Get old blocks from db only if the number is equal or smaller than the current block number
+		if idx.currentHeader.Number == block.Number().Int64()-1 && bytes.Equal(idx.currentHeader.Hash, block.ParentHash().Bytes()) {
+			logger.Info("Reorg tracing: Not a reorg event", "number", idx.currentHeader.Number)
+			reorgEvent = nil
+			break
+		} else if idx.currentHeader.Number > block.Number().Int64()-1 {
 			dbHeader, err := idx.manager.GetHeaderByNumber(block.Number().Int64() - 1)
-			if err == nil {
-				if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
+			if err != nil {
+				if common.NotFoundError(err) {
+					reorgEvent = nil
+					logger.Warn("Reorg tracing: Clean database", "number", block.Number().Int64()-1)
 					break
 				}
-				// Update reorg event
-				reorgEvent.From = dbHeader.Number
-				reorgEvent.FromHash = dbHeader.Hash
-			} else if !common.NotFoundError(err) {
 				logger.Error("Reorg tracing: Failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
 				return nil, nil, err
 			}
-			// Ignore not found error
+			if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
+				break
+			}
+			// Update reorg event
+			reorgEvent.From = dbHeader.Number
+			reorgEvent.FromHash = dbHeader.Hash
 		}
 
 		// Get old blocks from ethereum
@@ -378,24 +377,9 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 			return nil, nil, err
 		}
 		blocks = append(blocks, block)
-		targetTD.Add(targetTD, block.Difficulty())
 	}
 	logger.Trace("Reorg tracing: Stop", "at", block.Number(), "hash", block.Hash().Hex())
 	branchBlock := block
-
-	// Calculate target TD
-	rootTD, err := idx.getTd(ctx, branchBlock.ParentHash().Bytes())
-	if err != nil {
-		logger.Error("Reorg tracing: Failed to get TD", "hash", branchBlock.ParentHash().Hex(), "err", err)
-		return nil, nil, err
-	}
-	targetTD.Add(targetTD, rootTD)
-
-	// Compare currentTd with the new branch
-	if idx.currentTD.Cmp(targetTD) > 0 {
-		logger.Debug("Ignore this block due to lower TD", "targetTD", targetTD)
-		return nil, nil, nil
-	}
 	blocksToInsert = append(blocksToInsert, blocks...)
 
 	// Now atomically update the reorg'ed blocks
