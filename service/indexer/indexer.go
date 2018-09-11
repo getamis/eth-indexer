@@ -36,6 +36,8 @@ import (
 var (
 	//ErrInvalidAddress returns if invalid ERC20 address is detected
 	ErrInvalidAddress = errors.New("invalid address")
+
+	retrySubscribeTime = 5 * time.Second
 )
 
 // New news an indexer service
@@ -147,8 +149,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 					log.Warn("Listen context error", "client", index, "err", ctx.Err())
 					return
 				}
-				// Sleep 5 second to subscribe again
-				time.Sleep(5 * time.Second)
+				time.Sleep(retrySubscribeTime)
 			}
 		}(listenCtx, outChannel, i)
 	}
