@@ -45,6 +45,16 @@ func newCacheMiddleware(client EthClient) EthClient {
 	}
 }
 
+func (c *cacheMiddleware) BlockByNumber(ctx context.Context, number *big.Int) (result *types.Block, err error) {
+	defer func() {
+		if err != nil {
+			return
+		}
+		blockCache.Add(result.Hash().Hex(), result)
+	}()
+	return c.EthClient.BlockByNumber(ctx, number)
+}
+
 func (c *cacheMiddleware) BlockByHash(ctx context.Context, hash common.Hash) (result *types.Block, err error) {
 	key := hash.Hex()
 	value, ok := blockCache.Get(key)

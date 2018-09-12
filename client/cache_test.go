@@ -61,6 +61,27 @@ var _ = Describe("Cache Test", func() {
 		blockReceiptsCache.Purge()
 	})
 
+	Context("BlockByNumber()", func() {
+		It("find block successfully", func() {
+			mockClient.On("BlockByNumber", ctx, block.Number()).Return(block, nil).Once()
+			resBlock, err := cacheClient.BlockByNumber(ctx, block.Number())
+			Expect(err).Should(BeNil())
+			Expect(resBlock).Should(Equal(block))
+			value, ok := blockCache.Get(block.Hash().Hex())
+			Expect(ok).Should(BeTrue())
+			block1 := value.(*types.Block)
+			Expect(block1).Should(Equal(block))
+		})
+		It("failed to find block", func() {
+			mockClient.On("BlockByNumber", ctx, block.Number()).Return(nil, unknownErr).Once()
+			resBlock, err := cacheClient.BlockByNumber(ctx, block.Number())
+			Expect(err).Should(Equal(unknownErr))
+			Expect(resBlock).Should(BeNil())
+			_, ok := blockCache.Get(block.Hash().Hex())
+			Expect(ok).Should(BeFalse())
+		})
+	})
+
 	Context("BlockByHash()", func() {
 		It("in cache", func() {
 			By("wrong in cache")
