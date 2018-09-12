@@ -48,8 +48,8 @@ var _ bind.ContractBackend = (*SimulatedBackend)(nil)
 var errBlockNumberUnsupported = errors.New("SimulatedBackend cannot access blocks other than the latest block")
 var errGasEstimationFailed = errors.New("gas required exceeds allowance or always failing transaction")
 
-// SimulatedBackend is copied from github.com/ethereum/go-ethereum/accounts/abi/bind/backends/. We add
-// Blockchain() to expose blockchain for testing purpose
+// SimulatedBackend implements bind.ContractBackend, simulating a blockchain in
+// the background. Its main purpose is to allow easily testing contract bindings.
 type SimulatedBackend struct {
 	database   ethdb.Database   // In memory database to store our testing data
 	blockchain *core.BlockChain // Ethereum blockchain to handle the consensus
@@ -65,9 +65,9 @@ type SimulatedBackend struct {
 
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
-func NewSimulatedBackend(alloc core.GenesisAlloc) *SimulatedBackend {
+func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
 	database := ethdb.NewMemDatabase()
-	genesis := core.Genesis{Config: params.AllEthashProtocolChanges, Alloc: alloc}
+	genesis := core.Genesis{Config: params.AllEthashProtocolChanges, GasLimit: gasLimit, Alloc: alloc}
 	genesis.MustCommit(database)
 	blockchain, _ := core.NewBlockChain(database, nil, genesis.Config, ethash.NewFaker(), vm.Config{})
 
@@ -79,14 +79,6 @@ func NewSimulatedBackend(alloc core.GenesisAlloc) *SimulatedBackend {
 	}
 	backend.rollback()
 	return backend
-}
-
-// Blockchain returns the simulated blockchain
-func (b *SimulatedBackend) Blockchain() *core.BlockChain {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	return b.blockchain
 }
 
 // Commit imports all the pending transactions as a single block and starts a
@@ -332,18 +324,24 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 //
 // TODO(karalabe): Deprecate when the subscription one can return past data too.
 func (b *SimulatedBackend) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
-	// Initialize unset filter boundaried to run from genesis to chain head
-	from := int64(0)
-	if query.FromBlock != nil {
-		from = query.FromBlock.Int64()
+	var filter *filters.Filter
+	if query.BlockHash != nil {
+		// Block filter requested, construct a single-shot filter
+		filter = filters.NewBlockFilter(&filterBackend{b.database, b.blockchain}, *query.BlockHash, query.Addresses, query.Topics)
+	} else {
+		// Initialize unset filter boundaried to run from genesis to chain head
+		from := int64(0)
+		if query.FromBlock != nil {
+			from = query.FromBlock.Int64()
+		}
+		to := int64(-1)
+		if query.ToBlock != nil {
+			to = query.ToBlock.Int64()
+		}
+		// Construct the range filter
+		filter = filters.NewRangeFilter(&filterBackend{b.database, b.blockchain}, from, to, query.Addresses, query.Topics)
 	}
-	to := int64(-1)
-	if query.ToBlock != nil {
-		to = query.ToBlock.Int64()
-	}
-	// Construct and execute the filter
-	filter := filters.New(&filterBackend{b.database, b.blockchain}, from, to, query.Addresses, query.Topics)
-
+	// Run the filter and return all the logs
 	logs, err := filter.Logs(ctx)
 	if err != nil {
 		return nil, err
@@ -438,6 +436,10 @@ func (fb *filterBackend) HeaderByNumber(ctx context.Context, block rpc.BlockNumb
 	return fb.bc.GetHeaderByNumber(uint64(block.Int64())), nil
 }
 
+func (fb *filterBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+	return fb.bc.GetHeaderByHash(hash), nil
+}
+
 func (fb *filterBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	number := rawdb.ReadHeaderNumber(fb.db, hash)
 	if number == nil {
@@ -463,6 +465,12 @@ func (fb *filterBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*ty
 }
 
 func (fb *filterBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		<-quit
+		return nil
+	})
+}
+func (fb *filterBackend) SubscribeNewQueuedTxsEvent(ch chan<- core.NewQueuedTxsEvent) event.Subscription {
 	return event.NewSubscription(func(quit <-chan struct{}) error {
 		<-quit
 		return nil
