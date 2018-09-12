@@ -37,6 +37,9 @@ var (
 	//ErrInvalidAddress returns if invalid ERC20 address is detected
 	ErrInvalidAddress = errors.New("invalid address")
 
+	// ErrDirtyDatabase returns if some old blocks exist
+	ErrDirtyDatabase = errors.New("dirty database")
+
 	retrySubscribeTime = 5 * time.Second
 )
 
@@ -128,6 +131,10 @@ func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, in
 }
 
 func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
+	err := idx.loadLocalState(ctx, fromBlock)
+	if err != nil {
+		return err
+	}
 	lens := len(idx.clients)
 	outChannel := make(chan *Result, 50*lens)
 	// Set wait group to cancel
@@ -158,7 +165,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 		select {
 		case result := <-outChannel:
 			header := result.header
-			if idx.currentHeader != nil && idx.currentHeader.Number >= header.Number.Int64() {
+			if idx.currentHeader.Number >= header.Number.Int64() {
 				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
 				continue
 			}
@@ -166,7 +173,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 			log.Trace("Got new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
 			// switch the current ethClient to the source
 			idx.latestClient = idx.clients[result.clientIndex]
-			err := idx.sync(listenCtx, fromBlock, header)
+			err := idx.sync(listenCtx, header)
 			if err != nil {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
 				return err
@@ -177,37 +184,51 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 	}
 }
 
-func (idx *indexer) getLocalState(ctx context.Context, from int64) (*model.Header, *big.Int, error) {
+// loadLocalState loads the local state from DB and sets current header and TD.
+// If there is no state in DB, get the from block from Ethereum and insert it.
+func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
 	// Get latest header from db
 	header, err := idx.manager.LatestHeader()
 	if err != nil {
 		if common.NotFoundError(err) {
-			log.Warn("The latest header doesn't exist", "from", from)
-			return &model.Header{
-				Number: from,
-			}, big.NewInt(0), nil
+			// Insert from block into DB
+			block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(from))
+			if err != nil {
+				log.Error("Failed to get block from ethereum", "number", from, "err", err)
+				return err
+			}
+
+			block, td, err := idx.insertBlocks(ctx, []*types.Block{block}, nil)
+			if err != nil {
+				log.Error("Failed to insert from block from ethereum", "number", from, "err", err)
+				return err
+			}
+			idx.currentHeader = common.Header(block)
+			idx.currentTD = td
+			return nil
 		}
 		log.Error("Failed to get latest header from db", "err", err)
-		return nil, nil, err
+		return err
+	}
+
+	if header.Number < from {
+		log.Error("Some old blocks exists", "latest", header.Number, "from", from)
+		return ErrDirtyDatabase
 	}
 
 	// Get TD
 	currentTd, err := idx.getTd(ctx, header.Hash)
 	if err != nil {
 		log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
-		return nil, nil, err
-	}
-	return header, currentTd, nil
-}
-
-func (idx *indexer) sync(ctx context.Context, from int64, header *types.Header) error {
-	// Update existing blocks and TD from ethereum to db
-	var err error
-	idx.currentHeader, idx.currentTD, err = idx.getLocalState(ctx, from)
-	if err != nil {
 		return err
 	}
+	idx.currentHeader = header
+	idx.currentTD = currentTd
+	return nil
+}
 
+func (idx *indexer) sync(ctx context.Context, header *types.Header) error {
+	// Update existing blocks and TD from ethereum to db
 	block, td, err := idx.addBlockMaybeReorg(ctx, header)
 	if err != nil {
 		return err
