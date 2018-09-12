@@ -53,6 +53,7 @@ type TxPool struct {
 	signer       types.Signer
 	quit         chan bool
 	txFeed       event.Feed
+	queuedTxFeed event.Feed
 	scope        event.SubscriptionScope
 	chainHeadCh  chan core.ChainHeadEvent
 	chainHeadSub event.Subscription
@@ -89,7 +90,7 @@ type TxRelayBackend interface {
 func NewTxPool(config *params.ChainConfig, chain *LightChain, relay TxRelayBackend) *TxPool {
 	pool := &TxPool{
 		config:      config,
-		signer:      types.NewEIP155Signer(config.ChainId),
+		signer:      types.NewEIP155Signer(config.ChainID),
 		nonce:       make(map[common.Address]uint64),
 		pending:     make(map[common.Hash]*types.Transaction),
 		mined:       make(map[common.Hash][]*types.Transaction),
@@ -199,15 +200,17 @@ func (pool *TxPool) checkMinedTxs(ctx context.Context, hash common.Hash, number 
 // rollbackTxs marks the transactions contained in recently rolled back blocks
 // as rolled back. It also removes any positional lookup entries.
 func (pool *TxPool) rollbackTxs(hash common.Hash, txc txStateChanges) {
+	batch := pool.chainDb.NewBatch()
 	if list, ok := pool.mined[hash]; ok {
 		for _, tx := range list {
 			txHash := tx.Hash()
-			rawdb.DeleteTxLookupEntry(pool.chainDb, txHash)
+			rawdb.DeleteTxLookupEntry(batch, txHash)
 			pool.pending[txHash] = tx
 			txc.setState(txHash, false)
 		}
 		delete(pool.mined, hash)
 	}
+	batch.Write()
 }
 
 // reorgOnNewHead sets a new head header, processing (and rolling back if necessary)
@@ -327,6 +330,12 @@ func (pool *TxPool) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subsc
 	return pool.scope.Track(pool.txFeed.Subscribe(ch))
 }
 
+// SubscribeNewQueuedTxsEvent registers a subscription of core.NewQueuedTxsEvent and
+// starts sending event to the given channel.
+func (pool *TxPool) SubscribeNewQueuedTxsEvent(ch chan<- core.NewQueuedTxsEvent) event.Subscription {
+	return pool.scope.Track(pool.queuedTxFeed.Subscribe(ch))
+}
+
 // Stats returns the number of currently pending (locally created) transactions
 func (pool *TxPool) Stats() (pending int) {
 	pool.mu.RLock()
@@ -398,6 +407,8 @@ func (self *TxPool) add(ctx context.Context, tx *types.Transaction) error {
 	if err != nil {
 		return err
 	}
+
+	go self.queuedTxFeed.Send(core.NewQueuedTxsEvent{Txs: types.Transactions{tx}})
 
 	if _, ok := self.pending[hash]; !ok {
 		self.pending[hash] = tx
@@ -504,14 +515,16 @@ func (self *TxPool) Content() (map[common.Address]types.Transactions, map[common
 func (self *TxPool) RemoveTransactions(txs types.Transactions) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
+
 	var hashes []common.Hash
+	batch := self.chainDb.NewBatch()
 	for _, tx := range txs {
-		//self.RemoveTx(tx.Hash())
 		hash := tx.Hash()
 		delete(self.pending, hash)
-		self.chainDb.Delete(hash[:])
+		batch.Delete(hash.Bytes())
 		hashes = append(hashes, hash)
 	}
+	batch.Write()
 	self.relay.Discard(hashes)
 }
 
