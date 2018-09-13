@@ -54,6 +54,11 @@ var _ = Describe("Cache Test", func() {
 
 	AfterEach(func() {
 		mockClient.AssertExpectations(GinkgoT())
+
+		txCache.Purge()
+		tdCache.Purge()
+		blockCache.Purge()
+		blockReceiptsCache.Purge()
 	})
 
 	Context("BlockByNumber()", func() {
@@ -62,8 +67,7 @@ var _ = Describe("Cache Test", func() {
 			resBlock, err := cacheClient.BlockByNumber(ctx, block.Number())
 			Expect(err).Should(BeNil())
 			Expect(resBlock).Should(Equal(block))
-
-			value, ok := cacheClient.blockCache.Get(block.Hash().Hex())
+			value, ok := blockCache.Get(block.Hash().Hex())
 			Expect(ok).Should(BeTrue())
 			block1 := value.(*types.Block)
 			Expect(block1).Should(Equal(block))
@@ -73,8 +77,7 @@ var _ = Describe("Cache Test", func() {
 			resBlock, err := cacheClient.BlockByNumber(ctx, block.Number())
 			Expect(err).Should(Equal(unknownErr))
 			Expect(resBlock).Should(BeNil())
-
-			_, ok := cacheClient.blockCache.Get(block.Hash().Hex())
+			_, ok := blockCache.Get(block.Hash().Hex())
 			Expect(ok).Should(BeFalse())
 		})
 	})
@@ -82,7 +85,7 @@ var _ = Describe("Cache Test", func() {
 	Context("BlockByHash()", func() {
 		It("in cache", func() {
 			By("wrong in cache")
-			cacheClient.blockCache.Add(block.Hash().Hex(), "wrong data")
+			blockCache.Add(block.Hash().Hex(), "wrong data")
 			mockClient.On("BlockByHash", ctx, block.Hash()).Return(nil, unknownErr).Once()
 			resBlock, err := cacheClient.BlockByHash(ctx, block.Hash())
 			Expect(err).Should(Equal(unknownErr))
@@ -116,7 +119,7 @@ var _ = Describe("Cache Test", func() {
 				Expect(err).Should(Equal(unknownErr))
 				Expect(resBlock).Should(BeNil())
 
-				_, ok := cacheClient.blockCache.Get(block.Hash().Hex())
+				_, ok := blockCache.Get(block.Hash().Hex())
 				Expect(ok).Should(BeFalse())
 			})
 		})
@@ -125,7 +128,7 @@ var _ = Describe("Cache Test", func() {
 	Context("TransactionByHash()", func() {
 		It("in cache", func() {
 			By("wrong in cache")
-			cacheClient.txCache.Add(tx.Hash().Hex(), "wrong data")
+			txCache.Add(tx.Hash().Hex(), "wrong data")
 			mockClient.On("TransactionByHash", ctx, tx.Hash()).Return(nil, false, unknownErr).Once()
 			resTX, _, err := cacheClient.TransactionByHash(ctx, tx.Hash())
 			Expect(err).Should(Equal(unknownErr))
@@ -164,7 +167,7 @@ var _ = Describe("Cache Test", func() {
 				Expect(pending).Should(BeFalse())
 				Expect(resTX).Should(BeNil())
 
-				_, ok := cacheClient.txCache.Get(tx.Hash().Hex())
+				_, ok := txCache.Get(tx.Hash().Hex())
 				Expect(ok).Should(BeFalse())
 			})
 		})
@@ -173,7 +176,7 @@ var _ = Describe("Cache Test", func() {
 	Context("GetTotalDifficulty()", func() {
 		It("in cache", func() {
 			By("wrong in cache")
-			cacheClient.tdCache.Add(block.Hash().Hex(), "wrong data")
+			tdCache.Add(block.Hash().Hex(), "wrong data")
 			mockClient.On("GetTotalDifficulty", ctx, block.Hash()).Return(nil, unknownErr).Once()
 			resTD, err := cacheClient.GetTotalDifficulty(ctx, block.Hash())
 			Expect(err).Should(Equal(unknownErr))
@@ -207,7 +210,7 @@ var _ = Describe("Cache Test", func() {
 				Expect(err).Should(Equal(unknownErr))
 				Expect(resTD).Should(BeNil())
 
-				_, ok := cacheClient.tdCache.Get(block.Hash().Hex())
+				_, ok := tdCache.Get(block.Hash().Hex())
 				Expect(ok).Should(BeFalse())
 			})
 		})
@@ -217,7 +220,7 @@ var _ = Describe("Cache Test", func() {
 		receipts := types.Receipts{types.NewReceipt([]byte{}, false, 0)}
 		It("in cache", func() {
 			By("wrong in cache")
-			cacheClient.blockReceiptsCache.Add(block.Hash().Hex(), "wrong data")
+			blockReceiptsCache.Add(block.Hash().Hex(), "wrong data")
 			mockClient.On("GetBlockReceipts", ctx, block.Hash()).Return(nil, unknownErr).Once()
 			got, err := cacheClient.GetBlockReceipts(ctx, block.Hash())
 			Expect(err).Should(Equal(unknownErr))
@@ -251,7 +254,7 @@ var _ = Describe("Cache Test", func() {
 				Expect(err).Should(Equal(unknownErr))
 				Expect(got).Should(BeNil())
 
-				_, ok := cacheClient.blockReceiptsCache.Get(block.Hash().Hex())
+				_, ok := blockReceiptsCache.Get(block.Hash().Hex())
 				Expect(ok).Should(BeFalse())
 			})
 		})

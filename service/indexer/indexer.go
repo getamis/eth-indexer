@@ -21,6 +21,8 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
+	"time"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -34,21 +36,33 @@ import (
 var (
 	//ErrInvalidAddress returns if invalid ERC20 address is detected
 	ErrInvalidAddress = errors.New("invalid address")
+
+	// ErrDirtyDatabase returns if some old blocks exist
+	ErrDirtyDatabase = errors.New("dirty database")
+
+	retrySubscribeTime = 5 * time.Second
 )
 
 // New news an indexer service
-func New(client client.EthClient, storeManager store.Manager) *indexer {
+func New(clients []client.EthClient, storeManager store.Manager) *indexer {
 	return &indexer{
-		client:  client,
-		manager: storeManager,
+		clients:      clients,
+		latestClient: clients[0],
+		manager:      storeManager,
 	}
 }
 
 type indexer struct {
-	client        client.EthClient
+	clients       []client.EthClient
+	latestClient  client.EthClient
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int
+}
+
+type Result struct {
+	header      *types.Header
+	clientIndex int
 }
 
 // Init ensures all tables for erc20 contracts are created
@@ -69,7 +83,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 			return err
 		}
 
-		erc20, err := idx.client.GetERC20(ctx, address)
+		erc20, err := idx.latestClient.GetERC20(ctx, address)
 		if err != nil {
 			log.Error("Failed to get ERC20", "addr", addr, "err", err)
 			return err
@@ -83,106 +97,146 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 		}
 	}
 
-	return idx.manager.Init(idx.client)
+	return idx.manager.Init(idx.latestClient)
 }
 
-func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
+func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, index int) error {
+	client := idx.clients[index]
+	ch := make(chan *types.Header)
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Listen new channel events
-	sub, err := idx.client.SubscribeNewHead(childCtx, ch)
+	sub, err := client.SubscribeNewHead(childCtx, ch)
 	if err != nil {
-		log.Error("Failed to subscribe event for new header from ethereum", "err", err)
+		log.Warn("Failed to subscribe event for new header", "client", index, "err", err)
 		return err
 	}
 
 	for {
 		select {
 		case head := <-ch:
-			if fromBlock > head.Number.Int64() {
-				log.Trace("Ignore old header", "number", head.Number, "hash", head.Hash().Hex())
-				continue
+			outChannel <- &Result{
+				header:      head,
+				clientIndex: index,
 			}
-			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
-			err = idx.sync(childCtx, fromBlock, head.Number.Int64())
-			if err != nil {
-				log.Error("Failed to sync to header from ethereum", "number", head.Number, "err", err)
-				return err
-			}
-		case <-childCtx.Done():
-			return childCtx.Err()
 		case err := <-sub.Err():
-			log.Error("Failed to subscribe new chain head", "err", err)
+			log.Warn("Receive subscribe error", "client", index, "err", err)
+			return err
+		case <-childCtx.Done():
+			err := childCtx.Err()
+			log.Warn("Receive subscribe context error", "client", index, "err", err)
 			return err
 		}
 	}
 }
 
-func (idx *indexer) getLocalState(ctx context.Context, from int64) (header *model.Header, currentTd *big.Int, err error) {
-	// Get latest header from db
-	header, err = idx.manager.LatestHeader()
-	if err != nil {
-		if common.NotFoundError(err) {
-			log.Info("The header db is empty")
-			header = &model.Header{
-				Number: -1,
-				Hash:   ethCommon.Hash{}.Bytes(),
-			}
-			err = nil
-			currentTd = big.NewInt(0)
-		} else {
-			log.Error("Failed to get latest header from db", "err", err)
-			return
-		}
-	}
-
-	// Ensure the from block is lager than current block
-	if from-1 > header.Number {
-		block, err := idx.client.BlockByNumber(ctx, big.NewInt(from-1))
-		if err != nil {
-			log.Error("Failed to get block", "number", from, "err", err)
-			return nil, nil, err
-		}
-		header = common.Header(block)
-	}
-
-	if header.Number >= 0 {
-		currentTd, err = idx.getTd(ctx, header.Hash)
-		if err != nil {
-			log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
-			return nil, nil, err
-		}
-	}
-	return
-}
-
-func (idx *indexer) sync(ctx context.Context, from int64, to int64) error {
-	// Update existing blocks from ethereum to db
-	var err error
-	idx.currentHeader, idx.currentTD, err = idx.getLocalState(ctx, from)
+func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
+	err := idx.loadLocalState(ctx, fromBlock)
 	if err != nil {
 		return err
 	}
+	lens := len(idx.clients)
+	outChannel := make(chan *Result, 50*lens)
+	// Set wait group to cancel
+	var wg sync.WaitGroup
+	wg.Add(lens)
+	defer wg.Wait()
 
-	// Ensure the from block is lager than current block
-	from = idx.currentHeader.Number + 1
+	listenCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	if from > to {
-		// Only check `to` block
-		from = to
+	// each ethClient will run in different go routines and push messages to channels
+	for i := range idx.clients {
+		go func(ctx context.Context, ch chan *Result, index int) {
+			defer wg.Done()
+			for {
+				idx.subscribe(ctx, ch, index)
+				// Check whether context is done
+				if ctx.Err() != nil {
+					log.Warn("Listen context error", "client", index, "err", ctx.Err())
+					return
+				}
+				time.Sleep(retrySubscribeTime)
+			}
+		}(listenCtx, outChannel, i)
 	}
+	// single thread to process the messages from channel in sequential
+	for {
+		select {
+		case result := <-outChannel:
+			header := result.header
+			if idx.currentHeader.Number >= header.Number.Int64() {
+				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
+				continue
+			}
 
-	for i := from; i <= to; i++ {
-		block, td, err := idx.addBlockMaybeReorg(ctx, i)
-		if err != nil {
-			return err
+			log.Trace("Got new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
+			// switch the current ethClient to the source
+			idx.latestClient = idx.clients[result.clientIndex]
+			err := idx.sync(listenCtx, header)
+			if err != nil {
+				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
+				return err
+			}
+		case <-listenCtx.Done():
+			return listenCtx.Err()
 		}
-		// If a block is inserted, update current td and header
-		if block != nil {
+	}
+}
+
+// loadLocalState loads the local state from DB and sets current header and TD.
+// If there is no state in DB, get the from block from Ethereum and insert it.
+func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
+	// Get latest header from db
+	header, err := idx.manager.LatestHeader()
+	if err != nil {
+		if common.NotFoundError(err) {
+			// Insert from block into DB
+			block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(from))
+			if err != nil {
+				log.Error("Failed to get block from ethereum", "number", from, "err", err)
+				return err
+			}
+
+			block, td, err := idx.insertBlocks(ctx, []*types.Block{block}, nil)
+			if err != nil {
+				log.Error("Failed to insert from block from ethereum", "number", from, "err", err)
+				return err
+			}
 			idx.currentHeader = common.Header(block)
 			idx.currentTD = td
+			return nil
 		}
+		log.Error("Failed to get latest header from db", "err", err)
+		return err
+	}
+
+	if header.Number < from {
+		log.Error("Some old blocks exists", "latest", header.Number, "from", from)
+		return ErrDirtyDatabase
+	}
+
+	// Get TD
+	currentTd, err := idx.getTd(ctx, header.Hash)
+	if err != nil {
+		log.Error("Failed to get TD", "hash", common.BytesToHex(header.Hash), "err", err)
+		return err
+	}
+	idx.currentHeader = header
+	idx.currentTD = currentTd
+	return nil
+}
+
+func (idx *indexer) sync(ctx context.Context, header *types.Header) error {
+	// Update existing blocks and TD from ethereum to db
+	block, td, err := idx.addBlockMaybeReorg(ctx, header)
+	if err != nil {
+		return err
+	}
+	// If the block is inserted, update current td and header
+	if block != nil {
+		idx.currentHeader = common.Header(block)
+		idx.currentTD = td
 	}
 	return nil
 }
@@ -218,12 +272,11 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 // getTd gets td from db, and try to get from ethereum if db not found.
 func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err error) {
 	ltd, err := idx.manager.GetTd(hash)
-
 	if err != nil {
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
 			log.Warn("Failed to get TD from db, try to get it from ethereum", "hash", ethCommon.Bytes2Hex(hash), "err", err)
-			td, err = idx.client.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
+			td, err = idx.latestClient.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
 			if err == nil {
 				return td, nil
 			}
@@ -271,20 +324,39 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 
 // addBlockMaybeReorg checks whether target block's parent hash is consistent with local db.
 // if not, reorg and returns the highest TD inserted. Assume target is larger than prevHdr.
-func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*types.Block, *big.Int, error) {
-	logger := log.New("from", idx.currentHeader.Number, "fromTD", idx.currentTD, "to", target)
+func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header) (*types.Block, *big.Int, error) {
+	logger := log.New("from", idx.currentHeader.Number, "fromHash", common.BytesTo0xHex(idx.currentHeader.Hash), "fromTD", idx.currentTD, "to", header.Number, "toHash", header.Hash().Hex())
 	logger.Trace("Syncing block")
-	block, err := idx.client.BlockByNumber(ctx, big.NewInt(target))
+	if idx.currentHeader.Number >= header.Number.Int64() {
+		logger.Info("Only handle the block with larger block number")
+		return nil, nil, nil
+	}
+
+	block, err := idx.latestClient.BlockByHash(ctx, header.Hash())
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
 		return nil, nil, err
 	}
-
-	// If in the same chain, we don't need to check reorg
+	// If
+	// 1. no block exists in DB
+	// 2. on the same chain, we don't need to reorg
 	var blocksToInsert []*types.Block
-	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
+	if idx.currentHeader.Number+1 == header.Number.Int64() && bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
 		return idx.insertBlocks(ctx, blocksToInsert, nil)
+	}
+
+	// Find targetTD to check whether we need to handle it
+	targetTD, err := idx.latestClient.GetTotalDifficulty(ctx, header.Hash())
+	if err != nil {
+		logger.Error("Failed to get target TD", "err", err)
+		return nil, nil, err
+	}
+	logger = logger.New("toTD", targetTD)
+	// Compare currentTd with targetTD
+	if idx.currentTD.Cmp(targetTD) >= 0 {
+		logger.Debug("Ignore this block due to lower TD")
+		return nil, nil, nil
 	}
 
 	logger.Trace("Reorg tracing: Start")
@@ -294,51 +366,42 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 		To:       idx.currentHeader.Number,
 		ToHash:   idx.currentHeader.Hash,
 	}
-	targetTD := block.Difficulty()
 	blocks := []*types.Block{block}
 	for {
-		// Get old blocks from db only if the number is not equal to current block number
-		if idx.currentHeader.Number != block.Number().Int64()-1 {
+		// Get old blocks from db only if the number is equal or smaller than the current block number
+		if idx.currentHeader.Number == block.Number().Int64()-1 && bytes.Equal(idx.currentHeader.Hash, block.ParentHash().Bytes()) {
+			logger.Info("Reorg tracing: Not a reorg event", "number", idx.currentHeader.Number)
+			reorgEvent = nil
+			break
+		} else if idx.currentHeader.Number > block.Number().Int64()-1 {
 			dbHeader, err := idx.manager.GetHeaderByNumber(block.Number().Int64() - 1)
-			if err == nil {
-				if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
+			if err != nil {
+				if common.NotFoundError(err) {
+					reorgEvent = nil
+					logger.Warn("Reorg tracing: Clean database", "number", block.Number().Int64()-1)
 					break
 				}
-				// Update reorg event
-				reorgEvent.From = dbHeader.Number
-				reorgEvent.FromHash = dbHeader.Hash
-			} else if !common.NotFoundError(err) {
 				logger.Error("Reorg tracing: Failed to get header from local db", "number", block.Number().Int64()-1, "err", err)
 				return nil, nil, err
 			}
-			// Ignore not found error
+			if bytes.Equal(dbHeader.Hash, block.ParentHash().Bytes()) {
+				break
+			}
+			// Update reorg event
+			reorgEvent.From = dbHeader.Number
+			reorgEvent.FromHash = dbHeader.Hash
 		}
 
 		// Get old blocks from ethereum
-		block, err = idx.client.BlockByHash(ctx, block.ParentHash())
+		block, err = idx.latestClient.BlockByHash(ctx, block.ParentHash())
 		if err != nil || block == nil {
 			logger.Error("Reorg tracing: Failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
 			return nil, nil, err
 		}
 		blocks = append(blocks, block)
-		targetTD.Add(targetTD, block.Difficulty())
 	}
 	logger.Trace("Reorg tracing: Stop", "at", block.Number(), "hash", block.Hash().Hex())
 	branchBlock := block
-
-	// Calculate target TD
-	rootTD, err := idx.getTd(ctx, branchBlock.ParentHash().Bytes())
-	if err != nil {
-		logger.Error("Reorg tracing: Failed to get TD", "hash", branchBlock.ParentHash().Hex(), "err", err)
-		return nil, nil, err
-	}
-	targetTD.Add(targetTD, rootTD)
-
-	// Compare currentTd with the new branch
-	if idx.currentTD.Cmp(targetTD) > 0 {
-		logger.Debug("Ignore this block due to lower TD", "targetTD", targetTD)
-		return nil, nil, nil
-	}
 	blocksToInsert = append(blocksToInsert, blocks...)
 
 	// Now atomically update the reorg'ed blocks
@@ -363,14 +426,14 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	}
 
 	// Get receipts
-	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
+	receipts, err := idx.latestClient.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
 		return nil, nil, err
 	}
 
 	// Get Eth transfer events
-	events, err := idx.client.GetTransferLogs(ctx, block.Hash())
+	events, err := idx.latestClient.GetTransferLogs(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get eth transfer events from ethereum", "err", err)
 		return nil, nil, err

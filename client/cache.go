@@ -28,26 +28,20 @@ import (
 
 const cacheSize = 128
 
+var (
+	txCache, _            = lru.NewARC(cacheSize)
+	tdCache, _            = lru.NewARC(cacheSize)
+	blockCache, _         = lru.NewARC(cacheSize)
+	blockReceiptsCache, _ = lru.NewARC(cacheSize)
+)
+
 type cacheMiddleware struct {
 	EthClient
-	txCache            *lru.ARCCache
-	tdCache            *lru.ARCCache
-	blockCache         *lru.ARCCache
-	blockReceiptsCache *lru.ARCCache
 }
 
 func newCacheMiddleware(client EthClient) EthClient {
-	txCache, _ := lru.NewARC(cacheSize)
-	tdCache, _ := lru.NewARC(cacheSize)
-	blockCache, _ := lru.NewARC(cacheSize)
-	blockReceiptsCache, _ := lru.NewARC(cacheSize)
-
 	return &cacheMiddleware{
-		EthClient:          client,
-		txCache:            txCache,
-		tdCache:            tdCache,
-		blockCache:         blockCache,
-		blockReceiptsCache: blockReceiptsCache,
+		EthClient: client,
 	}
 }
 
@@ -56,35 +50,35 @@ func (c *cacheMiddleware) BlockByNumber(ctx context.Context, number *big.Int) (r
 		if err != nil {
 			return
 		}
-		c.blockCache.Add(result.Hash().Hex(), result)
+		blockCache.Add(result.Hash().Hex(), result)
 	}()
 	return c.EthClient.BlockByNumber(ctx, number)
 }
 
 func (c *cacheMiddleware) BlockByHash(ctx context.Context, hash common.Hash) (result *types.Block, err error) {
 	key := hash.Hex()
-	value, ok := c.blockCache.Get(key)
+	value, ok := blockCache.Get(key)
 	if ok {
 		block, ok := value.(*types.Block)
 		if ok {
 			return block, nil
 		}
 		log.Warn("Failed to convert value to *types.Block", "hash", key)
-		c.blockCache.Remove(key)
+		blockCache.Remove(key)
 	}
 
 	defer func() {
 		if err != nil {
 			return
 		}
-		c.blockCache.Add(key, result)
+		blockCache.Add(key, result)
 	}()
 	return c.EthClient.BlockByHash(ctx, hash)
 }
 
 func (c *cacheMiddleware) TransactionByHash(ctx context.Context, hash common.Hash) (result *types.Transaction, isPending bool, err error) {
 	key := hash.Hex()
-	value, ok := c.txCache.Get(key)
+	value, ok := txCache.Get(key)
 	if ok {
 		tx, ok := value.(*types.Transaction)
 		if ok {
@@ -92,56 +86,56 @@ func (c *cacheMiddleware) TransactionByHash(ctx context.Context, hash common.Has
 			return tx, false, nil
 		}
 		log.Warn("Failed to convert value to *types.Transaction", "hash", key)
-		c.txCache.Remove(key)
+		txCache.Remove(key)
 	}
 
 	defer func() {
 		if err != nil {
 			return
 		}
-		c.txCache.Add(key, result)
+		txCache.Add(key, result)
 	}()
 	return c.EthClient.TransactionByHash(ctx, hash)
 }
 
 func (c *cacheMiddleware) GetTotalDifficulty(ctx context.Context, hash common.Hash) (result *big.Int, err error) {
 	key := hash.Hex()
-	value, ok := c.tdCache.Get(key)
+	value, ok := tdCache.Get(key)
 	if ok {
 		td, ok := value.(*big.Int)
 		if ok {
 			return td, nil
 		}
 		log.Warn("Failed to convert value to *types.Int", "hash", key)
-		c.tdCache.Remove(key)
+		tdCache.Remove(key)
 	}
 
 	defer func() {
 		if err != nil {
 			return
 		}
-		c.tdCache.Add(key, result)
+		tdCache.Add(key, result)
 	}()
 	return c.EthClient.GetTotalDifficulty(ctx, hash)
 }
 
 func (c *cacheMiddleware) GetBlockReceipts(ctx context.Context, hash common.Hash) (result types.Receipts, err error) {
 	key := hash.Hex()
-	value, ok := c.blockReceiptsCache.Get(key)
+	value, ok := blockReceiptsCache.Get(key)
 	if ok {
 		receipts, ok := value.(types.Receipts)
 		if ok {
 			return receipts, nil
 		}
 		log.Warn("Failed to convert value to types.Receipts", "hash", key)
-		c.blockReceiptsCache.Remove(key)
+		blockReceiptsCache.Remove(key)
 	}
 
 	defer func() {
 		if err != nil {
 			return
 		}
-		c.blockReceiptsCache.Add(key, result)
+		blockReceiptsCache.Add(key, result)
 	}()
 	return c.EthClient.GetBlockReceipts(ctx, hash)
 }

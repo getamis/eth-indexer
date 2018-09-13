@@ -173,7 +173,7 @@ var _ = Describe("New ERC20 Test", func() {
 		Expect(err).Should(BeNil())
 
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(112)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(113)
@@ -182,15 +182,15 @@ var _ = Describe("New ERC20 Test", func() {
 		}).Return(nil).Once()
 
 		// For new token
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(310)
 		}).Return(nil).Once()
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(311)
 		}).Return(nil).Once()
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(312)
 		}).Return(nil).Once()
@@ -261,7 +261,7 @@ var _ = Describe("New ERC20 Test", func() {
 
 		By("Reorg blocks comes")
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(1112)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1113)
@@ -270,15 +270,15 @@ var _ = Describe("New ERC20 Test", func() {
 		}).Return(nil).Once()
 
 		// For new token
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1310)
 		}).Return(nil).Once()
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(1311)
 		}).Return(nil).Once()
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1312)
 		}).Return(nil).Once()

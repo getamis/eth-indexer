@@ -317,7 +317,7 @@ var _ = Describe("Subscription Test", func() {
 		Expect(err).Should(BeNil())
 
 		// For the 100 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(999)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(100)
@@ -328,7 +328,7 @@ var _ = Describe("Subscription Test", func() {
 		}).Return(nil).Once()
 
 		// For the 101 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(101), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[1].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1000)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(101)
@@ -339,7 +339,7 @@ var _ = Describe("Subscription Test", func() {
 		}).Return(nil).Once()
 
 		// For the 102 block
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[2].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(201)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(438)
@@ -508,7 +508,7 @@ var _ = Describe("Subscription Test", func() {
 			{},
 		}
 
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(100), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(112)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(113)
@@ -516,7 +516,7 @@ var _ = Describe("Subscription Test", func() {
 			result[gethCommon.BytesToAddress(erc20.Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(213)
 		}).Return(nil).Once()
 
-		mockBalancer.On("BalanceOf", ctx, big.NewInt(102), mock.Anything).Run(func(args mock.Arguments) {
+		mockBalancer.On("BalanceOf", ctx, blocks[2].Hash(), mock.Anything).Run(func(args mock.Arguments) {
 			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1000)
 		}).Return(nil).Once()

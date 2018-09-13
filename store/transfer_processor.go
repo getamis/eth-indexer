@@ -34,6 +34,7 @@ import (
 type transferProcessor struct {
 	logger      log.Logger
 	blockNumber int64
+	blockHash   gethCommon.Hash
 	// tokenList includes ETH and erc20 tokens
 	tokenList    map[gethCommon.Address]*model.ERC20
 	subStore     subscription.Store
@@ -45,7 +46,7 @@ type transferProcessor struct {
 	txs      []*model.Transaction
 }
 
-func newTransferProcessor(blockNumber int64,
+func newTransferProcessor(block *types.Block,
 	tokenList map[gethCommon.Address]*model.ERC20,
 	receipts []*types.Receipt,
 	txs []*model.Transaction,
@@ -54,8 +55,9 @@ func newTransferProcessor(blockNumber int64,
 	balancer client.Balancer) *transferProcessor {
 
 	return &transferProcessor{
-		logger:       log.New("number", blockNumber),
-		blockNumber:  blockNumber,
+		logger:       log.New("number", block.NumberU64()),
+		blockNumber:  block.Number().Int64(),
+		blockHash:    block.Hash(),
 		tokenList:    tokenList,
 		subStore:     subStore,
 		accountStore: accountStore,
@@ -220,7 +222,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	}
 
 	// Get balances
-	err = s.balancer.BalanceOf(ctx, big.NewInt(s.blockNumber), balancesByContracts)
+	err = s.balancer.BalanceOf(ctx, s.blockHash, balancesByContracts)
 	if err != nil {
 		s.logger.Error("Failed to get ERC20 balance with ethclient", "len", len(balancesByContracts), "err", err)
 		return err
