@@ -1,7 +1,7 @@
 version: "3"
 services:
   # Customized geth image for indexer
-  geth:
+  geth_1:
     image: quay.io/amis/geth:indexer_diff_tx_1.8.10
     ports:
       - "30303:30303"
@@ -46,7 +46,7 @@ services:
     depends_on:
       - idx-database
       - idx-migration
-      - geth
+      - geth_1
     volumes:
       - ./configs:/configs
   peer-monitor:
@@ -67,4 +67,4 @@ services:
       - ${GETH_DATA_PATH}:/root/.ethereum
     restart: on-failure
     depends_on:
-      - geth
+      - geth_1

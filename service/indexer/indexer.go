@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strconv"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -37,18 +38,25 @@ var (
 )
 
 // New news an indexer service
-func New(client client.EthClient, storeManager store.Manager) *indexer {
+func New(clients []client.EthClient, storeManager store.Manager) *indexer {
 	return &indexer{
-		client:  client,
-		manager: storeManager,
+		clients:      clients,
+		latestClient: clients[0],
+		manager:      storeManager,
 	}
 }
 
 type indexer struct {
-	client        client.EthClient
+	clients       []client.EthClient
+	latestClient  client.EthClient
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int
+}
+
+type ethResult struct {
+	head        *types.Header
+	clientIndex int
 }
 
 // Init ensures all tables for erc20 contracts are created
@@ -69,7 +77,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 			return err
 		}
 
-		erc20, err := idx.client.GetERC20(ctx, address)
+		erc20, err := idx.latestClient.GetERC20(ctx, address)
 		if err != nil {
 			log.Error("Failed to get ERC20", "addr", addr, "err", err)
 			return err
@@ -83,40 +91,87 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 		}
 	}
 
-	return idx.manager.Init(idx.client)
+	return idx.manager.Init(idx.latestClient)
 }
 
 func (idx *indexer) Listen(ctx context.Context, ch chan *types.Header, fromBlock int64) error {
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Listen new channel events
-	sub, err := idx.client.SubscribeNewHead(childCtx, ch)
-	if err != nil {
-		log.Error("Failed to subscribe event for new header from ethereum", "err", err)
-		return err
-	}
+	// outChannel collects heads from ethClients
+	outChannel := make(chan ethResult)
+	// errChannel receives the errors from ethClients and decides whether to restart the indexer by thowing out the error
+	errChannel := make(chan error)
+	// cancelChannel simply terminates the indexer when receiving message
+	cancelChannel := make(chan error)
 
+	// each ethClient will run in different go routines and push messages to channels
+	for i, c := range idx.clients {
+		go func(index int, client client.EthClient) {
+			sub, err := client.SubscribeNewHead(childCtx, ch)
+
+			if err != nil {
+				log.Warn("Failed to subscribe event for new header from EthClient ["+strconv.Itoa(index)+"].", "warn", err)
+				errChannel <- err
+				if sub != nil {
+					sub.Unsubscribe()
+				}
+				return
+			}
+
+			for {
+				select {
+				case head := <-ch:
+					result := ethResult{
+						head:        head,
+						clientIndex: index,
+					}
+					outChannel <- result
+				case <-childCtx.Done():
+					cancelChannel <- childCtx.Err()
+					return
+				case err := <-sub.Err():
+					// Err returns the subscription error channel. The error channel receives
+					// a value if there is an issue with the subscription (e.g. the network connection
+					// delivering the events has been closed). Only one value will ever be sent.
+					// The error channel is closed by Unsubscribe.
+					log.Warn("Failed to subscribe for new header from EthClient ["+strconv.Itoa(index)+"].", "warn", err)
+					errChannel <- err
+					sub.Unsubscribe()
+				}
+			}
+		}(i, c)
+	}
+	// failureCount records the total errors we have from subscribing ethClients
+	// strong assumption: everyClient will return sub.Err() once
+	failureCount := 0
+	// single thread to process the messages from channel in sequential
 	for {
 		select {
-		case head := <-ch:
-			if fromBlock > head.Number.Int64() {
-				log.Trace("Ignore old header", "number", head.Number, "hash", head.Hash().Hex())
+		case result := <-outChannel:
+			if fromBlock > result.head.Number.Int64() {
+				log.Trace("Ignore old header", "number", result.head.Number, "hash", result.head.Hash().Hex())
 				continue
 			}
-			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex())
-			err = idx.sync(childCtx, fromBlock, head.Number.Int64())
+			log.Trace("Got new header", "number", result.head.Number, "hash", result.head.Hash().Hex(), "index", result.clientIndex)
+			// switch the current ethClient to the source
+			idx.latestClient = idx.clients[result.clientIndex]
+			err := idx.sync(childCtx, fromBlock, result.head.Number.Int64())
 			if err != nil {
-				log.Error("Failed to sync to header from ethereum", "number", head.Number, "err", err)
+				log.Error("Failed to sync from ethereum", "number", result.head.Number, "err", err)
 				return err
 			}
-		case <-childCtx.Done():
-			return childCtx.Err()
-		case err := <-sub.Err():
-			log.Error("Failed to subscribe new chain head", "err", err)
-			return err
+		case err := <-errChannel:
+			failureCount++
+			if failureCount >= len(idx.clients) {
+				log.Error("Failed to subscribe event from all the "+strconv.Itoa(len(idx.clients))+" EthClient(s) we have.", "err", err)
+				return err
+			}
+		case canceled := <-cancelChannel:
+			return canceled
 		}
 	}
+	return nil
 }
 
 func (idx *indexer) getLocalState(ctx context.Context, from int64) (header *model.Header, currentTd *big.Int, err error) {
@@ -139,7 +194,7 @@ func (idx *indexer) getLocalState(ctx context.Context, from int64) (header *mode
 
 	// Ensure the from block is lager than current block
 	if from-1 > header.Number {
-		block, err := idx.client.BlockByNumber(ctx, big.NewInt(from-1))
+		block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(from-1))
 		if err != nil {
 			log.Error("Failed to get block", "number", from, "err", err)
 			return nil, nil, err
@@ -212,18 +267,18 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 		return nil, err
 	}
 	log.Trace("Inserted TD for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex())
+
 	return td, nil
 }
 
 // getTd gets td from db, and try to get from ethereum if db not found.
 func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err error) {
 	ltd, err := idx.manager.GetTd(hash)
-
 	if err != nil {
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
 			log.Warn("Failed to get TD from db, try to get it from ethereum", "hash", ethCommon.Bytes2Hex(hash), "err", err)
-			td, err = idx.client.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
+			td, err = idx.latestClient.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
 			if err == nil {
 				return td, nil
 			}
@@ -274,13 +329,23 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*types.Block, *big.Int, error) {
 	logger := log.New("from", idx.currentHeader.Number, "fromTD", idx.currentTD, "to", target)
 	logger.Trace("Syncing block")
-	block, err := idx.client.BlockByNumber(ctx, big.NewInt(target))
+	block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(target))
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
 		return nil, nil, err
 	}
 
-	// If in the same chain, we don't need to check reorg
+	// Check total difficulty to see if the block with the same height has been different
+	// e.g, given the previous latestClient geth1, and current latestClient geth2:
+	//      with the same block number 1001 are actually different blocks for geth1 and geth2 ( which means fork has happened,)
+	//      we suppose to have different total difficulties and need to deal with blocks data reorg
+	_, err = idx.getTd(ctx, block.Hash().Bytes())
+	if err == nil {
+		logger.Info("Block is already in our indexer database", "number", block.Number().Int64())
+		return nil, nil, nil
+	}
+
+	// If on the same chain, we don't need to reorg
 	var blocksToInsert []*types.Block
 	if target == 0 || bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
@@ -315,7 +380,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, target int64) (*type
 		}
 
 		// Get old blocks from ethereum
-		block, err = idx.client.BlockByHash(ctx, block.ParentHash())
+		block, err = idx.latestClient.BlockByHash(ctx, block.ParentHash())
 		if err != nil || block == nil {
 			logger.Error("Reorg tracing: Failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
 			return nil, nil, err
@@ -363,14 +428,14 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	}
 
 	// Get receipts
-	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
+	receipts, err := idx.latestClient.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
 		return nil, nil, err
 	}
 
 	// Get Eth transfer events
-	events, err := idx.client.GetTransferLogs(ctx, block.Hash())
+	events, err := idx.latestClient.GetTransferLogs(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get eth transfer events from ethereum", "err", err)
 		return nil, nil, err
