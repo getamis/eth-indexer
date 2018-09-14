@@ -241,6 +241,29 @@ func (_m *EthClient) SubscribeNewHead(ctx context.Context, ch chan<- *types.Head
 	return r0, r1
 }
 
+// SubscribeQueuedTransactions provides a mock function with given fields: ctx, ch
+func (_m *EthClient) SubscribeQueuedTransactions(ctx context.Context, ch chan<- *types.Transaction) (ethereum.Subscription, error) {
+	ret := _m.Called(ctx, ch)
+
+	var r0 ethereum.Subscription
+	if rf, ok := ret.Get(0).(func(context.Context, chan<- *types.Transaction) ethereum.Subscription); ok {
+		r0 = rf(ctx, ch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ethereum.Subscription)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, chan<- *types.Transaction) error); ok {
+		r1 = rf(ctx, ch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // TransactionByHash provides a mock function with given fields: ctx, hash
 func (_m *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
 	ret := _m.Called(ctx, hash)
