@@ -48,6 +48,7 @@ type EthClient interface {
 	UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error)
 	UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error)
 	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
+	SubscribeQueuedTransactions(ctx context.Context, ch chan<- *types.Transaction) (ethereum.Subscription, error)
 	GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
