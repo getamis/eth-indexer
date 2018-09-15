@@ -24,7 +24,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/getamis/eth-indexer/client"
@@ -33,7 +32,6 @@ import (
 	"github.com/getamis/eth-indexer/service/indexer"
 	"github.com/getamis/eth-indexer/store"
 	"github.com/getamis/sirius/log"
-	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -185,6 +183,7 @@ func init() {
 	ServerCmd.Flags().String(flags.DbName, "ethdb", "The database name")
 	ServerCmd.Flags().String(flags.DbUser, "root", "The database username to login")
 	ServerCmd.Flags().String(flags.DbPassword, "my-secret-pw", "The database password to login")
+	ServerCmd.Flags().String(flags.DbCredVaultPath, "database/creds/ethdb", "Vault path for indexer database credential")
 
 	// Syncing related flags
 	ServerCmd.Flags().Int64(flags.SyncFromBlock, 0, "The init block number to sync to initially")
@@ -201,8 +200,8 @@ func init() {
 	ServerCmd.Flags().Int(flags.Chain, 0, "Set chain config, 0: Mainnet, 1: Testnet, 2: Ropsten")
 
 	// Vault flags
-	ServerCmd.Flags().String(flags.VaultHostFlag, "", "The vault server host")
-	ServerCmd.Flags().String(flags.VaultCAPathFlag, "/etc/ssl/certs/amis/vault.pem", "The path of vault CA file")
+	ServerCmd.Flags().String(flags.VaultHost, "", "The vault server host")
+	ServerCmd.Flags().String(flags.VaultCAPath, "/etc/ssl/certs/amis/vault.pem", "The path of vault CA file")
 
 }
 
@@ -242,28 +241,23 @@ func assignVarFromViper() {
 	chain = viper.GetInt(flags.Chain)
 
 	// flags for vault access
-	vaultHost = viper.GetString(flags.VaultHostFlag)
-	vaultCAPath = viper.GetString(flags.VaultCAPathFlag)
+	vaultHost = viper.GetString(flags.VaultHost)
+	vaultCAPath = viper.GetString(flags.VaultCAPath)
 
+	dbHost = viper.GetString(flags.DbHost)
+	dbPort = viper.GetInt(flags.DbPort)
 	if len(vaultHost) > 0 {
 		vaultClient := MustNewVaultClient()
-		getDbVarFromVault(vaultClient)
+		credPath := viper.GetString(flags.DbCredVaultPath)
+		secret, err := vaultClient.Logical().Read(credPath)
+		if err != nil || secret == nil || secret.Data == nil {
+			panic(err)
+		}
+		dbUser = secret.Data["username"].(string)
+		dbPassword = secret.Data["password"].(string)
 
 	} else {
-		dbHost = viper.GetString(flags.DbHost)
-		dbPort = viper.GetInt(flags.DbPort)
 		dbUser = viper.GetString(flags.DbUser)
 		dbPassword = viper.GetString(flags.DbPassword)
 	}
-}
-
-func getDbVarFromVault(vaultClient *vaultApi.Client) {
-	secret, err := vaultClient.Logical().Read(vaultIndexerDbCredPath)
-	if err != nil || secret == nil || secret.Data == nil {
-		panic(err)
-	}
-	dbHost = secret.Data[flags.DbHost].(string)
-	dbPort, _ = strconv.Atoi(secret.Data[flags.DbPort].(string))
-	dbUser = secret.Data[flags.DbUser].(string)
-	dbPassword = secret.Data[flags.DbPassword].(string)
 }

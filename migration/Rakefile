@@ -9,17 +9,17 @@ require "vault"
 
 StandaloneMigrations::Configurator.environments_config do |env|
   env.on "customized" do |customized|
-    if (ENV['VAULT_ADDR'] && ENV['VAULT_TOKEN'])
+    if (ENV['VAULT_ADDR'] && ENV['VAULT_TOKEN'] && ENV['DB_CRED_VAULT_PATH'])
       puts "Get db config from vault"
-      db = Vault.logical.read("secret/indexer-db-credentials").data
+      creds = Vault.logical.read(ENV['DB_CRED_VAULT_PATH']).data
       {
         "adapter"  => customized["adapter"],
         "encoding" => customized["encoding"],
         "database" => customized["database"],
-        "host"     => db[:"indexer.db.cred.host"],
-        "port"     => db[:"indexer.db.cred.port"],
-        "username" => db[:"indexer.db.cred.user"],
-        "password" => db[:"indexer.db.cred.password"]
+        "host"     => customized["host"],
+        "port"     => customized["port"],
+        "username" => creds[:"username"],
+        "password" => creds[:"password"]
       }
     else
       nil

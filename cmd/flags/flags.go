@@ -25,10 +25,11 @@ const (
 	Eth = "eth"
 
 	// flag names for database
-	DbHost     = "indexer.db.cred.host"
-	DbPort     = "indexer.db.cred.port"
-	DbUser     = "indexer.db.cred.user"
-	DbPassword = "indexer.db.cred.password"
+	DbHost          = "indexer.db.cred.host"
+	DbPort          = "indexer.db.cred.port"
+	DbUser          = "indexer.db.cred.user"
+	DbPassword      = "indexer.db.cred.password"
+	DbCredVaultPath = "indexer.db.cred.vault.path"
 
 	DbDriver = "indexer.db.config.driver"
 	DbName   = "indexer.db.config.name"
@@ -52,6 +53,6 @@ const (
 	Chain = "chain"
 
 	// flag names for vault
-	VaultHostFlag   = "vault.host"
-	VaultCAPathFlag = "vault.ca.path"
+	VaultHost   = "vault.host"
+	VaultCAPath = "vault.ca.path"
 )
