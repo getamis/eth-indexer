@@ -27,7 +27,7 @@ type Chain int
 
 const (
 	// MainChain represents the main chain config
-	MainChain Chain = iota
+	MainChain Chain = iota + 1
 	// TestChain represents the test chain config
 	TestChain
 	// RopstenChain represents the ropsten chain config
