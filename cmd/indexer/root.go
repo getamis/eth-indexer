@@ -197,7 +197,7 @@ func init() {
 	ServerCmd.Flags().Bool(flags.SubscribeErc20token, false, "Enable erc20 token subscription. Please specify the erc20 tokens in configs/erc20.yaml")
 
 	// Profling flags
-	ServerCmd.Flags().Int(flags.Chain, 0, "Set chain config, 0: Mainnet, 1: Testnet, 2: Ropsten")
+	ServerCmd.Flags().Int(flags.Chain, 0, "Set chain config, 1: Mainnet, 2: Testnet, 3: Ropsten")
 
 	// Vault flags
 	ServerCmd.Flags().String(flags.VaultHost, "", "The vault server host")
