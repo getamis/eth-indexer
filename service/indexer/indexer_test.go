@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
 	clientMocks "github.com/getamis/eth-indexer/client/mocks"
+	idxCommon "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	storeMocks "github.com/getamis/eth-indexer/store/mocks"
 	"github.com/jinzhu/gorm"
@@ -188,11 +189,11 @@ var _ = Describe("Indexer Test", func() {
 				Difficulty: difficulty,
 				Number:     big.NewInt(100),
 			})
-			mockStoreManager.On("GetTd", block.ParentHash().Bytes()).Return(&model.TotalDifficulty{
+			mockStoreManager.On("FindTd", block.ParentHash().Bytes()).Return(&model.TotalDifficulty{
 				Hash: block.ParentHash().Bytes(),
 				Td:   difficultyStr,
 			}, nil).Once()
-			mockStoreManager.On("InsertTd", block, expTD).Return(nil).Once()
+			mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, expTD)).Return(nil).Once()
 			td, err := idx.insertTd(ctx, block)
 			Expect(td).Should(Equal(expTD))
 			Expect(err).Should(BeNil())
@@ -231,9 +232,9 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 					mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 					parent := block.ParentHash().Bytes()
-					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+					mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 						i - 1, parent, strconv.Itoa(int(i - 1))}, nil).Once()
-					mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
+					mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(i))).Return(nil).Once()
 					mockEthClient.On("GetBlockReceipts", mock.Anything, blocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
 				}
@@ -241,11 +242,11 @@ var _ = Describe("Indexer Test", func() {
 				// deal with the new header 18,
 				// blocks from 11 to 18
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   blocks[10].Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, blocks[10].Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[18].Hash()).Return(big.NewInt(18), nil).Once()
 				var rs [][]*types.Receipt
@@ -305,11 +306,11 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 					if i >= 15 {
 						parent := block.ParentHash().Bytes()
-						mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+						mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 							i - 1, parent, strconv.Itoa(int(i))}, nil).Once()
 
 						// func insertBlocks()
-						mockStoreManager.On("InsertTd", block, big.NewInt(i+1)).Return(nil).Once()
+						mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(i+1))).Return(nil).Once()
 						mockEthClient.On("GetBlockReceipts", mock.Anything, blocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 						mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
 					}
@@ -318,7 +319,7 @@ var _ = Describe("Indexer Test", func() {
 					mockEthClient.On("BlockByHash", mock.Anything, blocks[i].Hash()).Return(blocks[i], nil).Once()
 				}
 				// Check if from block exists
-				mockStoreManager.On("LatestHeader").Return(nil, gorm.ErrRecordNotFound).Once()
+				mockStoreManager.On("FindLatestBlock").Return(nil, gorm.ErrRecordNotFound).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(15)).Return(blocks[15], nil).Once()
 				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
@@ -377,19 +378,19 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 					mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 					parent := block.ParentHash().Bytes()
-					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+					mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 						i - 1, parent, strconv.Itoa(int(i))}, nil).Once()
 
 					// func insertBlocks()
-					mockStoreManager.On("InsertTd", block, big.NewInt(i+1)).Return(nil).Once()
+					mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(i+1))).Return(nil).Once()
 					mockEthClient.On("GetBlockReceipts", mock.Anything, blocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
 				}
 
 				// Check if from block exists
-				mockStoreManager.On("LatestHeader").Return(nil, gorm.ErrRecordNotFound).Once()
+				mockStoreManager.On("FindLatestBlock").Return(nil, gorm.ErrRecordNotFound).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(blocks[0], nil).Once()
-				mockStoreManager.On("InsertTd", blocks[0], big.NewInt(1)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(blocks[0], big.NewInt(1))).Return(nil).Once()
 				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
@@ -438,11 +439,11 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 				}
 
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 15,
 					Hash:   blocks[15].Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
 					15, blocks[15].Hash().Bytes(), strconv.Itoa(int(15))}, nil).Once()
 
 				for i, c := range mockEthClients {
@@ -490,18 +491,18 @@ var _ = Describe("Indexer Test", func() {
 					blocks[i] = block
 					mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 					parent := block.ParentHash().Bytes()
-					mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+					mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 						i - 1, parent, strconv.Itoa(int(i - 1))}, nil).Once()
 					// func insertBlocks()
-					mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
+					mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(i))).Return(nil).Once()
 					mockEthClient.On("GetBlockReceipts", mock.Anything, blocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 					mockEthClient.On("GetTransferLogs", mock.Anything, blocks[i].Hash()).Return(nil, nil).Once()
 				}
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   blocks[10].Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[15].Hash()).Return(big.NewInt(15), nil).Once()
@@ -531,7 +532,7 @@ var _ = Describe("Indexer Test", func() {
 		})
 
 		Context("something goes wrong", func() {
-			It("failed to GetTd()", func() {
+			It("failed to FindTd()", func() {
 				// Given init state has the block 10 but failed to get its total difficulty.
 
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
@@ -543,7 +544,7 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
@@ -552,7 +553,7 @@ var _ = Describe("Indexer Test", func() {
 				Expect(err).Should(Equal(ErrDirtyDatabase))
 			})
 
-			It("failed to GetTd()", func() {
+			It("failed to FindTd()", func() {
 				// Given init state has the block 10 but failed to get its total difficulty.
 
 				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
@@ -564,13 +565,13 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{}, unknownErr).Once()
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{}, unknownErr).Once()
 
 				err := idx.Listen(context.Background(), 0)
 				Expect(err).Should(Equal(unknownErr))
@@ -590,11 +591,11 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 
 				block = types.NewBlock(
@@ -608,11 +609,11 @@ var _ = Describe("Indexer Test", func() {
 				// func addBlockMaybeReorg()
 				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 				parent := block.ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					10, parent, strconv.Itoa(10)}, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(unknownErr).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(unknownErr).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -644,11 +645,11 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 
 				block = types.NewBlock(
@@ -662,11 +663,11 @@ var _ = Describe("Indexer Test", func() {
 				// func addBlockMaybeReorg()
 				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 				parent := block.ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					10, parent, strconv.Itoa(10)}, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(unknownErr).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(unknownErr).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -700,11 +701,11 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 
 				block = types.NewBlock(
@@ -719,9 +720,9 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(types.Receipts{receipt}, nil).Once()
 				parent := block.ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					10, parent, strconv.Itoa(10)}, nil).Once()
-				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
 
 				// cause error here
@@ -759,11 +760,11 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 10,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.ParentHash().Bytes(), strconv.Itoa(10)}, nil).Once()
 
 				block = types.NewBlock(
@@ -777,9 +778,9 @@ var _ = Describe("Indexer Test", func() {
 				// func addBlockMaybeReorg()
 				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 				parent := block.ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					10, parent, strconv.Itoa(10)}, nil).Once()
-				mockStoreManager.On("InsertTd", block, big.NewInt(11)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(nil).Once()
 
 				// func getBlockData()
 				// cause error here
@@ -816,11 +817,11 @@ var _ = Describe("Indexer Test", func() {
 
 				// Given init state has the block 9
 				// func getLocalState()
-				mockStoreManager.On("LatestHeader").Return(&model.Header{
+				mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 					Number: 9,
 					Hash:   block.Hash().Bytes(),
 				}, nil).Once()
-				mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 					10, block.Hash().Bytes(), strconv.Itoa(9)}, nil).Once()
 
 				// cause error here
@@ -843,7 +844,7 @@ var _ = Describe("Indexer Test", func() {
 
 			It("failed to get latest header", func() {
 
-				mockStoreManager.On("LatestHeader").Return(nil, unknownErr).Once()
+				mockStoreManager.On("FindLatestBlock").Return(nil, unknownErr).Once()
 				err := idx.Listen(context.Background(), 0)
 				Expect(err).Should(Equal(unknownErr))
 			})
@@ -895,11 +896,11 @@ var _ = Describe("Indexer Test", func() {
 			// func getLocalState()
 			// set expectations
 			// when receiving the first header 18, checking the latest header in database
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
+			mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 				Number: 15,
 				Hash:   blocks[15].Hash().Bytes(),
 			}, nil).Once()
-			mockStoreManager.On("GetTd", blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
+			mockStoreManager.On("FindTd", blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
 				15, blocks[15].Hash().Bytes(), strconv.Itoa(15)}, nil).Once()
 
 			mockEthClient.On("GetTotalDifficulty", mock.Anything, newBlocks[18].Hash()).Return(big.NewInt(34), nil).Once()
@@ -915,12 +916,12 @@ var _ = Describe("Indexer Test", func() {
 			for i := int64(15); i <= 18; i++ {
 				td := prevTd + 5*(i-14)
 				parent := newBlocks[i].ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
-				mockStoreManager.On("InsertTd", newBlocks[i], big.NewInt(td)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
 			}
 
-			mockStoreManager.On("GetHeaderByNumber", int64(14)).Return(&model.Header{
+			mockStoreManager.On("FindBlockByNumber", int64(14)).Return(&model.Header{
 				Number: 14,
 				Hash:   blocks[14].Hash().Bytes(),
 			}, nil).Once()
@@ -995,11 +996,11 @@ var _ = Describe("Indexer Test", func() {
 
 			// func getLocalState()
 			// set init state when call Listen()
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
+			mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 				Number: 17,
 				Hash:   blocks[17].Hash().Bytes(),
 			}, nil).Once()
-			mockStoreManager.On("GetTd", blocks[17].Hash().Bytes()).Return(&model.TotalDifficulty{
+			mockStoreManager.On("FindTd", blocks[17].Hash().Bytes()).Return(&model.TotalDifficulty{
 				10, blocks[17].Hash().Bytes(), strconv.Itoa(17)}, nil).Once()
 
 			// calculating Td for the new blocks 15 ~ 16
@@ -1012,14 +1013,14 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("BlockByHash", mock.Anything, newBlocks[i].Hash()).Return(newBlocks[i], nil).Once()
 				td := 14 + 5*(i-14)
 				parent := newBlocks[i].ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
-				mockStoreManager.On("InsertTd", newBlocks[i], big.NewInt(td)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
 			}
 
 			// during reorg tracing, we query local db headers for headers to find the common ancestor of the new and old chain
 			for i := int64(14); i <= 16; i++ {
-				mockStoreManager.On("GetHeaderByNumber", i).Return(&model.Header{
+				mockStoreManager.On("FindBlockByNumber", i).Return(&model.Header{
 					Number: i,
 					Hash:   blocks[i].Hash().Bytes(),
 				}, nil).Once()
@@ -1064,11 +1065,11 @@ var _ = Describe("Indexer Test", func() {
 				Root:   common.HexToHash("1234567890" + strconv.Itoa(int(0))),
 			})
 			// when receiving new block 18, checking the latest header 17 in database
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
+			mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 				Number: 0,
 				Hash:   block.Hash().Bytes(),
 			}, nil).Once()
-			mockStoreManager.On("GetTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
+			mockStoreManager.On("FindTd", block.Hash().Bytes()).Return(&model.TotalDifficulty{
 				0, block.Hash().Bytes(), strconv.Itoa(1)}, nil).Once()
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1113,9 +1114,9 @@ var _ = Describe("Indexer Test", func() {
 					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
 				blocks[i] = block
 				parent := block.ParentHash().Bytes()
-				mockStoreManager.On("GetTd", parent).Return(&model.TotalDifficulty{
+				mockStoreManager.On("FindTd", parent).Return(&model.TotalDifficulty{
 					i - 1, parent, strconv.Itoa(int(i - 1))}, nil).Once()
-				mockStoreManager.On("InsertTd", block, big.NewInt(i)).Return(nil).Once()
+				mockStoreManager.On("InsertTd", idxCommon.TotalDifficulty(block, big.NewInt(i))).Return(nil).Once()
 				if i == 19 {
 					mockEthClients[1].On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
 					mockEthClients[1].On("GetBlockReceipts", mock.Anything, blocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
@@ -1130,11 +1131,11 @@ var _ = Describe("Indexer Test", func() {
 			// deal with the new header 18,
 			// blocks from 11 to 18
 			// func getLocalState()
-			mockStoreManager.On("LatestHeader").Return(&model.Header{
+			mockStoreManager.On("FindLatestBlock").Return(&model.Header{
 				Number: 10,
 				Hash:   blocks[10].Hash().Bytes(),
 			}, nil).Once()
-			mockStoreManager.On("GetTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
+			mockStoreManager.On("FindTd", blocks[10].Hash().Bytes()).Return(&model.TotalDifficulty{
 				10, blocks[10].Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
 			mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[18].Hash()).Return(big.NewInt(18), nil).Once()
 			var rs [][]*types.Receipt
