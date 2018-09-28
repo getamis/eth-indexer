@@ -47,18 +47,25 @@ type Manager interface {
 	// InsertERC20 inserts the erc20 code
 	InsertERC20(code *model.ERC20) error
 	// InsertTd writes the total difficulty for a block
-	InsertTd(block *types.Block, td *big.Int) error
-	// LatestHeader returns a latest header from db
-	LatestHeader() (*model.Header, error)
-	// GetHeaderByNumber returns the header of the given block number
-	GetHeaderByNumber(number int64) (*model.Header, error)
-	// GetTd returns the TD of the given block hash
-	GetTd(hash []byte) (*model.TotalDifficulty, error)
+	InsertTd(data *model.TotalDifficulty) error
+	// FindLatestBlock returns a latest header from db
+	FindLatestBlock() (*model.Header, error)
+	// FindBlockByNumber returns the header of the given block number
+	FindBlockByNumber(number int64) (*model.Header, error)
+	// FindTd returns the TD of the given block hash
+	FindTd(hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data
 	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
 }
 
+type headerStore = block_header.Store
+type accountStore = account.Store
+
 type manager struct {
+	// Stores
+	headerStore
+	accountStore
+
 	db          *gorm.DB
 	chainConfig *params.ChainConfig
 	tokenList   map[gethCommon.Address]*model.ERC20
@@ -68,8 +75,10 @@ type manager struct {
 // NewManager news a store manager to insert block, receipts and states.
 func NewManager(db *gorm.DB, chainConfig *params.ChainConfig) Manager {
 	return &manager{
-		db:          db,
-		chainConfig: chainConfig,
+		db:           db,
+		headerStore:  block_header.NewWithDB(db, block_header.Cache()),
+		accountStore: account.NewWithDB(db),
+		chainConfig:  chainConfig,
 	}
 }
 
@@ -91,10 +100,6 @@ func (m *manager) Init(balancer client.Balancer) error {
 	// Init balance of function
 	m.balancer = balancer
 	return nil
-}
-
-func (m *manager) InsertTd(block *types.Block, td *big.Int) error {
-	return block_header.NewWithDB(m.db).InsertTd(common.TotalDifficulty(block, td))
 }
 
 func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
@@ -144,21 +149,9 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 	return
 }
 
-func (m *manager) LatestHeader() (*model.Header, error) {
-	return block_header.NewWithDB(m.db).FindLatestBlock()
-}
-
-func (m *manager) GetHeaderByNumber(number int64) (*model.Header, error) {
-	return block_header.NewWithDB(m.db).FindBlockByNumber(number)
-}
-
-func (m *manager) GetTd(hash []byte) (*model.TotalDifficulty, error) {
-	return block_header.NewWithDB(m.db).FindTd(hash)
-}
-
 // insertBlock inserts block, and accounts inside a DB transaction
 func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
-	headerStore := block_header.NewWithDB(dbTx)
+	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
@@ -262,7 +255,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 
 // delete deletes block and state data inside a DB transaction
 func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
-	headerStore := block_header.NewWithDB(dbTx)
+	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
@@ -312,14 +305,4 @@ func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
 		}
 	}
 	return
-}
-
-func (m *manager) InsertERC20(code *model.ERC20) error {
-	accountStore := account.NewWithDB(m.db)
-	return accountStore.InsertERC20(code)
-}
-
-func (m *manager) FindERC20(address gethCommon.Address) (*model.ERC20, error) {
-	accountStore := account.NewWithDB(m.db)
-	return accountStore.FindERC20(address)
 }
