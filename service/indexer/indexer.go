@@ -188,7 +188,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 // If there is no state in DB, get the from block from Ethereum and insert it.
 func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
 	// Get latest header from db
-	header, err := idx.manager.LatestHeader()
+	header, err := idx.manager.FindLatestBlock()
 	if err != nil {
 		if common.NotFoundError(err) {
 			// Insert from block into DB
@@ -260,7 +260,7 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 	}
 
 	td := new(big.Int).Add(prevTd, block.Difficulty())
-	err = idx.manager.InsertTd(block, td)
+	err = idx.manager.InsertTd(common.TotalDifficulty(block, td))
 	if err != nil && !common.DuplicateError(err) {
 		log.Error("Failed to insert td for block", "number", blockNumber, "TD", td, "hash", block.Hash().Hex(), "TD", td, "err", err)
 		return nil, err
@@ -271,7 +271,7 @@ func (idx *indexer) insertTd(ctx context.Context, block *types.Block) (*big.Int,
 
 // getTd gets td from db, and try to get from ethereum if db not found.
 func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err error) {
-	ltd, err := idx.manager.GetTd(hash)
+	ltd, err := idx.manager.FindTd(hash)
 	if err != nil {
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
@@ -374,7 +374,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 			reorgEvent = nil
 			break
 		} else if idx.currentHeader.Number > block.Number().Int64()-1 {
-			dbHeader, err := idx.manager.GetHeaderByNumber(block.Number().Int64() - 1)
+			dbHeader, err := idx.manager.FindBlockByNumber(block.Number().Int64() - 1)
 			if err != nil {
 				if common.NotFoundError(err) {
 					reorgEvent = nil
