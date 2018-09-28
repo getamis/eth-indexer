@@ -37,15 +37,21 @@ type store struct {
 	db *gorm.DB
 }
 
-func NewWithDB(db *gorm.DB) Store {
-	return newCacheMiddleware(newWithDB(db))
-}
-
-// newWithDB news a new store, for testing use
-func newWithDB(db *gorm.DB) Store {
-	return &store{
+func NewWithDB(db *gorm.DB, opts ...Option) Store {
+	var s Store = &store{
 		db: db,
 	}
+
+	o := &Options{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	for _, mw := range o.Middlewares {
+		s = mw(s)
+	}
+
+	return s
 }
 
 func (t *store) InsertTd(data *model.TotalDifficulty) error {

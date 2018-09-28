@@ -74,8 +74,14 @@ var _ = Describe("Block Header Database Test", func() {
 		db.Delete(&model.Header{})
 	})
 
+	It("should be cached store", func() {
+		store := NewWithDB(db, Cache())
+		_, ok := store.(*cacheMiddleware)
+		Expect(ok).Should(BeTrue())
+	})
+
 	It("should get header by hash", func() {
-		store := newWithDB(db)
+		store := NewWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -100,7 +106,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("should get header by number", func() {
-		store := newWithDB(db)
+		store := NewWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -121,7 +127,7 @@ var _ = Describe("Block Header Database Test", func() {
 
 	It("should insert one new record in database", func() {
 		By("insert new one header")
-		store := newWithDB(db)
+		store := NewWithDB(db)
 		data := makeHeader(1000300, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		err := store.Insert(data)
 		Expect(err).Should(Succeed())
@@ -132,7 +138,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("deletes header from a block number", func() {
-		store := newWithDB(db)
+		store := NewWithDB(db)
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data3 := makeHeader(1000303, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -158,7 +164,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("should get the last header", func() {
-		store := newWithDB(db)
+		store := NewWithDB(db)
 
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
@@ -175,7 +181,7 @@ var _ = Describe("Block Header Database Test", func() {
 	})
 
 	It("should get TD", func() {
-		store := newWithDB(db)
+		store := NewWithDB(db)
 
 		td := &model.TotalDifficulty{
 			Block: 1000,
