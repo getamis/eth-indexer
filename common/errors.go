@@ -17,10 +17,10 @@
 package common
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
 )
 
 const (
@@ -56,5 +56,5 @@ func DuplicateError(err error) bool {
 
 // NotFoundError checks whether it's a not found error
 func NotFoundError(err error) bool {
-	return err == gorm.ErrRecordNotFound
+	return err == sql.ErrNoRows
 }
