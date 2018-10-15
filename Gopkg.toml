@@ -91,3 +91,7 @@
     name = "github.com/stretchr/testify"
     non-go = false
     unused-packages = false
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jmoiron/sqlx"
