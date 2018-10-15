@@ -264,14 +264,9 @@ type Subscription struct {
 
 // Reorg represents the Reorg model
 type Reorg struct {
-	From      int64
-	FromHash  []byte
-	To        int64
-	ToHash    []byte
-	CreatedAt time.Time `deepequal:"-"`
-}
-
-// TableName retruns the table name of this Reorg event
-func (s Reorg) TableName() string {
-	return "reorgs"
+	From      int64     `db:"from"`
+	FromHash  []byte    `db:"from_hash"`
+	To        int64     `db:"to"`
+	ToHash    []byte    `db:"to_hash"`
+	CreatedAt time.Time `db:"created_at" deepequal:"-"`
 }
