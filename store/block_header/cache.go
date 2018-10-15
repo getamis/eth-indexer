@@ -17,6 +17,8 @@
 package block_header
 
 import (
+	"context"
+
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
@@ -47,7 +49,7 @@ func newCacheMiddleware(store Store) Store {
 	}
 }
 
-func (t *cacheMiddleware) InsertTd(data *model.TotalDifficulty) (err error) {
+func (t *cacheMiddleware) InsertTd(ctx context.Context, data *model.TotalDifficulty) (err error) {
 	key := common.BytesToHex(data.Hash)
 	// If in cache, no need to insert again
 	_, ok := tdCache.Get(key)
@@ -60,20 +62,20 @@ func (t *cacheMiddleware) InsertTd(data *model.TotalDifficulty) (err error) {
 			tdCache.Add(key, data)
 		}
 	}()
-	return t.Store.InsertTd(data)
+	return t.Store.InsertTd(ctx, data)
 }
 
-func (t *cacheMiddleware) Insert(data *model.Header) (err error) {
+func (t *cacheMiddleware) Insert(ctx context.Context, data *model.Header) (err error) {
 	// We cannot check cache here, because it may be remove by others
 	defer func() {
 		if err == nil || common.DuplicateError(err) {
 			blockHashCache.Add(common.BytesToHex(data.Hash), data)
 		}
 	}()
-	return t.Store.Insert(data)
+	return t.Store.Insert(ctx, data)
 }
 
-func (t *cacheMiddleware) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {
+func (t *cacheMiddleware) FindTd(ctx context.Context, hash []byte) (result *model.TotalDifficulty, err error) {
 	key := common.BytesToHex(hash)
 	value, ok := tdCache.Get(key)
 	if ok {
@@ -91,10 +93,10 @@ func (t *cacheMiddleware) FindTd(hash []byte) (result *model.TotalDifficulty, er
 		}
 		tdCache.Add(key, result)
 	}()
-	return t.Store.FindTd(hash)
+	return t.Store.FindTd(ctx, hash)
 }
 
-func (t *cacheMiddleware) FindBlockByHash(hash []byte) (result *model.Header, err error) {
+func (t *cacheMiddleware) FindBlockByHash(ctx context.Context, hash []byte) (result *model.Header, err error) {
 	key := common.BytesToHex(hash)
 	value, ok := blockHashCache.Get(key)
 	if ok {
@@ -112,25 +114,25 @@ func (t *cacheMiddleware) FindBlockByHash(hash []byte) (result *model.Header, er
 		}
 		blockHashCache.Add(key, result)
 	}()
-	return t.Store.FindBlockByHash(hash)
+	return t.Store.FindBlockByHash(ctx, hash)
 }
 
-func (t *cacheMiddleware) FindBlockByNumber(blockNumber int64) (result *model.Header, err error) {
+func (t *cacheMiddleware) FindBlockByNumber(ctx context.Context, blockNumber int64) (result *model.Header, err error) {
 	defer func() {
 		if err != nil {
 			return
 		}
 		blockHashCache.Add(common.BytesToHex(result.Hash), result)
 	}()
-	return t.Store.FindBlockByNumber(blockNumber)
+	return t.Store.FindBlockByNumber(ctx, blockNumber)
 }
 
-func (t *cacheMiddleware) FindLatestBlock() (result *model.Header, err error) {
+func (t *cacheMiddleware) FindLatestBlock(ctx context.Context) (result *model.Header, err error) {
 	defer func() {
 		if err != nil {
 			return
 		}
 		blockHashCache.Add(common.BytesToHex(result.Hash), result)
 	}()
-	return t.Store.FindLatestBlock()
+	return t.Store.FindLatestBlock(ctx)
 }

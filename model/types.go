@@ -47,45 +47,40 @@ var (
 
 // Header represents the header of a block
 type Header struct {
-	ID          int64
-	Hash        []byte
-	ParentHash  []byte
-	UncleHash   []byte
-	Coinbase    []byte
-	Root        []byte
-	TxHash      []byte
-	ReceiptHash []byte
-	Difficulty  int64
-	Number      int64
-	GasLimit    int64
-	GasUsed     int64
-	Time        int64
-	ExtraData   []byte
-	MixDigest   []byte
-	Nonce       []byte
+	ID          int64  `db:"id"`
+	Hash        []byte `db:"hash"`
+	ParentHash  []byte `db:"parent_hash"`
+	UncleHash   []byte `db:"uncle_hash"`
+	Coinbase    []byte `db:"coinbase"`
+	Root        []byte `db:"root"`
+	TxHash      []byte `db:"tx_hash"`
+	ReceiptHash []byte `db:"receipt_hash"`
+	Difficulty  int64  `db:"difficulty"`
+	Number      int64  `db:"number"`
+	GasLimit    int64  `db:"gas_limit"`
+	GasUsed     int64  `db:"gas_used"`
+	Time        int64  `db:"time"`
+	ExtraData   []byte `db:"extra_data"`
+	MixDigest   []byte `db:"mix_digest"`
+	Nonce       []byte `db:"nonce"`
 	// MinerBaseReward plus UnclesInclusionReward plus TxsFee is MinerReward.
-	MinerReward           string
-	UnclesInclusionReward string
-	TxsFee                string
+	MinerReward           string `db:"miner_reward"`
+	UnclesInclusionReward string `db:"uncles_inclusion_reward"`
+	TxsFee                string `db:"txs_fee"`
 	// Total of uncles reward. At most 2.
-	Uncle1Reward   string
-	Uncle1Coinbase []byte
-	Uncle1Hash     []byte
-	Uncle2Reward   string
-	Uncle2Coinbase []byte
-	Uncle2Hash     []byte
+	Uncle1Reward   string `db:"uncle1_reward"`
+	Uncle1Coinbase []byte `db:"uncle1_coinbase"`
+	Uncle1Hash     []byte `db:"uncle1_hash"`
+	Uncle2Reward   string `db:"uncle2_reward"`
+	Uncle2Coinbase []byte `db:"uncle2_coinbase"`
+	Uncle2Hash     []byte `db:"uncle2_hash"`
 
 	// golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
 
-	CreatedAt *time.Time
-}
-
-// TableName returns the table name of this model
-func (h Header) TableName() string {
-	return "block_headers"
+	CreatedAt *time.Time `db:"created_at"`
 }
 
 // AddReward adds reward to header.
@@ -165,14 +160,9 @@ type Log struct {
 
 // TotalDifficulty represents total difficulty for this block
 type TotalDifficulty struct {
-	Block int64
-	Hash  []byte
-	Td    string
-}
-
-// TableName returns the table name of this model
-func (t TotalDifficulty) TableName() string {
-	return "total_difficulty"
+	Block int64  `db:"block"`
+	Hash  []byte `db:"hash"`
+	Td    string `db:"td"`
 }
 
 // Account represents the either ERC20 or ETH balances of externally owned accounts in Ethereum at given block
