@@ -2,6 +2,7 @@
 package mocks
 
 import common "github.com/ethereum/go-ethereum/common"
+import context "context"
 import mock "github.com/stretchr/testify/mock"
 import model "github.com/getamis/eth-indexer/model"
 
@@ -10,13 +11,13 @@ type Store struct {
 	mock.Mock
 }
 
-// BatchUpdateERC20BlockNumber provides a mock function with given fields: blockNumber, addrs
-func (_m *Store) BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error {
-	ret := _m.Called(blockNumber, addrs)
+// BatchUpdateERC20BlockNumber provides a mock function with given fields: ctx, blockNumber, addrs
+func (_m *Store) BatchUpdateERC20BlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error {
+	ret := _m.Called(ctx, blockNumber, addrs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, [][]byte) error); ok {
-		r0 = rf(blockNumber, addrs)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, [][]byte) error); ok {
+		r0 = rf(ctx, blockNumber, addrs)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -24,13 +25,13 @@ func (_m *Store) BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) 
 	return r0
 }
 
-// DeleteAccounts provides a mock function with given fields: contractAddress, from, to
-func (_m *Store) DeleteAccounts(contractAddress common.Address, from int64, to int64) error {
-	ret := _m.Called(contractAddress, from, to)
+// DeleteAccounts provides a mock function with given fields: ctx, contractAddress, from, to
+func (_m *Store) DeleteAccounts(ctx context.Context, contractAddress common.Address, from int64, to int64) error {
+	ret := _m.Called(ctx, contractAddress, from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(common.Address, int64, int64) error); ok {
-		r0 = rf(contractAddress, from, to)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, int64, int64) error); ok {
+		r0 = rf(ctx, contractAddress, from, to)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -38,13 +39,13 @@ func (_m *Store) DeleteAccounts(contractAddress common.Address, from int64, to i
 	return r0
 }
 
-// DeleteTransfer provides a mock function with given fields: contractAddress, from, to
-func (_m *Store) DeleteTransfer(contractAddress common.Address, from int64, to int64) error {
-	ret := _m.Called(contractAddress, from, to)
+// DeleteTransfer provides a mock function with given fields: ctx, contractAddress, from, to
+func (_m *Store) DeleteTransfer(ctx context.Context, contractAddress common.Address, from int64, to int64) error {
+	ret := _m.Called(ctx, contractAddress, from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(common.Address, int64, int64) error); ok {
-		r0 = rf(contractAddress, from, to)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, int64, int64) error); ok {
+		r0 = rf(ctx, contractAddress, from, to)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -52,20 +53,20 @@ func (_m *Store) DeleteTransfer(contractAddress common.Address, from int64, to i
 	return r0
 }
 
-// FindAccount provides a mock function with given fields: contractAddress, address, blockNr
-func (_m *Store) FindAccount(contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Account, error) {
+// FindAccount provides a mock function with given fields: ctx, contractAddress, address, blockNr
+func (_m *Store) FindAccount(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Account, error) {
 	_va := make([]interface{}, len(blockNr))
 	for _i := range blockNr {
 		_va[_i] = blockNr[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, contractAddress, address)
+	_ca = append(_ca, ctx, contractAddress, address)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 *model.Account
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address, ...int64) *model.Account); ok {
-		r0 = rf(contractAddress, address, blockNr...)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address, ...int64) *model.Account); ok {
+		r0 = rf(ctx, contractAddress, address, blockNr...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Account)
@@ -73,8 +74,8 @@ func (_m *Store) FindAccount(contractAddress common.Address, address common.Addr
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address, ...int64) error); ok {
-		r1 = rf(contractAddress, address, blockNr...)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, common.Address, ...int64) error); ok {
+		r1 = rf(ctx, contractAddress, address, blockNr...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -82,13 +83,13 @@ func (_m *Store) FindAccount(contractAddress common.Address, address common.Addr
 	return r0, r1
 }
 
-// FindAllTransfers provides a mock function with given fields: contractAddress, address
-func (_m *Store) FindAllTransfers(contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
-	ret := _m.Called(contractAddress, address)
+// FindAllTransfers provides a mock function with given fields: ctx, contractAddress, address
+func (_m *Store) FindAllTransfers(ctx context.Context, contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
+	ret := _m.Called(ctx, contractAddress, address)
 
 	var r0 []*model.Transfer
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*model.Transfer); ok {
-		r0 = rf(contractAddress, address)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address) []*model.Transfer); ok {
+		r0 = rf(ctx, contractAddress, address)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Transfer)
@@ -96,8 +97,8 @@ func (_m *Store) FindAllTransfers(contractAddress common.Address, address common
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
-		r1 = rf(contractAddress, address)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, common.Address) error); ok {
+		r1 = rf(ctx, contractAddress, address)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -105,36 +106,13 @@ func (_m *Store) FindAllTransfers(contractAddress common.Address, address common
 	return r0, r1
 }
 
-// FindAllTransfers provides a mock function with given fields: contractAddress, address
-func (_m *Store) FindAllTransfers(contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
-	ret := _m.Called(contractAddress, address)
-
-	var r0 []*model.Transfer
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*model.Transfer); ok {
-		r0 = rf(contractAddress, address)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.Transfer)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
-		r1 = rf(contractAddress, address)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// FindERC20 provides a mock function with given fields: address
-func (_m *Store) FindERC20(address common.Address) (*model.ERC20, error) {
-	ret := _m.Called(address)
+// FindERC20 provides a mock function with given fields: ctx, address
+func (_m *Store) FindERC20(ctx context.Context, address common.Address) (*model.ERC20, error) {
+	ret := _m.Called(ctx, address)
 
 	var r0 *model.ERC20
-	if rf, ok := ret.Get(0).(func(common.Address) *model.ERC20); ok {
-		r0 = rf(address)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address) *model.ERC20); ok {
+		r0 = rf(ctx, address)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.ERC20)
@@ -142,8 +120,8 @@ func (_m *Store) FindERC20(address common.Address) (*model.ERC20, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
-		r1 = rf(address)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address) error); ok {
+		r1 = rf(ctx, address)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -151,13 +129,13 @@ func (_m *Store) FindERC20(address common.Address) (*model.ERC20, error) {
 	return r0, r1
 }
 
-// FindLatestAccounts provides a mock function with given fields: contractAddress, addrs
-func (_m *Store) FindLatestAccounts(contractAddress common.Address, addrs [][]byte) ([]*model.Account, error) {
-	ret := _m.Called(contractAddress, addrs)
+// FindLatestAccounts provides a mock function with given fields: ctx, contractAddress, addrs
+func (_m *Store) FindLatestAccounts(ctx context.Context, contractAddress common.Address, addrs [][]byte) ([]*model.Account, error) {
+	ret := _m.Called(ctx, contractAddress, addrs)
 
 	var r0 []*model.Account
-	if rf, ok := ret.Get(0).(func(common.Address, [][]byte) []*model.Account); ok {
-		r0 = rf(contractAddress, addrs)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, [][]byte) []*model.Account); ok {
+		r0 = rf(ctx, contractAddress, addrs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Account)
@@ -165,8 +143,8 @@ func (_m *Store) FindLatestAccounts(contractAddress common.Address, addrs [][]by
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, [][]byte) error); ok {
-		r1 = rf(contractAddress, addrs)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, [][]byte) error); ok {
+		r1 = rf(ctx, contractAddress, addrs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -174,20 +152,20 @@ func (_m *Store) FindLatestAccounts(contractAddress common.Address, addrs [][]by
 	return r0, r1
 }
 
-// FindTransfer provides a mock function with given fields: contractAddress, address, blockNr
-func (_m *Store) FindTransfer(contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Transfer, error) {
+// FindTransfer provides a mock function with given fields: ctx, contractAddress, address, blockNr
+func (_m *Store) FindTransfer(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Transfer, error) {
 	_va := make([]interface{}, len(blockNr))
 	for _i := range blockNr {
 		_va[_i] = blockNr[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, contractAddress, address)
+	_ca = append(_ca, ctx, contractAddress, address)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 *model.Transfer
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address, ...int64) *model.Transfer); ok {
-		r0 = rf(contractAddress, address, blockNr...)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address, ...int64) *model.Transfer); ok {
+		r0 = rf(ctx, contractAddress, address, blockNr...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Transfer)
@@ -195,8 +173,8 @@ func (_m *Store) FindTransfer(contractAddress common.Address, address common.Add
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address, ...int64) error); ok {
-		r1 = rf(contractAddress, address, blockNr...)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address, common.Address, ...int64) error); ok {
+		r1 = rf(ctx, contractAddress, address, blockNr...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -204,13 +182,13 @@ func (_m *Store) FindTransfer(contractAddress common.Address, address common.Add
 	return r0, r1
 }
 
-// InsertAccount provides a mock function with given fields: _a0
-func (_m *Store) InsertAccount(_a0 *model.Account) error {
-	ret := _m.Called(_a0)
+// InsertAccount provides a mock function with given fields: ctx, _a1
+func (_m *Store) InsertAccount(ctx context.Context, _a1 *model.Account) error {
+	ret := _m.Called(ctx, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Account) error); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.Account) error); ok {
+		r0 = rf(ctx, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -218,13 +196,13 @@ func (_m *Store) InsertAccount(_a0 *model.Account) error {
 	return r0
 }
 
-// InsertERC20 provides a mock function with given fields: code
-func (_m *Store) InsertERC20(code *model.ERC20) error {
-	ret := _m.Called(code)
+// InsertERC20 provides a mock function with given fields: ctx, code
+func (_m *Store) InsertERC20(ctx context.Context, code *model.ERC20) error {
+	ret := _m.Called(ctx, code)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
-		r0 = rf(code)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.ERC20) error); ok {
+		r0 = rf(ctx, code)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -232,13 +210,13 @@ func (_m *Store) InsertERC20(code *model.ERC20) error {
 	return r0
 }
 
-// InsertTransfer provides a mock function with given fields: event
-func (_m *Store) InsertTransfer(event *model.Transfer) error {
-	ret := _m.Called(event)
+// InsertTransfer provides a mock function with given fields: ctx, event
+func (_m *Store) InsertTransfer(ctx context.Context, event *model.Transfer) error {
+	ret := _m.Called(ctx, event)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.Transfer) error); ok {
-		r0 = rf(event)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.Transfer) error); ok {
+		r0 = rf(ctx, event)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -246,13 +224,13 @@ func (_m *Store) InsertTransfer(event *model.Transfer) error {
 	return r0
 }
 
-// ListNewERC20 provides a mock function with given fields:
-func (_m *Store) ListNewERC20() ([]*model.ERC20, error) {
-	ret := _m.Called()
+// ListERC20 provides a mock function with given fields: ctx
+func (_m *Store) ListERC20(ctx context.Context) ([]*model.ERC20, error) {
+	ret := _m.Called(ctx)
 
 	var r0 []*model.ERC20
-	if rf, ok := ret.Get(0).(func() []*model.ERC20); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []*model.ERC20); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ERC20)
@@ -260,8 +238,8 @@ func (_m *Store) ListNewERC20() ([]*model.ERC20, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -269,13 +247,13 @@ func (_m *Store) ListNewERC20() ([]*model.ERC20, error) {
 	return r0, r1
 }
 
-// ListOldERC20 provides a mock function with given fields:
-func (_m *Store) ListOldERC20() ([]*model.ERC20, error) {
-	ret := _m.Called()
+// ListNewERC20 provides a mock function with given fields: ctx
+func (_m *Store) ListNewERC20(ctx context.Context) ([]*model.ERC20, error) {
+	ret := _m.Called(ctx)
 
 	var r0 []*model.ERC20
-	if rf, ok := ret.Get(0).(func() []*model.ERC20); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) []*model.ERC20); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.ERC20)
@@ -283,8 +261,31 @@ func (_m *Store) ListOldERC20() ([]*model.ERC20, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ListOldERC20 provides a mock function with given fields: ctx
+func (_m *Store) ListOldERC20(ctx context.Context) ([]*model.ERC20, error) {
+	ret := _m.Called(ctx)
+
+	var r0 []*model.ERC20
+	if rf, ok := ret.Get(0).(func(context.Context) []*model.ERC20); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.ERC20)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -169,10 +169,10 @@ type TotalDifficulty struct {
 // The account is considered an eth account and insert to account table if ContractAddress is ETHBytes, or
 // considered an erc20 account and insert to erc20_balance_{ContractAddress} table.
 type Account struct {
-	ContractAddress []byte `gorm:"-"`
-	BlockNumber     int64  `gorm:"size:8;index;unique_index:idx_block_number_address"`
-	Address         []byte `gorm:"size:20;index;unique_index:idx_block_number_address"`
-	Balance         string `gorm:"size:32"`
+	ContractAddress []byte
+	BlockNumber     int64  `db:"block_number"`
+	Address         []byte `db:"address"`
+	Balance         string `db:"balance"`
 }
 
 // TableName returns the table name of this model
@@ -187,12 +187,12 @@ func (a Account) TableName() string {
 // The event is considered an eth transfer event and insert to eth_transfer table if Address is ETHBytes, or
 // considered an erc20 transfer event and insert to erc20_transfer_{Address} table.
 type Transfer struct {
-	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"size:8;index"`
-	TxHash      []byte `gorm:"size:32;index"`
-	From        []byte `gorm:"size:20;index"`
-	To          []byte `gorm:"size:20;index"`
-	Value       string `gorm:"size:32"`
+	Address     []byte
+	BlockNumber int64  `db:"block_number"`
+	TxHash      []byte `db:"tx_hash"`
+	From        []byte `db:"from"`
+	To          []byte `db:"to"`
+	Value       string `db:"value"`
 }
 
 // TableName retruns the table name of this model
@@ -230,16 +230,11 @@ type TotalBalance struct {
 
 // ERC20 represents the ERC20 contract
 type ERC20 struct {
-	BlockNumber int64
-	Address     []byte
-	TotalSupply string
-	Decimals    int
-	Name        string
-}
-
-// TableName returns the table name of this model
-func (e ERC20) TableName() string {
-	return "erc20"
+	BlockNumber int64  `db:"block_number"`
+	Address     []byte `db:"address"`
+	TotalSupply string `db:"total_supply"`
+	Decimals    int    `db:"decimals"`
+	Name        string `db:"name"`
 }
 
 // Subscription represents the Subscription model
