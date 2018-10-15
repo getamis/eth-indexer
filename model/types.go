@@ -229,18 +229,13 @@ func (e Transfer) IsUncleRewardEvent() bool {
 
 // TotalBalance represents the total balance of subscription accounts in different group
 type TotalBalance struct {
-	Token        []byte
-	BlockNumber  int64
-	Group        int64
-	Balance      string
-	TxFee        string
-	MinerReward  string
-	UnclesReward string
-}
-
-// TableName retruns the table name of this model
-func (s TotalBalance) TableName() string {
-	return "total_balances"
+	Token        []byte `db:"token"`
+	BlockNumber  int64  `db:"block_number"`
+	Group        int64  `db:"group"`
+	Balance      string `db:"balance"`
+	TxFee        string `db:"tx_fee"`
+	MinerReward  string `db:"miner_reward"`
+	UnclesReward string `db:"uncles_reward"`
 }
 
 // ERC20 represents the ERC20 contract
@@ -259,17 +254,12 @@ func (e ERC20) TableName() string {
 
 // Subscription represents the Subscription model
 type Subscription struct {
-	ID          int64
-	BlockNumber int64
-	Group       int64
-	Address     []byte
-	CreatedAt   time.Time `deepequal:"-"`
-	UpdatedAt   time.Time `deepequal:"-"`
-}
-
-// TableName retruns the table name of this erc20 contract
-func (s Subscription) TableName() string {
-	return "subscriptions"
+	ID          int64     `db:"id"`
+	BlockNumber int64     `db:"block_number"`
+	Group       int64     `db:"group"`
+	Address     []byte    `db:"address"`
+	CreatedAt   time.Time `db:"created_at" deepequal:"-"`
+	UpdatedAt   time.Time `db:"updated_at" deepequal:"-"`
 }
 
 // Reorg represents the Reorg model

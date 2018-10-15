@@ -17,12 +17,17 @@
 package subscription
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/getamis/sirius/log"
-	"github.com/jinzhu/gorm"
 
 	idxCommon "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
+	. "github.com/getamis/eth-indexer/store/sqldb"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -31,45 +36,72 @@ const (
 
 //go:generate mockery -name Store
 type Store interface {
-	BatchInsert(subs []*model.Subscription) ([]common.Address, error)
-	BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error
-	Find(blockNumber int64) (result []*model.Subscription, err error)
+	BatchInsert(ctx context.Context, subs []*model.Subscription) ([]common.Address, error)
+	BatchUpdateBlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error
+	Find(ctx context.Context, blockNumber int64) (result []*model.Subscription, err error)
 	// FindOldSubscriptions find old subscriptions by addresses
-	FindOldSubscriptions(addrs [][]byte) (result []*model.Subscription, err error)
-	FindByGroup(groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
-	ListOldSubscriptions(query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
+	FindOldSubscriptions(ctx context.Context, addrs [][]byte) (result []*model.Subscription, err error)
+	FindByGroup(ctx context.Context, groupID int64, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
+	ListOldSubscriptions(ctx context.Context, query *model.QueryParameters) (result []*model.Subscription, total uint64, err error)
 
 	// Total balance
-	InsertTotalBalance(data *model.TotalBalance) error
-	FindTotalBalance(blockNumber int64, token common.Address, group int64) (result *model.TotalBalance, err error)
+	InsertTotalBalance(ctx context.Context, data *model.TotalBalance) error
+	FindTotalBalance(ctx context.Context, blockNumber int64, token common.Address, group int64) (result *model.TotalBalance, err error)
 
-	Reset(from, to int64) error
+	Reset(ctx context.Context, from, to int64) error
 }
+
+const (
+	insertSQL                 = "INSERT INTO subscriptions (block_number, `group`, address, created_at, updated_at) VALUES (%d, %d, X'%s', '%s', '%s')"
+	batchUpdateBlockNumberSQL = "UPDATE subscriptions SET block_number = %d WHERE address IN (%s)"
+	findSQL                   = "SELECT * FROM subscriptions WHERE block_number = %d"
+
+	findOldSubscriptionsSQL    = "SELECT * FROM subscriptions WHERE address IN (%s) AND block_number > 0"
+	findByGroupCntSQL          = "SELECT count(*) FROM subscriptions WHERE `group` = %d"
+	findByGroupLmtSQL          = "SELECT * FROM subscriptions WHERE `group` = %d LIMIT %d, %d"
+	listOldSubscriptionsCntSQL = "SELECT count(*) FROM subscriptions WHERE block_number > 0"
+	listOldSubscriptionsLmtSQL = "SELECT * FROM subscriptions WHERE block_number > 0 LIMIT %d, %d"
+
+	insertTotalBalanceSQL = "INSERT INTO total_balances (token, block_number, `group`, balance, tx_fee, miner_reward, uncles_reward) VALUES (X'%s', %d, %d, '%s', '%s', '%s', '%s')"
+	findTotalBalanceSQL   = "SELECT * FROM total_balances WHERE block_number <= %d AND token = X'%s' AND `group` = %d ORDER BY block_number DESC"
+	resetSupscriptionsSQL = "UPDATE subscriptions SET block_number = 0 WHERE block_number >= %d AND block_number <= %d"
+	resetTotalBalanceSQL  = "DELETE FROM total_balances WHERE block_number >= %d AND block_number <= %d"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB) Store {
+func NewWithDB(db DbOrTx) Store {
 	return &store{
 		db: db,
 	}
 }
 
-func (t *store) BatchInsert(subs []*model.Subscription) (duplicated []common.Address, err error) {
-	dbTx := t.db.Begin()
+func (t *store) BatchInsert(ctx context.Context, subs []*model.Subscription) (duplicated []common.Address, err error) {
+	db, ok := t.db.(*sqlx.DB)
+	if !ok {
+		return nil, errors.New("already in a transaction")
+	}
+
+	dbTx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 	defer func() {
 		if err != nil {
 			dbTx.Rollback()
 			return
 		}
-		err = dbTx.Commit().Error
+		err = dbTx.Commit()
 		if err != nil {
-			log.Error("Failed to commit db", "err", err)
+			duplicated = nil
 		}
 	}()
+
+	nowStr := ToTimeStr(time.Now())
 	for _, sub := range subs {
-		createErr := dbTx.Create(sub).Error
+		_, createErr := dbTx.ExecContext(ctx, fmt.Sprintf(insertSQL, sub.BlockNumber, sub.Group, Hex(sub.Address), nowStr, nowStr))
 		if createErr != nil {
 			if idxCommon.DuplicateError(createErr) {
 				duplicated = append(duplicated, common.BytesToAddress(sub.Address))
@@ -81,72 +113,116 @@ func (t *store) BatchInsert(subs []*model.Subscription) (duplicated []common.Add
 	return duplicated, nil
 }
 
-func (t *store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error {
+func (t *store) BatchUpdateBlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error {
 	if len(addrs) == 0 {
 		return nil
 	}
-	return t.db.Model(model.Subscription{}).Where("address in (?)", addrs).Updates(map[string]interface{}{"block_number": blockNumber}).Error
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(batchUpdateBlockNumberSQL, blockNumber, InClauseForBytes(addrs)))
+	return err
 }
 
-func (t *store) Find(blockNumber int64) (result []*model.Subscription, err error) {
-	err = t.db.Where("block_number = ?", blockNumber).Find(&result).Error
-	return
-}
-
-func (t *store) FindOldSubscriptions(addrs [][]byte) (result []*model.Subscription, err error) {
-	if len(addrs) == 0 {
-		return []*model.Subscription{}, nil
-	}
-
-	err = t.db.Where("address in (?) AND block_number > 0", addrs).Find(&result).Error
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (t *store) InsertTotalBalance(data *model.TotalBalance) error {
-	return t.db.Create(data).Error
-}
-
-func (t *store) FindTotalBalance(blockNumber int64, token common.Address, group int64) (*model.TotalBalance, error) {
-	result := &model.TotalBalance{}
-	err := t.db.Where("block_number <= ? AND token = ? AND `group` = ?", blockNumber, token.Bytes(), group).Order("block_number DESC").Limit(1).Find(&result).Error
+func (t *store) Find(ctx context.Context, blockNumber int64) ([]*model.Subscription, error) {
+	result := []*model.Subscription{}
+	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findSQL, blockNumber))
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (t *store) Reset(from, to int64) error {
+func (t *store) FindOldSubscriptions(ctx context.Context, addrs [][]byte) ([]*model.Subscription, error) {
+	if len(addrs) == 0 {
+		return []*model.Subscription{}, nil
+	}
+
+	result := []*model.Subscription{}
+	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findOldSubscriptionsSQL, InClauseForBytes(addrs)))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (t *store) InsertTotalBalance(ctx context.Context, data *model.TotalBalance) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertTotalBalanceSQL, Hex(data.Token), data.BlockNumber, data.Group, data.Balance, data.TxFee, data.MinerReward, data.UnclesReward))
+	return err
+}
+
+func (t *store) FindTotalBalance(ctx context.Context, blockNumber int64, token common.Address, group int64) (*model.TotalBalance, error) {
+	result := &model.TotalBalance{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findTotalBalanceSQL, blockNumber, Hex(token.Bytes()), group))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (t *store) Reset(ctx context.Context, from, to int64) (err error) {
+	// Ensure we are in a db transaction
+	var dbTx *sqlx.Tx
+	db, ok := t.db.(*sqlx.DB)
+	if ok {
+		dbTx, err = db.BeginTxx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}()
+	} else {
+		dbTx, ok = t.db.(*sqlx.Tx)
+		if !ok {
+			return errors.New("not in a transaction")
+		}
+	}
+
 	// Set the block number of subscription to 0
-	err := t.db.Table(model.Subscription{}.TableName()).Where("block_number >= ? AND block_number <= ?", from, to).UpdateColumn("block_number", 0).Error
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(resetSupscriptionsSQL, from, to))
 	if err != nil {
 		return err
 	}
-	// Delete total balances
-	return t.db.Delete(model.TotalBalance{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(resetTotalBalanceSQL, from, to))
+	return err
 }
 
-func (t *store) FindByGroup(groupID int64, params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	return t.find(t.db.Model(&model.Subscription{}).Where(&model.Subscription{
-		Group: groupID,
-	}), params)
-}
+func (t *store) FindByGroup(ctx context.Context, groupID int64, params *model.QueryParameters) (result []*model.Subscription, total uint64, err error) {
+	if params.Page <= 0 {
+		return nil, 0, ErrInvalidPage
+	}
+	if params.Limit <= 0 {
+		return nil, 0, ErrInvalidLimit
+	}
 
-func (t *store) ListOldSubscriptions(params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	return t.find(t.db.Model(&model.Subscription{}).Where("block_number > 0"), params)
-}
-
-func (t *store) find(db *gorm.DB, params *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	var total uint64
-	err := db.Count(&total).Error
+	err = t.db.GetContext(ctx, &total, fmt.Sprintf(findByGroupCntSQL, groupID))
 	if err != nil {
 		return nil, 0, err
 	}
-	start := (params.Page - 1) * params.Limit
-	var result []*model.Subscription
-	err = db.Offset(start).Limit(params.Limit).Order(params.OrderString()).Find(&result).Error
+	offset := (params.Page - 1) * params.Limit
+	err = t.db.SelectContext(ctx, &result, fmt.Sprintf(findByGroupLmtSQL, groupID, offset, params.Limit))
+	if err != nil {
+		return nil, 0, err
+	}
+	return result, total, nil
+}
+
+func (t *store) ListOldSubscriptions(ctx context.Context, params *model.QueryParameters) (result []*model.Subscription, total uint64, err error) {
+	if params.Page <= 0 {
+		return nil, 0, ErrInvalidPage
+	}
+	if params.Limit <= 0 {
+		return nil, 0, ErrInvalidLimit
+	}
+
+	err = t.db.GetContext(ctx, &total, fmt.Sprintf(listOldSubscriptionsCntSQL))
+	if err != nil {
+		return nil, 0, err
+	}
+	offset := (params.Page - 1) * params.Limit
+	err = t.db.SelectContext(ctx, &result, fmt.Sprintf(listOldSubscriptionsLmtSQL, offset, params.Limit))
 	if err != nil {
 		return nil, 0, err
 	}

@@ -19,6 +19,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,9 @@ const (
 
 var (
 	NullTime, _ = time.Parse("2006-01-02 15:04:05", NullDateTime)
+
+	ErrInvalidPage  = errors.New("invalid page")
+	ErrInvalidLimit = errors.New("invalid limit")
 )
 
 type QueryParameters struct {
