@@ -143,39 +143,29 @@ func (t Transaction) TableName() string {
 
 // Receipt represents a transaction receipt
 type Receipt struct {
-	Root              []byte
-	Status            uint
-	CumulativeGasUsed int64
-	Bloom             []byte
-	TxHash            []byte
-	ContractAddress   []byte
-	GasUsed           int64
-	BlockNumber       int64
+	Root              []byte `db:"root"`
+	Status            uint   `db:"status"`
+	CumulativeGasUsed int64  `db:"cumulative_gas_used"`
+	Bloom             []byte `db:"bloom"`
+	TxHash            []byte `db:"tx_hash"`
+	ContractAddress   []byte `db:"contract_address"`
+	GasUsed           int64  `db:"gas_used"`
+	BlockNumber       int64  `db:"block_number"`
 	Logs              []*Log
-}
-
-// TableName returns the table name of this model
-func (r Receipt) TableName() string {
-	return "transaction_receipts"
 }
 
 // Log represents a receipt log
 type Log struct {
-	TxHash          []byte
-	BlockNumber     int64
-	ContractAddress []byte
+	TxHash          []byte `db:"tx_hash"`
+	BlockNumber     int64  `db:"block_number"`
+	ContractAddress []byte `db:"contract_address"`
 	// The sha3 of the event method
-	EventName []byte
+	EventName []byte `db:"event_name"`
 	// Indexed parameters of event. At most 3 topics.
-	Topic1 []byte
-	Topic2 []byte
-	Topic3 []byte
-	Data   []byte
-}
-
-// TableName returns the table name of this model
-func (l Log) TableName() string {
-	return "receipt_logs"
+	Topic1 []byte `db:"topic1"`
+	Topic2 []byte `db:"topic2"`
+	Topic3 []byte `db:"topic3"`
+	Data   []byte `db:"data"`
 }
 
 // TotalDifficulty represents total difficulty for this block

@@ -17,68 +17,148 @@
 package transaction_receipt
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
 	"github.com/getamis/eth-indexer/model"
-	"github.com/jinzhu/gorm"
+	. "github.com/getamis/eth-indexer/store/sqldb"
+	"github.com/jmoiron/sqlx"
 )
 
 //go:generate mockery -name Store
 type Store interface {
-	Insert(data *model.Receipt) error
-	Delete(from, to int64) (err error)
-	FindReceipt(hash []byte) (result *model.Receipt, err error)
+	Insert(ctx context.Context, data *model.Receipt) error
+	Delete(ctx context.Context, from, to int64) (err error)
+	FindReceipt(ctx context.Context, hash []byte) (result *model.Receipt, err error)
 }
+
+const (
+	insertReceiptSQL = "INSERT INTO transaction_receipts (root, status, cumulative_gas_used, bloom, tx_hash, contract_address, gas_used, block_number) VALUES (X'%s', %d, %d, X'%s', X'%s', X'%s', %d, %d)"
+	insertLogSQL     = "INSERT INTO receipt_logs (tx_hash, block_number, contract_address, event_name, topic1, topic2, topic3, data) VALUES (X'%s', %d, X'%s', X'%s', X'%s', X'%s', X'%s', X'%s')"
+	deleteReceiptSQL = "DELETE FROM transaction_receipts WHERE block_number >= %d AND block_number <= %d"
+	deleteLogSQL     = "DELETE FROM receipt_logs WHERE block_number >= %d AND block_number <= %d"
+	findReceiptSQL   = "SELECT * FROM transaction_receipts WHERE `tx_hash` = X'%s'"
+	findLogSQL       = "SELECT * FROM receipt_logs WHERE `tx_hash` = X'%s'"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB) Store {
+func NewWithDB(db DbOrTx) Store {
 	return &store{
 		db: db,
 	}
 }
 
-func (r *store) Insert(data *model.Receipt) error {
-	// TODO: may need db transaction protection,
-	// but mysql doesn't support nested db transaction
+func (r *store) Insert(ctx context.Context, data *model.Receipt) (err error) {
+	// Ensure we are in a db transaction
+	var dbTx *sqlx.Tx
+	db, ok := r.db.(*sqlx.DB)
+	if ok {
+		dbTx, err = db.BeginTxx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}()
+	} else {
+		dbTx, ok = r.db.(*sqlx.Tx)
+		if !ok {
+			return errors.New("not in a transaction")
+		}
+	}
+
 	// Insert receipt
-	if err := r.db.Create(data).Error; err != nil {
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(insertReceiptSQL, Hex(data.Root), data.Status, data.CumulativeGasUsed, Hex(data.Bloom), Hex(data.TxHash), Hex(data.ContractAddress), data.GasUsed, data.BlockNumber))
+	if err != nil {
 		return err
 	}
 	// Insert logs
 	for _, l := range data.Logs {
-		if err := r.db.Create(l).Error; err != nil {
+		_, err = dbTx.ExecContext(ctx, fmt.Sprintf(insertLogSQL, Hex(l.TxHash), data.BlockNumber, Hex(l.ContractAddress), Hex(l.EventName), Hex(l.Topic1), Hex(l.Topic2), Hex(l.Topic3), Hex(l.Data)))
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *store) Delete(from, to int64) error {
+func (r *store) Delete(ctx context.Context, from, to int64) (err error) {
+	// Ensure we are in a db transaction
+	var dbTx *sqlx.Tx
+	db, ok := r.db.(*sqlx.DB)
+	if ok {
+		dbTx, err = db.BeginTxx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}()
+	} else {
+		dbTx, ok = r.db.(*sqlx.Tx)
+		if !ok {
+			return errors.New("not in a transaction")
+		}
+	}
+
 	// Delete receipt
-	err := r.db.Delete(model.Receipt{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(deleteReceiptSQL, from, to))
 	if err != nil {
 		return err
 	}
 	// Delete logs
-	err = r.db.Delete(model.Log{}, "block_number >= ? AND block_number <= ?", from, to).Error
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(deleteLogSQL, from, to))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *store) FindReceipt(hash []byte) (*model.Receipt, error) {
+func (r *store) FindReceipt(ctx context.Context, hash []byte) (result *model.Receipt, err error) {
+	// Ensure we are in a db transaction
+	var dbTx *sqlx.Tx
+	db, ok := r.db.(*sqlx.DB)
+	if ok {
+		dbTx, err = db.BeginTxx(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}()
+	} else {
+		dbTx, ok = r.db.(*sqlx.Tx)
+		if !ok {
+			return nil, errors.New("not in a transaction")
+		}
+	}
+
 	// Find receipt
 	receipt := &model.Receipt{}
-	err := r.db.Where("tx_hash = ?", hash).Limit(1).Find(receipt).Error
+	err = dbTx.GetContext(ctx, receipt, fmt.Sprintf(findReceiptSQL, Hex(hash)))
 	if err != nil {
 		return nil, err
 	}
 
 	// Find logs
 	logs := []*model.Log{}
-	err = r.db.Where("tx_hash = ?", hash).Find(&logs).Error
+	err = dbTx.SelectContext(ctx, &logs, fmt.Sprintf(findLogSQL, Hex(hash)))
 	if err != nil {
 		return nil, err
 	}
