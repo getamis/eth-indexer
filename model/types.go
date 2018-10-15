@@ -124,21 +124,16 @@ func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int
 
 // Transaction represents a transaction
 type Transaction struct {
-	Hash        []byte
-	BlockHash   []byte
-	From        []byte
-	To          []byte
-	Nonce       int64
-	GasPrice    int64
-	GasLimit    int64
-	Amount      string
-	Payload     []byte
-	BlockNumber int64
-}
-
-// TableName returns the table name of this model
-func (t Transaction) TableName() string {
-	return "transactions"
+	Hash        []byte `db:"hash"`
+	BlockHash   []byte `db:"block_hash"`
+	From        []byte `db:"from"`
+	To          []byte `db:"to"`
+	Nonce       int64  `db:"nonce"`
+	GasPrice    int64  `db:"gas_price"`
+	GasLimit    int64  `db:"gas_limit"`
+	Amount      string `db:"amount"`
+	Payload     []byte `db:"payload"`
+	BlockNumber int64  `db:"block_number"`
 }
 
 // Receipt represents a transaction receipt

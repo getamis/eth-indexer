@@ -17,44 +17,62 @@
 package transaction
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/getamis/eth-indexer/model"
-	"github.com/jinzhu/gorm"
+	. "github.com/getamis/eth-indexer/store/sqldb"
 )
 
 //go:generate mockery -name Store
 type Store interface {
-	Insert(data *model.Transaction) error
-	Delete(from, to int64) (err error)
-	FindTransaction(hash []byte) (result *model.Transaction, err error)
-	FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error)
+	Insert(ctx context.Context, data *model.Transaction) error
+	Delete(ctx context.Context, from, to int64) (err error)
+	FindTransaction(ctx context.Context, hash []byte) (result *model.Transaction, err error)
+	FindTransactionsByBlockHash(ctx context.Context, blockHash []byte) (result []*model.Transaction, err error)
 }
+
+const (
+	insertSQL                     = "INSERT INTO transactions (`hash`, block_hash, `from`, `to`, nonce, gas_price, gas_limit, amount, payload, block_number) VALUES (X'%s', X'%s', X'%s', X'%s', %d, %d, %d, '%s', X'%s', %d)"
+	deleteSQL                     = "DELETE FROM transactions WHERE block_number >= %d AND block_number <= %d"
+	findTransactionSQL            = "SELECT * FROM transactions WHERE `hash` = X'%s'"
+	findTransactionByBlockHashSQL = "SELECT * FROM transactions WHERE `block_hash` = X'%s'"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB) Store {
+func NewWithDB(db DbOrTx) Store {
 	return &store{
 		db: db,
 	}
 }
 
-func (t *store) Insert(data *model.Transaction) error {
-	return t.db.Create(data).Error
+func (t *store) Insert(ctx context.Context, data *model.Transaction) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertSQL, Hex(data.Hash), Hex(data.BlockHash), Hex(data.From), Hex(data.To), data.Nonce, data.GasPrice, data.GasLimit, data.Amount, Hex(data.Payload), data.BlockNumber))
+	return err
 }
 
-func (t *store) Delete(from, to int64) (err error) {
-	err = t.db.Delete(model.Transaction{}, "block_number >= ? AND block_number <= ?", from, to).Error
-	return
+func (t *store) Delete(ctx context.Context, from, to int64) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(deleteSQL, from, to))
+	return err
 }
 
-func (t *store) FindTransaction(hash []byte) (result *model.Transaction, err error) {
-	result = &model.Transaction{}
-	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
-	return
+func (t *store) FindTransaction(ctx context.Context, hash []byte) (*model.Transaction, error) {
+	result := &model.Transaction{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findTransactionSQL, Hex(hash)))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) FindTransactionsByBlockHash(blockHash []byte) (result []*model.Transaction, err error) {
-	err = t.db.Where("block_hash = ?", blockHash).Find(&result).Error
-	return
+func (t *store) FindTransactionsByBlockHash(ctx context.Context, blockHash []byte) ([]*model.Transaction, error) {
+	result := []*model.Transaction{}
+	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findTransactionByBlockHashSQL, Hex(blockHash)))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
