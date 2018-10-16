@@ -217,10 +217,8 @@ var _ = Describe("Database Test", func() {
 
 				By("Should be successful to get subscriptions with page 1", func() {
 					result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
-						Page:    1,
-						Limit:   1,
-						OrderBy: "created_at",
-						Order:   "asc",
+						Page:  1,
+						Limit: 1,
 					})
 					Expect(err).Should(Succeed())
 					Expect(total).Should(Equal(uint64(len(subs))))
@@ -231,10 +229,8 @@ var _ = Describe("Database Test", func() {
 
 				By("Should be successful to get subscriptions with page 2", func() {
 					result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
-						Page:    2,
-						Limit:   1,
-						OrderBy: "created_at",
-						Order:   "asc",
+						Page:  2,
+						Limit: 1,
 					})
 					Expect(err).Should(Succeed())
 					Expect(total).Should(Equal(uint64(len(subs))))
@@ -246,10 +242,8 @@ var _ = Describe("Database Test", func() {
 
 			It("should get empty subscriptions if group id doesn't exist", func() {
 				result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
-					Page:    1,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+					Page:  1,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(0)))
@@ -327,10 +321,8 @@ var _ = Describe("Database Test", func() {
 
 			By("Should be successful to get subscriptions with page 1", func() {
 				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
-					Page:    1,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+					Page:  1,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -341,10 +333,8 @@ var _ = Describe("Database Test", func() {
 
 			By("Should be successful to get subscriptions with page 2", func() {
 				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
-					Page:    2,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+					Page:  2,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -355,10 +345,8 @@ var _ = Describe("Database Test", func() {
 
 			By("Should be successful to get subscriptions with page 3", func() {
 				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
-					Page:    3,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+					Page:  3,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -368,10 +356,8 @@ var _ = Describe("Database Test", func() {
 
 		It("should get empty subscriptions", func() {
 			result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
-				Page:    1,
-				Limit:   1,
-				OrderBy: "created_at",
-				Order:   "asc",
+				Page:  1,
+				Limit: 1,
 			})
 			Expect(err).Should(Succeed())
 			Expect(total).Should(Equal(uint64(0)))

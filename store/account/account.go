@@ -52,22 +52,22 @@ type Store interface {
 }
 
 const (
-	insertERC20SQL                 = "INSERT INTO erc20 (block_number, address, total_supply, decimals, name) VALUES (%d, X'%s', '%s', %d, '%s')"
+	insertERC20SQL                 = "INSERT INTO `erc20` (`block_number`, `address`, `total_supply`, `decimals`, `name`) VALUES (%d, X'%s', '%s', %d, '%s')"
 	createERC20TableSQL            = "CREATE TABLE `%s`(`block_number` bigint(20) DEFAULT NULL, `address` varbinary(20) DEFAULT NULL, `balance` varchar(32) DEFAULT NULL, UNIQUE INDEX `idx_block_number_address` (`block_number`,`address`), INDEX `block_number` (`block_number`), INDEX `address` (`address`))"
 	createERC20TransferSQL         = "CREATE TABLE `%s` (`block_number` bigint(20) DEFAULT NULL,`tx_hash` varbinary(32) DEFAULT NULL, `from` varbinary(20) DEFAULT NULL, `to` varbinary(20) DEFAULT NULL, `value` varchar(32) DEFAULT NULL, INDEX `block_number` (`block_number`), INDEX `tx_hash` (`tx_hash`), INDEX `from` (`from`), INDEX `to` (`to`))"
-	batchUpdateERC20BlockNumberSQL = "UPDATE erc20 SET block_number = %d WHERE address IN (%s)"
-	findERC20SQL                   = "SELECT * FROM erc20 WHERE address = X'%s'"
-	listERC20SQL                   = "SELECT * FROM erc20"
-	listOldERC20SQL                = "SELECT * FROM erc20 WHERE block_number > 0"
-	listNewERC20SQL                = "SELECT * FROM erc20 WHERE block_number = 0"
-	insertAccountSQL               = "INSERT INTO `%s` (block_number, address, balance) VALUES (%d, X'%s', '%s')"
-	findAccountSQL                 = "SELECT * FROM `%s` WHERE address = X'%s' ORDER BY block_number DESC"
-	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE address = X'%s' AND block_number <= %d ORDER BY block_number DESC"
-	deleteAccountsSQL              = "DELETE FROM `%s` WHERE block_number >= %d AND block_number <= %d"
-	insertTransferSQL              = "INSERT INTO `%s` (block_number, tx_hash, `from`, `to`, value) VALUES (%d, X'%s', X'%s', X'%s', '%s')"
-	findTransferSQL                = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') ORDER BY block_number DESC"
-	findTransferByNumberSQL        = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') AND block_number <= %d ORDER BY block_number DESC"
-	deleteTransferSQL              = "DELETE FROM `%s` WHERE block_number >= %d AND block_number <= %d"
+	batchUpdateERC20BlockNumberSQL = "UPDATE `erc20` SET `block_number` = %d WHERE `address` IN (%s)"
+	findERC20SQL                   = "SELECT * FROM `erc20` WHERE `address` = X'%s'"
+	listERC20SQL                   = "SELECT * FROM `erc20`"
+	listOldERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` > 0"
+	listNewERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` = 0"
+	insertAccountSQL               = "INSERT INTO `%s` (`block_number`, `address`, `balance`) VALUES (%d, X'%s', '%s')"
+	findAccountSQL                 = "SELECT * FROM `%s` WHERE `address` = X'%s' ORDER BY `block_number` DESC"
+	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE `address` = X'%s' AND `block_number` <= %d ORDER BY `block_number` DESC"
+	deleteAccountsSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
+	insertTransferSQL              = "INSERT INTO `%s` (`block_number`, `tx_hash`, `from`, `to`, `value`) VALUES (%d, X'%s', X'%s', X'%s', '%s')"
+	findTransferSQL                = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') ORDER BY `block_number` DESC"
+	findTransferByNumberSQL        = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') AND `block_number` <= %d ORDER BY `block_number` DESC"
+	deleteTransferSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
 )
 
 type store struct {

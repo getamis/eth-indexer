@@ -33,8 +33,8 @@ type Store interface {
 }
 
 const (
-	insertSQL = "INSERT INTO reorgs (`from`, from_hash, `to`, to_hash, created_at) VALUES (%d, X'%s', %d, X'%s', '%s')"
-	listSQL   = "SELECT * FROM reorgs"
+	insertSQL = "INSERT INTO `reorgs` (`from`, `from_hash`, `to`, `to_hash`, `created_at`) VALUES (%d, X'%s', %d, X'%s', '%s')"
+	listSQL   = "SELECT * FROM `reorgs`"
 )
 
 type store struct {

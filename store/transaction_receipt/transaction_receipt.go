@@ -34,12 +34,12 @@ type Store interface {
 }
 
 const (
-	insertReceiptSQL = "INSERT INTO transaction_receipts (root, status, cumulative_gas_used, bloom, tx_hash, contract_address, gas_used, block_number) VALUES (X'%s', %d, %d, X'%s', X'%s', X'%s', %d, %d)"
-	insertLogSQL     = "INSERT INTO receipt_logs (tx_hash, block_number, contract_address, event_name, topic1, topic2, topic3, data) VALUES (X'%s', %d, X'%s', X'%s', X'%s', X'%s', X'%s', X'%s')"
-	deleteReceiptSQL = "DELETE FROM transaction_receipts WHERE block_number >= %d AND block_number <= %d"
-	deleteLogSQL     = "DELETE FROM receipt_logs WHERE block_number >= %d AND block_number <= %d"
-	findReceiptSQL   = "SELECT * FROM transaction_receipts WHERE `tx_hash` = X'%s'"
-	findLogSQL       = "SELECT * FROM receipt_logs WHERE `tx_hash` = X'%s'"
+	insertReceiptSQL = "INSERT INTO `transaction_receipts` (`root`, `status`, `cumulative_gas_used`, `bloom`, `tx_hash`, `contract_address`, `gas_used`, `block_number`) VALUES (X'%s', %d, %d, X'%s', X'%s', X'%s', %d, %d)"
+	insertLogSQL     = "INSERT INTO `receipt_logs` (`tx_hash`, `block_number`, `contract_address`, `event_name`, `topic1`, `topic2`, `topic3`, `data`) VALUES (X'%s', %d, X'%s', X'%s', X'%s', X'%s', X'%s', X'%s')"
+	deleteReceiptSQL = "DELETE FROM `transaction_receipts` WHERE `block_number` >= %d AND `block_number` <= %d"
+	deleteLogSQL     = "DELETE FROM `receipt_logs` WHERE `block_number` >= %d AND `block_number` <= %d"
+	findReceiptSQL   = "SELECT * FROM `transaction_receipts` WHERE `tx_hash` = X'%s'"
+	findLogSQL       = "SELECT * FROM `receipt_logs` WHERE `tx_hash` = X'%s'"
 )
 
 type store struct {

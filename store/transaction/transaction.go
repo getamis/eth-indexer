@@ -33,10 +33,10 @@ type Store interface {
 }
 
 const (
-	insertSQL                     = "INSERT INTO transactions (`hash`, block_hash, `from`, `to`, nonce, gas_price, gas_limit, amount, payload, block_number) VALUES (X'%s', X'%s', X'%s', X'%s', %d, %d, %d, '%s', X'%s', %d)"
-	deleteSQL                     = "DELETE FROM transactions WHERE block_number >= %d AND block_number <= %d"
-	findTransactionSQL            = "SELECT * FROM transactions WHERE `hash` = X'%s'"
-	findTransactionByBlockHashSQL = "SELECT * FROM transactions WHERE `block_hash` = X'%s'"
+	insertSQL                     = "INSERT INTO `transactions` (`hash`, `block_hash`, `from`, `to`, `nonce`, `gas_price`, `gas_limit`, `amount`, `payload`, `block_number`) VALUES (X'%s', X'%s', X'%s', X'%s', %d, %d, %d, '%s', X'%s', %d)"
+	deleteSQL                     = "DELETE FROM `transactions` WHERE `block_number` >= %d AND `block_number` <= %d"
+	findTransactionSQL            = "SELECT * FROM `transactions` WHERE `hash` = X'%s'"
+	findTransactionByBlockHashSQL = "SELECT * FROM `transactions` WHERE `block_hash` = X'%s'"
 )
 
 type store struct {

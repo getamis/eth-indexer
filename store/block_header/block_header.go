@@ -38,13 +38,13 @@ type Store interface {
 }
 
 const (
-	insertTdSQL          = "INSERT INTO total_difficulty (block, hash, td) VALUES (%d, X'%s', '%s')"
-	insertSQL            = "INSERT INTO block_headers (hash, parent_hash, uncle_hash, coinbase, root, tx_hash, receipt_hash, difficulty, number, gas_limit, gas_used, time, extra_data, mix_digest, nonce, miner_reward, uncles_inclusion_reward, txs_fee, uncle1_reward, uncle1_coinbase, uncle1_hash, uncle2_reward, uncle2_coinbase, uncle2_hash, created_at) VALUES (X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', %d, %d, %d, %d, %d, X'%s', X'%s', X'%s', '%s', '%s', '%s', '%s', X'%s', X'%s', '%s', X'%s', X'%s', '%s')"
-	deleteSQL            = "DELETE FROM block_headers WHERE number >= %d AND number <= %d"
-	findTdSQL            = "SELECT * FROM total_difficulty WHERE hash = X'%s'"
-	findBlockByNumberSQL = "SELECT * FROM block_headers WHERE number = %d"
-	findBlockByHashSQL   = "SELECT * FROM block_headers WHERE hash = X'%s'"
-	findLatestBlockSQL   = "SELECT * FROM block_headers ORDER BY number DESC"
+	insertTdSQL          = "INSERT INTO `total_difficulty` (`block`, `hash`, `td`) VALUES (%d, X'%s', '%s')"
+	insertSQL            = "INSERT INTO `block_headers` (`hash`, `parent_hash`, `uncle_hash`, `coinbase`, `root`, `tx_hash`, `receipt_hash`, `difficulty`, `number`, `gas_limit`, `gas_used`, `time`, `extra_data`, `mix_digest`, `nonce`, `miner_reward`, `uncles_inclusion_reward`, `txs_fee`, `uncle1_reward`, `uncle1_coinbase`, `uncle1_hash`, `uncle2_reward`, `uncle2_coinbase`, `uncle2_hash`, `created_at`) VALUES (X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', %d, %d, %d, %d, %d, X'%s', X'%s', X'%s', '%s', '%s', '%s', '%s', X'%s', X'%s', '%s', X'%s', X'%s', '%s')"
+	deleteSQL            = "DELETE FROM `block_headers` WHERE `number` >= %d AND `number` <= %d"
+	findTdSQL            = "SELECT * FROM `total_difficulty` WHERE `hash` = X'%s'"
+	findBlockByNumberSQL = "SELECT * FROM `block_headers` WHERE `number` = %d"
+	findBlockByHashSQL   = "SELECT * FROM `block_headers` WHERE `hash` = X'%s'"
+	findLatestBlockSQL   = "SELECT * FROM `block_headers` ORDER BY `number` DESC"
 )
 
 type store struct {

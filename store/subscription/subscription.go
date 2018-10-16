@@ -52,20 +52,20 @@ type Store interface {
 }
 
 const (
-	insertSQL                 = "INSERT INTO subscriptions (block_number, `group`, address, created_at, updated_at) VALUES (%d, %d, X'%s', '%s', '%s')"
-	batchUpdateBlockNumberSQL = "UPDATE subscriptions SET block_number = %d WHERE address IN (%s)"
-	findSQL                   = "SELECT * FROM subscriptions WHERE block_number = %d"
+	insertSQL                 = "INSERT INTO `subscriptions` (`block_number`, `group`, `address`, `created_at`, `updated_at`) VALUES (%d, %d, X'%s', '%s', '%s')"
+	batchUpdateBlockNumberSQL = "UPDATE `subscriptions` SET `block_number` = %d WHERE `address` IN (%s)"
+	findSQL                   = "SELECT * FROM `subscriptions` WHERE `block_number` = %d"
 
-	findOldSubscriptionsSQL    = "SELECT * FROM subscriptions WHERE address IN (%s) AND block_number > 0"
-	findByGroupCntSQL          = "SELECT count(*) FROM subscriptions WHERE `group` = %d"
-	findByGroupLmtSQL          = "SELECT * FROM subscriptions WHERE `group` = %d LIMIT %d, %d"
-	listOldSubscriptionsCntSQL = "SELECT count(*) FROM subscriptions WHERE block_number > 0"
-	listOldSubscriptionsLmtSQL = "SELECT * FROM subscriptions WHERE block_number > 0 LIMIT %d, %d"
+	findOldSubscriptionsSQL    = "SELECT * FROM `subscriptions` WHERE `address` IN (%s) AND `block_number` > 0"
+	findByGroupCntSQL          = "SELECT COUNT(*) FROM `subscriptions` WHERE `group` = %d"
+	findByGroupLmtSQL          = "SELECT * FROM `subscriptions` WHERE `group` = %d LIMIT %d, %d"
+	listOldSubscriptionsCntSQL = "SELECT COUNT(*) FROM `subscriptions` WHERE `block_number` > 0"
+	listOldSubscriptionsLmtSQL = "SELECT * FROM `subscriptions` WHERE `block_number` > 0 LIMIT %d, %d"
 
-	insertTotalBalanceSQL = "INSERT INTO total_balances (token, block_number, `group`, balance, tx_fee, miner_reward, uncles_reward) VALUES (X'%s', %d, %d, '%s', '%s', '%s', '%s')"
-	findTotalBalanceSQL   = "SELECT * FROM total_balances WHERE block_number <= %d AND token = X'%s' AND `group` = %d ORDER BY block_number DESC"
-	resetSupscriptionsSQL = "UPDATE subscriptions SET block_number = 0 WHERE block_number >= %d AND block_number <= %d"
-	resetTotalBalanceSQL  = "DELETE FROM total_balances WHERE block_number >= %d AND block_number <= %d"
+	insertTotalBalanceSQL = "INSERT INTO `total_balances` (`token`, `block_number`, `group`, `balance`, `tx_fee`, `miner_reward`, `uncles_reward`) VALUES (X'%s', %d, %d, '%s', '%s', '%s', '%s')"
+	findTotalBalanceSQL   = "SELECT * FROM `total_balances` WHERE `block_number` <= %d AND `token` = X'%s' AND `group` = %d ORDER BY `block_number` DESC"
+	resetSupscriptionsSQL = "UPDATE `subscriptions` SET `block_number` = 0 WHERE `block_number` >= %d AND `block_number` <= %d"
+	resetTotalBalanceSQL  = "DELETE FROM `total_balances` WHERE `block_number` >= %d AND `block_number` <= %d"
 )
 
 type store struct {
