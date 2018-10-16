@@ -419,7 +419,7 @@ var _ = Describe("Account Database Test", func() {
 		})
 	})
 
-	Context("InsertTransfer(), DeleteTransfer(), & FindTransfer", func() {
+	Context("InsertTransfer(), DeleteTransfer()", func() {
 		It("deletes the right eth transfer", func() {
 			store := NewWithDB(db)
 
@@ -460,27 +460,6 @@ var _ = Describe("Account Database Test", func() {
 			}
 			err = store.InsertTransfer(ctx, event3)
 			Expect(err).Should(Succeed())
-
-			for _, event := range []*model.Transfer{event1, event2, event3} {
-				e, err := store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(event.From), event.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(e).Should(Equal(event))
-				e, err = store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(event.To), event.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(e).Should(Equal(event))
-			}
-			e, err := store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(addr1))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event1))
-			e, err = store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(addr2))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event2))
-			e, err = store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(addr3))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event3))
-			e, err = store.FindTransfer(ctx, model.ETHAddress, gethCommon.BytesToAddress(addr4))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event3))
 
 			// FindAllTransfers
 			events, err := store.FindAllTransfers(ctx, model.ETHAddress, gethCommon.BytesToAddress(addr1))
@@ -551,27 +530,6 @@ var _ = Describe("Account Database Test", func() {
 			}
 			err = store.InsertTransfer(ctx, event3)
 			Expect(err).Should(Succeed())
-
-			for _, event := range []*model.Transfer{event1, event2, event3} {
-				e, err := store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(event.From), event.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(e).Should(Equal(event))
-				e, err = store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(event.To), event.BlockNumber)
-				Expect(err).Should(Succeed())
-				Expect(e).Should(Equal(event))
-			}
-			e, err := store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(addr1))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event1))
-			e, err = store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(addr2))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event2))
-			e, err = store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(addr3))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event3))
-			e, err = store.FindTransfer(ctx, addr, gethCommon.BytesToAddress(addr4))
-			Expect(err).Should(Succeed())
-			Expect(e).Should(Equal(event3))
 
 			// FindAllTransfers
 			events, err := store.FindAllTransfers(ctx, addr, gethCommon.BytesToAddress(addr1))

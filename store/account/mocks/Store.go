@@ -152,36 +152,6 @@ func (_m *Store) FindLatestAccounts(ctx context.Context, contractAddress common.
 	return r0, r1
 }
 
-// FindTransfer provides a mock function with given fields: ctx, contractAddress, address, blockNr
-func (_m *Store) FindTransfer(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Transfer, error) {
-	_va := make([]interface{}, len(blockNr))
-	for _i := range blockNr {
-		_va[_i] = blockNr[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, contractAddress, address)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *model.Transfer
-	if rf, ok := ret.Get(0).(func(context.Context, common.Address, common.Address, ...int64) *model.Transfer); ok {
-		r0 = rf(ctx, contractAddress, address, blockNr...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.Transfer)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, common.Address, common.Address, ...int64) error); ok {
-		r1 = rf(ctx, contractAddress, address, blockNr...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // InsertAccount provides a mock function with given fields: ctx, _a1
 func (_m *Store) InsertAccount(ctx context.Context, _a1 *model.Account) error {
 	ret := _m.Called(ctx, _a1)

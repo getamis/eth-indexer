@@ -148,6 +148,31 @@ func connectToDatabase(driver, connectionString string, o *database.Options) (sq
 	}
 }
 
+// NewTx news a db transaction from db instance or returns the existing one
+func NewTx(ctx context.Context, dbOrTx DbOrTx) (*sqlx.Tx, func(error), error) {
+	var dbTx *sqlx.Tx
+	db, ok := dbOrTx.(*sqlx.DB)
+	if ok {
+		dbTx, err := db.BeginTxx(ctx, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		return dbTx, func(err error) {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}, nil
+	} else {
+		dbTx, ok = dbOrTx.(*sqlx.Tx)
+		if !ok {
+			return nil, nil, errors.New("not in a transaction")
+		}
+		return dbTx, func(error) {}, nil
+	}
+}
+
 func ToTimeStr(now time.Time) string {
 	return now.Format("2006-01-02 15:04:05")
 }

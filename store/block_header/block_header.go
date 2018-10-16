@@ -44,7 +44,7 @@ const (
 	findTdSQL            = "SELECT * FROM `total_difficulty` WHERE `hash` = X'%s'"
 	findBlockByNumberSQL = "SELECT * FROM `block_headers` WHERE `number` = %d"
 	findBlockByHashSQL   = "SELECT * FROM `block_headers` WHERE `hash` = X'%s'"
-	findLatestBlockSQL   = "SELECT * FROM `block_headers` ORDER BY `number` DESC"
+	findLatestBlockSQL   = "SELECT * FROM `block_headers` ORDER BY `number` DESC LIMIT 1"
 )
 
 type store struct {
