@@ -202,12 +202,11 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:1adeb8407aa91e0c8c4ca359b18c97a20aaabfc174d07e77d961884bb1befbe9"
+  digest = "1:0c2d76fef050e66624c2182c3400cacef6309dd723dcbf5bae7e67b6e5754cbe"
   name = "github.com/getamis/sirius"
   packages = [
     "crypto/rand",
     "database",
-    "database/gorm",
     "database/mysql",
     "log",
     "test",
@@ -373,22 +372,6 @@
   pruneopts = "NUT"
   revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
   version = "v1.0.1"
-
-[[projects]]
-  digest = "1:f87ded73ee4cfbe66b6ac54ae66768326b5df6bc0c165bae6c98abd33fea35cf"
-  name = "github.com/jinzhu/gorm"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "6ed508ec6a4ecb3531899a69cbc746ccf65a4166"
-  version = "v1.9.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:802f75230c29108e787d40679f9bf5da1a5673eaf5c10eb89afd993e18972909"
-  name = "github.com/jinzhu/inflection"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "04140366298a54a039076d798123ffa108fff46c"
 
 [[projects]]
   branch = "master"
@@ -847,14 +830,12 @@
     "github.com/ethereum/go-ethereum/params",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/getamis/sirius/database",
-    "github.com/getamis/sirius/database/gorm",
     "github.com/getamis/sirius/database/mysql",
     "github.com/getamis/sirius/log",
     "github.com/getamis/sirius/test",
     "github.com/go-sql-driver/mysql",
     "github.com/hashicorp/golang-lru",
     "github.com/hashicorp/vault/api",
-    "github.com/jinzhu/gorm",
     "github.com/jmoiron/sqlx",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
