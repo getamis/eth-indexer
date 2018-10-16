@@ -13,11 +13,11 @@ type Balancer struct {
 }
 
 // BalanceOf provides a mock function with given fields: _a0, _a1, _a2
-func (_m *Balancer) BalanceOf(_a0 context.Context, _a1 *big.Int, _a2 map[common.Address]map[common.Address]*big.Int) error {
+func (_m *Balancer) BalanceOf(_a0 context.Context, _a1 common.Hash, _a2 map[common.Address]map[common.Address]*big.Int) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *big.Int, map[common.Address]map[common.Address]*big.Int) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash, map[common.Address]map[common.Address]*big.Int) error); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)

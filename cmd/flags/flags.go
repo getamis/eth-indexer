@@ -22,18 +22,17 @@ const (
 	Port = "port"
 
 	// flag names for ethereum service
-	Eth         = "eth"
-	EthProtocol = "eth.protocol"
-	EthHost     = "eth.host"
-	EthPort     = "eth.port"
+	Eth = "eth"
 
 	// flag names for database
-	DbDriver   = "db.driver"
-	DbHost     = "db.host"
-	DbPort     = "db.port"
-	DbName     = "db.name"
-	DbUser     = "db.user"
-	DbPassword = "db.password"
+	DbHost          = "indexer.db.cred.host"
+	DbPort          = "indexer.db.cred.port"
+	DbUser          = "indexer.db.cred.user"
+	DbPassword      = "indexer.db.cred.password"
+	DbCredVaultPath = "indexer.db.cred.vault.path"
+
+	DbDriver = "indexer.db.config.driver"
+	DbName   = "indexer.db.config.name"
 
 	// flags for syncing
 	SyncFromBlock = "sync.fromBlock"
@@ -52,4 +51,8 @@ const (
 
 	// flags for enable test chain config
 	Chain = "chain"
+
+	// flag names for vault
+	VaultHost   = "vault.host"
+	VaultCAPath = "vault.ca.path"
 )

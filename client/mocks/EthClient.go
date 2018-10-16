@@ -15,35 +15,12 @@ type EthClient struct {
 	mock.Mock
 }
 
-// BalanceAt provides a mock function with given fields: ctx, account, blockNumber
-func (_m *EthClient) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-	ret := _m.Called(ctx, account, blockNumber)
-
-	var r0 *big.Int
-	if rf, ok := ret.Get(0).(func(context.Context, common.Address, *big.Int) *big.Int); ok {
-		r0 = rf(ctx, account, blockNumber)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*big.Int)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, common.Address, *big.Int) error); ok {
-		r1 = rf(ctx, account, blockNumber)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // BalanceOf provides a mock function with given fields: _a0, _a1, _a2
-func (_m *EthClient) BalanceOf(_a0 context.Context, _a1 *big.Int, _a2 map[common.Address]map[common.Address]*big.Int) error {
+func (_m *EthClient) BalanceOf(_a0 context.Context, _a1 common.Hash, _a2 map[common.Address]map[common.Address]*big.Int) error {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *big.Int, map[common.Address]map[common.Address]*big.Int) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, common.Hash, map[common.Address]map[common.Address]*big.Int) error); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)
@@ -52,13 +29,13 @@ func (_m *EthClient) BalanceOf(_a0 context.Context, _a1 *big.Int, _a2 map[common
 	return r0
 }
 
-// BatchBalanceAt provides a mock function with given fields: ctx, accounts, blockNumber
-func (_m *EthClient) BatchBalanceAt(ctx context.Context, accounts []common.Address, blockNumber *big.Int) ([]*big.Int, error) {
-	ret := _m.Called(ctx, accounts, blockNumber)
+// BatchBalanceAt provides a mock function with given fields: ctx, accounts, blockHash
+func (_m *EthClient) BatchBalanceAt(ctx context.Context, accounts []common.Address, blockHash common.Hash) ([]*big.Int, error) {
+	ret := _m.Called(ctx, accounts, blockHash)
 
 	var r0 []*big.Int
-	if rf, ok := ret.Get(0).(func(context.Context, []common.Address, *big.Int) []*big.Int); ok {
-		r0 = rf(ctx, accounts, blockNumber)
+	if rf, ok := ret.Get(0).(func(context.Context, []common.Address, common.Hash) []*big.Int); ok {
+		r0 = rf(ctx, accounts, blockHash)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*big.Int)
@@ -66,8 +43,8 @@ func (_m *EthClient) BatchBalanceAt(ctx context.Context, accounts []common.Addre
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []common.Address, *big.Int) error); ok {
-		r1 = rf(ctx, accounts, blockNumber)
+	if rf, ok := ret.Get(1).(func(context.Context, []common.Address, common.Hash) error); ok {
+		r1 = rf(ctx, accounts, blockHash)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -75,13 +52,13 @@ func (_m *EthClient) BatchBalanceAt(ctx context.Context, accounts []common.Addre
 	return r0, r1
 }
 
-// BatchCallContract provides a mock function with given fields: ctx, msgs, blockNumber
-func (_m *EthClient) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockNumber *big.Int) ([][]byte, error) {
-	ret := _m.Called(ctx, msgs, blockNumber)
+// BatchCallContract provides a mock function with given fields: ctx, msgs, blockHash
+func (_m *EthClient) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg, blockHash common.Hash) ([][]byte, error) {
+	ret := _m.Called(ctx, msgs, blockHash)
 
 	var r0 [][]byte
-	if rf, ok := ret.Get(0).(func(context.Context, []*ethereum.CallMsg, *big.Int) [][]byte); ok {
-		r0 = rf(ctx, msgs, blockNumber)
+	if rf, ok := ret.Get(0).(func(context.Context, []*ethereum.CallMsg, common.Hash) [][]byte); ok {
+		r0 = rf(ctx, msgs, blockHash)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([][]byte)
@@ -89,8 +66,8 @@ func (_m *EthClient) BatchCallContract(ctx context.Context, msgs []*ethereum.Cal
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, []*ethereum.CallMsg, *big.Int) error); ok {
-		r1 = rf(ctx, msgs, blockNumber)
+	if rf, ok := ret.Get(1).(func(context.Context, []*ethereum.CallMsg, common.Hash) error); ok {
+		r1 = rf(ctx, msgs, blockHash)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -144,55 +121,9 @@ func (_m *EthClient) BlockByNumber(ctx context.Context, number *big.Int) (*types
 	return r0, r1
 }
 
-// CallContract provides a mock function with given fields: ctx, msg, blockNumber
-func (_m *EthClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	ret := _m.Called(ctx, msg, blockNumber)
-
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(context.Context, ethereum.CallMsg, *big.Int) []byte); ok {
-		r0 = rf(ctx, msg, blockNumber)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ethereum.CallMsg, *big.Int) error); ok {
-		r1 = rf(ctx, msg, blockNumber)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // Close provides a mock function with given fields:
 func (_m *EthClient) Close() {
 	_m.Called()
-}
-
-// CodeAt provides a mock function with given fields: ctx, account, blockNumber
-func (_m *EthClient) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
-	ret := _m.Called(ctx, account, blockNumber)
-
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(context.Context, common.Address, *big.Int) []byte); ok {
-		r0 = rf(ctx, account, blockNumber)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, common.Address, *big.Int) error); ok {
-		r1 = rf(ctx, account, blockNumber)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
 
 // GetBlockReceipts provides a mock function with given fields: ctx, hash
@@ -338,29 +269,6 @@ func (_m *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*
 	}
 
 	return r0, r1, r2
-}
-
-// TransactionReceipt provides a mock function with given fields: ctx, txHash
-func (_m *EthClient) TransactionReceipt(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
-	ret := _m.Called(ctx, txHash)
-
-	var r0 *types.Receipt
-	if rf, ok := ret.Get(0).(func(context.Context, common.Hash) *types.Receipt); ok {
-		r0 = rf(ctx, txHash)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Receipt)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, common.Hash) error); ok {
-		r1 = rf(ctx, txHash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
 }
 
 // UncleByBlockHashAndPosition provides a mock function with given fields: ctx, hash, position

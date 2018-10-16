@@ -18,7 +18,7 @@ RUN apt-get update && \
                        --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-#Cache bundle install
+# Cache bundle install
 WORKDIR /tmp
 ADD ./Gemfile Gemfile
 ADD ./Gemfile.lock Gemfile.lock
@@ -26,3 +26,10 @@ RUN bundle install
 
 ADD ./Rakefile Rakefile
 ADD ./db db
+
+RUN chmod -R 777 Rakefile && chmod -R 777 db
+
+RUN addgroup --system --gid 699 app
+RUN adduser --system --uid 699 --gid 699 --no-create-home --disabled-login app
+
+USER app

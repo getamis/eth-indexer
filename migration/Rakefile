@@ -5,6 +5,28 @@ $:.unshift lib unless $:.include?(lib)
 
 require "standalone_migrations"
 require "zlib"
+require "vault"
+
+StandaloneMigrations::Configurator.environments_config do |env|
+  env.on "customized" do |customized|
+    if (ENV['VAULT_ADDR'] && ENV['VAULT_TOKEN'] && ENV['DB_CRED_VAULT_PATH'])
+      puts "Get db config from vault"
+      creds = Vault.logical.read(ENV['DB_CRED_VAULT_PATH']).data
+      {
+        "adapter"  => customized["adapter"],
+        "encoding" => customized["encoding"],
+        "database" => customized["database"],
+        "host"     => customized["host"],
+        "port"     => customized["port"],
+        "username" => creds[:"username"],
+        "password" => creds[:"password"]
+      }
+    else
+      nil
+    end
+  end
+end
+
 StandaloneMigrations::Tasks.load_tasks
 
 # and that's it!

@@ -23,6 +23,7 @@ import (
 	"github.com/getamis/sirius/database"
 	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
+	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/jinzhu/gorm"
 )
 
@@ -38,4 +39,24 @@ func NewDatabase() (*gorm.DB, error) {
 			mysql.UserInfo(dbUser, dbPassword),
 		),
 	)
+}
+
+func MustNewVaultClient() *vaultApi.Client {
+	tlsConfig := &vaultApi.TLSConfig{
+		CACert:   vaultCAPath,
+		Insecure: false,
+	}
+
+	config := vaultApi.DefaultConfig()
+	config.Address = fmt.Sprintf("https://%s", vaultHost)
+	err := config.ConfigureTLS(tlsConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	client, err := vaultApi.NewClient(config)
+	if err != nil {
+		panic(err)
+	}
+	return client
 }
