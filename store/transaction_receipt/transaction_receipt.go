@@ -18,12 +18,10 @@ package transaction_receipt
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/getamis/eth-indexer/model"
 	. "github.com/getamis/eth-indexer/store/sqldb"
-	"github.com/jmoiron/sqlx"
 )
 
 //go:generate mockery -name Store
@@ -54,26 +52,8 @@ func NewWithDB(db DbOrTx) Store {
 
 func (r *store) Insert(ctx context.Context, data *model.Receipt) (err error) {
 	// Ensure we are in a db transaction
-	var dbTx *sqlx.Tx
-	db, ok := r.db.(*sqlx.DB)
-	if ok {
-		dbTx, err = db.BeginTxx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err != nil {
-				dbTx.Rollback()
-				return
-			}
-			err = dbTx.Commit()
-		}()
-	} else {
-		dbTx, ok = r.db.(*sqlx.Tx)
-		if !ok {
-			return errors.New("not in a transaction")
-		}
-	}
+	dbTx, deferFunc, err := NewTx(ctx, r.db)
+	defer deferFunc(err)
 
 	// Insert receipt
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(insertReceiptSQL, Hex(data.Root), data.Status, data.CumulativeGasUsed, Hex(data.Bloom), Hex(data.TxHash), Hex(data.ContractAddress), data.GasUsed, data.BlockNumber))
@@ -92,26 +72,8 @@ func (r *store) Insert(ctx context.Context, data *model.Receipt) (err error) {
 
 func (r *store) Delete(ctx context.Context, from, to int64) (err error) {
 	// Ensure we are in a db transaction
-	var dbTx *sqlx.Tx
-	db, ok := r.db.(*sqlx.DB)
-	if ok {
-		dbTx, err = db.BeginTxx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err != nil {
-				dbTx.Rollback()
-				return
-			}
-			err = dbTx.Commit()
-		}()
-	} else {
-		dbTx, ok = r.db.(*sqlx.Tx)
-		if !ok {
-			return errors.New("not in a transaction")
-		}
-	}
+	dbTx, deferFunc, err := NewTx(ctx, r.db)
+	defer deferFunc(err)
 
 	// Delete receipt
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(deleteReceiptSQL, from, to))
@@ -128,26 +90,8 @@ func (r *store) Delete(ctx context.Context, from, to int64) (err error) {
 
 func (r *store) FindReceipt(ctx context.Context, hash []byte) (result *model.Receipt, err error) {
 	// Ensure we are in a db transaction
-	var dbTx *sqlx.Tx
-	db, ok := r.db.(*sqlx.DB)
-	if ok {
-		dbTx, err = db.BeginTxx(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if err != nil {
-				dbTx.Rollback()
-				return
-			}
-			err = dbTx.Commit()
-		}()
-	} else {
-		dbTx, ok = r.db.(*sqlx.Tx)
-		if !ok {
-			return nil, errors.New("not in a transaction")
-		}
-	}
+	dbTx, deferFunc, err := NewTx(ctx, r.db)
+	defer deferFunc(err)
 
 	// Find receipt
 	receipt := &model.Receipt{}

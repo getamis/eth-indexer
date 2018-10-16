@@ -46,7 +46,6 @@ type Store interface {
 
 	// Transfer events
 	InsertTransfer(ctx context.Context, event *model.Transfer) error
-	FindTransfer(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Transfer, err error)
 	FindAllTransfers(ctx context.Context, contractAddress common.Address, address common.Address) (result []*model.Transfer, err error)
 	DeleteTransfer(ctx context.Context, contractAddress common.Address, from, to int64) error
 }
@@ -61,12 +60,11 @@ const (
 	listOldERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` > 0"
 	listNewERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` = 0"
 	insertAccountSQL               = "INSERT INTO `%s` (`block_number`, `address`, `balance`) VALUES (%d, X'%s', '%s')"
-	findAccountSQL                 = "SELECT * FROM `%s` WHERE `address` = X'%s' ORDER BY `block_number` DESC"
-	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE `address` = X'%s' AND `block_number` <= %d ORDER BY `block_number` DESC"
+	findAccountSQL                 = "SELECT * FROM `%s` WHERE `address` = X'%s' ORDER BY `block_number` DESC LIMIT 1"
+	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE `address` = X'%s' AND `block_number` <= %d ORDER BY `block_number` DESC LIMIT 1"
 	deleteAccountsSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
 	insertTransferSQL              = "INSERT INTO `%s` (`block_number`, `tx_hash`, `from`, `to`, `value`) VALUES (%d, X'%s', X'%s', X'%s', '%s')"
-	findTransferSQL                = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') ORDER BY `block_number` DESC"
-	findTransferByNumberSQL        = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') AND `block_number` <= %d ORDER BY `block_number` DESC"
+	findAllTransferSQL             = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') ORDER BY `block_number` DESC"
 	deleteTransferSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
 )
 
@@ -222,29 +220,13 @@ func (t *store) InsertTransfer(ctx context.Context, event *model.Transfer) error
 	return err
 }
 
-func (t *store) FindTransfer(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (*model.Transfer, error) {
-	result := &model.Transfer{
-		Address: contractAddress.Bytes(),
-	}
-	var err error
-	if len(blockNr) == 0 {
-		err = t.db.GetContext(ctx, result, fmt.Sprintf(findTransferSQL, result.TableName(), Hex(address.Bytes()), Hex(address.Bytes())))
-	} else {
-		err = t.db.GetContext(ctx, result, fmt.Sprintf(findTransferByNumberSQL, result.TableName(), Hex(address.Bytes()), Hex(address.Bytes()), blockNr[0]))
-	}
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func (t *store) FindAllTransfers(ctx context.Context, contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
 	tableName := model.Transfer{
 		Address: contractAddress.Bytes(),
 	}.TableName()
 
 	result := []*model.Transfer{}
-	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findTransferSQL, tableName, Hex(address.Bytes()), Hex(address.Bytes())))
+	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findAllTransferSQL, tableName, Hex(address.Bytes()), Hex(address.Bytes())))
 	if err != nil {
 		return nil, err
 	}

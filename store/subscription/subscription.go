@@ -18,7 +18,6 @@ package subscription
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	idxCommon "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	. "github.com/getamis/eth-indexer/store/sqldb"
-	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -63,7 +61,7 @@ const (
 	listOldSubscriptionsLmtSQL = "SELECT * FROM `subscriptions` WHERE `block_number` > 0 LIMIT %d, %d"
 
 	insertTotalBalanceSQL = "INSERT INTO `total_balances` (`token`, `block_number`, `group`, `balance`, `tx_fee`, `miner_reward`, `uncles_reward`) VALUES (X'%s', %d, %d, '%s', '%s', '%s', '%s')"
-	findTotalBalanceSQL   = "SELECT * FROM `total_balances` WHERE `block_number` <= %d AND `token` = X'%s' AND `group` = %d ORDER BY `block_number` DESC"
+	findTotalBalanceSQL   = "SELECT * FROM `total_balances` WHERE `block_number` <= %d AND `token` = X'%s' AND `group` = %d ORDER BY `block_number` DESC LIMIT 1"
 	resetSupscriptionsSQL = "UPDATE `subscriptions` SET `block_number` = 0 WHERE `block_number` >= %d AND `block_number` <= %d"
 	resetTotalBalanceSQL  = "DELETE FROM `total_balances` WHERE `block_number` >= %d AND `block_number` <= %d"
 )
@@ -79,25 +77,8 @@ func NewWithDB(db DbOrTx) Store {
 }
 
 func (t *store) BatchInsert(ctx context.Context, subs []*model.Subscription) (duplicated []common.Address, err error) {
-	db, ok := t.db.(*sqlx.DB)
-	if !ok {
-		return nil, errors.New("already in a transaction")
-	}
-
-	dbTx, err := db.BeginTxx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			dbTx.Rollback()
-			return
-		}
-		err = dbTx.Commit()
-		if err != nil {
-			duplicated = nil
-		}
-	}()
+	dbTx, deferFunc, err := NewTx(ctx, t.db)
+	defer deferFunc(err)
 
 	nowStr := ToTimeStr(time.Now())
 	for _, sub := range subs {
@@ -159,26 +140,8 @@ func (t *store) FindTotalBalance(ctx context.Context, blockNumber int64, token c
 
 func (t *store) Reset(ctx context.Context, from, to int64) (err error) {
 	// Ensure we are in a db transaction
-	var dbTx *sqlx.Tx
-	db, ok := t.db.(*sqlx.DB)
-	if ok {
-		dbTx, err = db.BeginTxx(ctx, nil)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err != nil {
-				dbTx.Rollback()
-				return
-			}
-			err = dbTx.Commit()
-		}()
-	} else {
-		dbTx, ok = t.db.(*sqlx.Tx)
-		if !ok {
-			return errors.New("not in a transaction")
-		}
-	}
+	dbTx, deferFunc, err := NewTx(ctx, t.db)
+	defer deferFunc(err)
 
 	// Set the block number of subscription to 0
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(resetSupscriptionsSQL, from, to))

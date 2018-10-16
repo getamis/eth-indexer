@@ -18,7 +18,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -68,14 +67,14 @@ type manager struct {
 	headerStore
 	accountStore
 
-	db          DbOrTx
+	db          *sqlx.DB
 	chainConfig *params.ChainConfig
 	tokenList   map[gethCommon.Address]*model.ERC20
 	balancer    client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db DbOrTx, chainConfig *params.ChainConfig) Manager {
+func NewManager(db *sqlx.DB, chainConfig *params.ChainConfig) Manager {
 	return &manager{
 		db:           db,
 		headerStore:  block_header.NewWithDB(db, block_header.Cache()),
@@ -118,12 +117,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 		return common.ErrInconsistentStates
 	}
 
-	db, ok := m.db.(*sqlx.DB)
-	if !ok {
-		return errors.New("already in a transaction")
-	}
-
-	dbTx, err := db.BeginTxx(ctx, nil)
+	dbTx, err := m.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
