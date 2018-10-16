@@ -47,45 +47,40 @@ var (
 
 // Header represents the header of a block
 type Header struct {
-	ID          int64
-	Hash        []byte
-	ParentHash  []byte
-	UncleHash   []byte
-	Coinbase    []byte
-	Root        []byte
-	TxHash      []byte
-	ReceiptHash []byte
-	Difficulty  int64
-	Number      int64
-	GasLimit    int64
-	GasUsed     int64
-	Time        int64
-	ExtraData   []byte
-	MixDigest   []byte
-	Nonce       []byte
+	ID          int64  `db:"id"`
+	Hash        []byte `db:"hash"`
+	ParentHash  []byte `db:"parent_hash"`
+	UncleHash   []byte `db:"uncle_hash"`
+	Coinbase    []byte `db:"coinbase"`
+	Root        []byte `db:"root"`
+	TxHash      []byte `db:"tx_hash"`
+	ReceiptHash []byte `db:"receipt_hash"`
+	Difficulty  int64  `db:"difficulty"`
+	Number      int64  `db:"number"`
+	GasLimit    int64  `db:"gas_limit"`
+	GasUsed     int64  `db:"gas_used"`
+	Time        int64  `db:"time"`
+	ExtraData   []byte `db:"extra_data"`
+	MixDigest   []byte `db:"mix_digest"`
+	Nonce       []byte `db:"nonce"`
 	// MinerBaseReward plus UnclesInclusionReward plus TxsFee is MinerReward.
-	MinerReward           string
-	UnclesInclusionReward string
-	TxsFee                string
+	MinerReward           string `db:"miner_reward"`
+	UnclesInclusionReward string `db:"uncles_inclusion_reward"`
+	TxsFee                string `db:"txs_fee"`
 	// Total of uncles reward. At most 2.
-	Uncle1Reward   string
-	Uncle1Coinbase []byte
-	Uncle1Hash     []byte
-	Uncle2Reward   string
-	Uncle2Coinbase []byte
-	Uncle2Hash     []byte
+	Uncle1Reward   string `db:"uncle1_reward"`
+	Uncle1Coinbase []byte `db:"uncle1_coinbase"`
+	Uncle1Hash     []byte `db:"uncle1_hash"`
+	Uncle2Reward   string `db:"uncle2_reward"`
+	Uncle2Coinbase []byte `db:"uncle2_coinbase"`
+	Uncle2Hash     []byte `db:"uncle2_hash"`
 
 	// golang database/sql driver doesn't support uint64, so store the nonce by bytes in db
 	// for block header. (only block's nonce may go over int64 range)
 	// https://github.com/golang/go/issues/6113
 	// https://github.com/golang/go/issues/9373
 
-	CreatedAt *time.Time
-}
-
-// TableName returns the table name of this model
-func (h Header) TableName() string {
-	return "block_headers"
+	CreatedAt *time.Time `db:"created_at"`
 }
 
 // AddReward adds reward to header.
@@ -124,80 +119,60 @@ func (h Header) AddReward(txsFee, minerBaseReward, uncleInclusionReward *big.Int
 
 // Transaction represents a transaction
 type Transaction struct {
-	Hash        []byte
-	BlockHash   []byte
-	From        []byte
-	To          []byte
-	Nonce       int64
-	GasPrice    int64
-	GasLimit    int64
-	Amount      string
-	Payload     []byte
-	BlockNumber int64
-}
-
-// TableName returns the table name of this model
-func (t Transaction) TableName() string {
-	return "transactions"
+	Hash        []byte `db:"hash"`
+	BlockHash   []byte `db:"block_hash"`
+	From        []byte `db:"from"`
+	To          []byte `db:"to"`
+	Nonce       int64  `db:"nonce"`
+	GasPrice    int64  `db:"gas_price"`
+	GasLimit    int64  `db:"gas_limit"`
+	Amount      string `db:"amount"`
+	Payload     []byte `db:"payload"`
+	BlockNumber int64  `db:"block_number"`
 }
 
 // Receipt represents a transaction receipt
 type Receipt struct {
-	Root              []byte
-	Status            uint
-	CumulativeGasUsed int64
-	Bloom             []byte
-	TxHash            []byte
-	ContractAddress   []byte
-	GasUsed           int64
-	BlockNumber       int64
+	Root              []byte `db:"root"`
+	Status            uint   `db:"status"`
+	CumulativeGasUsed int64  `db:"cumulative_gas_used"`
+	Bloom             []byte `db:"bloom"`
+	TxHash            []byte `db:"tx_hash"`
+	ContractAddress   []byte `db:"contract_address"`
+	GasUsed           int64  `db:"gas_used"`
+	BlockNumber       int64  `db:"block_number"`
 	Logs              []*Log
-}
-
-// TableName returns the table name of this model
-func (r Receipt) TableName() string {
-	return "transaction_receipts"
 }
 
 // Log represents a receipt log
 type Log struct {
-	TxHash          []byte
-	BlockNumber     int64
-	ContractAddress []byte
+	TxHash          []byte `db:"tx_hash"`
+	BlockNumber     int64  `db:"block_number"`
+	ContractAddress []byte `db:"contract_address"`
 	// The sha3 of the event method
-	EventName []byte
+	EventName []byte `db:"event_name"`
 	// Indexed parameters of event. At most 3 topics.
-	Topic1 []byte
-	Topic2 []byte
-	Topic3 []byte
-	Data   []byte
-}
-
-// TableName returns the table name of this model
-func (l Log) TableName() string {
-	return "receipt_logs"
+	Topic1 []byte `db:"topic1"`
+	Topic2 []byte `db:"topic2"`
+	Topic3 []byte `db:"topic3"`
+	Data   []byte `db:"data"`
 }
 
 // TotalDifficulty represents total difficulty for this block
 type TotalDifficulty struct {
-	Block int64
-	Hash  []byte
-	Td    string
-}
-
-// TableName returns the table name of this model
-func (t TotalDifficulty) TableName() string {
-	return "total_difficulty"
+	Block int64  `db:"block"`
+	Hash  []byte `db:"hash"`
+	Td    string `db:"td"`
 }
 
 // Account represents the either ERC20 or ETH balances of externally owned accounts in Ethereum at given block
 // The account is considered an eth account and insert to account table if ContractAddress is ETHBytes, or
 // considered an erc20 account and insert to erc20_balance_{ContractAddress} table.
 type Account struct {
-	ContractAddress []byte `gorm:"-"`
-	BlockNumber     int64  `gorm:"size:8;index;unique_index:idx_block_number_address"`
-	Address         []byte `gorm:"size:20;index;unique_index:idx_block_number_address"`
-	Balance         string `gorm:"size:32"`
+	ContractAddress []byte
+	BlockNumber     int64  `db:"block_number"`
+	Address         []byte `db:"address"`
+	Balance         string `db:"balance"`
 }
 
 // TableName returns the table name of this model
@@ -212,12 +187,12 @@ func (a Account) TableName() string {
 // The event is considered an eth transfer event and insert to eth_transfer table if Address is ETHBytes, or
 // considered an erc20 transfer event and insert to erc20_transfer_{Address} table.
 type Transfer struct {
-	Address     []byte `gorm:"-"`
-	BlockNumber int64  `gorm:"size:8;index"`
-	TxHash      []byte `gorm:"size:32;index"`
-	From        []byte `gorm:"size:20;index"`
-	To          []byte `gorm:"size:20;index"`
-	Value       string `gorm:"size:32"`
+	Address     []byte
+	BlockNumber int64  `db:"block_number"`
+	TxHash      []byte `db:"tx_hash"`
+	From        []byte `db:"from"`
+	To          []byte `db:"to"`
+	Value       string `db:"value"`
 }
 
 // TableName retruns the table name of this model
@@ -244,59 +219,39 @@ func (e Transfer) IsUncleRewardEvent() bool {
 
 // TotalBalance represents the total balance of subscription accounts in different group
 type TotalBalance struct {
-	Token        []byte
-	BlockNumber  int64
-	Group        int64
-	Balance      string
-	TxFee        string
-	MinerReward  string
-	UnclesReward string
-}
-
-// TableName retruns the table name of this model
-func (s TotalBalance) TableName() string {
-	return "total_balances"
+	Token        []byte `db:"token"`
+	BlockNumber  int64  `db:"block_number"`
+	Group        int64  `db:"group"`
+	Balance      string `db:"balance"`
+	TxFee        string `db:"tx_fee"`
+	MinerReward  string `db:"miner_reward"`
+	UnclesReward string `db:"uncles_reward"`
 }
 
 // ERC20 represents the ERC20 contract
 type ERC20 struct {
-	BlockNumber int64
-	Address     []byte
-	TotalSupply string
-	Decimals    int
-	Name        string
-}
-
-// TableName returns the table name of this model
-func (e ERC20) TableName() string {
-	return "erc20"
+	BlockNumber int64  `db:"block_number"`
+	Address     []byte `db:"address"`
+	TotalSupply string `db:"total_supply"`
+	Decimals    int    `db:"decimals"`
+	Name        string `db:"name"`
 }
 
 // Subscription represents the Subscription model
 type Subscription struct {
-	ID          int64
-	BlockNumber int64
-	Group       int64
-	Address     []byte
-	CreatedAt   time.Time `deepequal:"-"`
-	UpdatedAt   time.Time `deepequal:"-"`
-}
-
-// TableName retruns the table name of this erc20 contract
-func (s Subscription) TableName() string {
-	return "subscriptions"
+	ID          int64     `db:"id"`
+	BlockNumber int64     `db:"block_number"`
+	Group       int64     `db:"group"`
+	Address     []byte    `db:"address"`
+	CreatedAt   time.Time `db:"created_at" deepequal:"-"`
+	UpdatedAt   time.Time `db:"updated_at" deepequal:"-"`
 }
 
 // Reorg represents the Reorg model
 type Reorg struct {
-	From      int64
-	FromHash  []byte
-	To        int64
-	ToHash    []byte
-	CreatedAt time.Time `deepequal:"-"`
-}
-
-// TableName retruns the table name of this Reorg event
-func (s Reorg) TableName() string {
-	return "reorgs"
+	From      int64     `db:"from"`
+	FromHash  []byte    `db:"from_hash"`
+	To        int64     `db:"to"`
+	ToHash    []byte    `db:"to_hash"`
+	CreatedAt time.Time `db:"created_at" deepequal:"-"`
 }

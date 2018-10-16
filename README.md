@@ -81,28 +81,36 @@ Once there are some data in MySQL, you can query specific data from it, e.g., yo
 package main
 
 import (
-    "context"
-    "fmt"
-    "github.com/ethereum/go-ethereum/common"
-    "github.com/getamis/eth-indexer/store"
-    "github.com/getamis/sirius/database"
-    gormFactory "github.com/getamis/sirius/database/gorm"
-    "github.com/getamis/sirius/database/mysql"
+	"context"
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/account"
+	"github.com/getamis/eth-indexer/store/sqldb"
+	"github.com/getamis/sirius/database"
+	"github.com/getamis/sirius/database/mysql"
 )
 
 func main() {
-    db, _ := gormFactory.New("mysql",
-        database.DriverOption(
-            mysql.Database("ethdb"),
-            mysql.Connector(mysql.DefaultProtocol, "127.0.0.1", "3306"),
-            mysql.UserInfo("root", "my-secret-pw"),
-        ),
-    )
-    addr := common.HexToAddress("0x756f45e3fa69347a9a973a725e3c98bc4db0b5a0")
-    manager := store.NewServiceManager(db)
-    balance, blockNumber, _ := manager.GetBalance(context.Background(), addr, -1)
-    fmt.Println(balance, blockNumber)
+	db, _ := sqldb.New("mysql",
+		database.DriverOption(
+			mysql.Database("ethdb"),
+			mysql.Connector(mysql.DefaultProtocol, "127.0.0.1", "3306"),
+			mysql.UserInfo("root", "my-secret-pw"),
+		),
+	)
+	addr := common.HexToAddress("0x756f45e3fa69347a9a973a725e3c98bc4db0b5a0")
+	store := account.NewWithDB(db)
+
+	account, err := store.FindAccount(context.Background(), model.ETHAddress, addr)
+	if err != nil {
+		fmt.Printf("Failed to find account: %v\n", err)
+	} else {
+		fmt.Printf("Find account, block_number: %v, balance: %v, \n", account.Balance, account.BlockNumber)
+	}
 }
+
 ```
 
 ERC20 is similar, and you can see [the test case for ERC20](store/balance_erc20_test.go) to know how to use it.

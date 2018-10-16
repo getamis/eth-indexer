@@ -29,11 +29,12 @@ import (
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/block_header"
 	"github.com/getamis/eth-indexer/store/reorg"
+	. "github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/eth-indexer/store/transaction"
 	"github.com/getamis/eth-indexer/store/transaction_receipt"
 	"github.com/getamis/sirius/log"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 )
 
 //go:generate mockery -name Manager
@@ -41,19 +42,19 @@ import (
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
 	// Init the store manager to load the erc20 list
-	Init(balancer client.Balancer) error
+	Init(ctx context.Context, balancer client.Balancer) error
 	// FindERC20 finds the erc20 code
-	FindERC20(address gethCommon.Address) (*model.ERC20, error)
+	FindERC20(ctx context.Context, address gethCommon.Address) (*model.ERC20, error)
 	// InsertERC20 inserts the erc20 code
-	InsertERC20(code *model.ERC20) error
+	InsertERC20(ctx context.Context, code *model.ERC20) error
 	// InsertTd writes the total difficulty for a block
-	InsertTd(data *model.TotalDifficulty) error
+	InsertTd(ctx context.Context, data *model.TotalDifficulty) error
 	// FindLatestBlock returns a latest header from db
-	FindLatestBlock() (*model.Header, error)
+	FindLatestBlock(ctx context.Context) (*model.Header, error)
 	// FindBlockByNumber returns the header of the given block number
-	FindBlockByNumber(number int64) (*model.Header, error)
+	FindBlockByNumber(ctx context.Context, number int64) (*model.Header, error)
 	// FindTd returns the TD of the given block hash
-	FindTd(hash []byte) (*model.TotalDifficulty, error)
+	FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data
 	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
 }
@@ -66,14 +67,14 @@ type manager struct {
 	headerStore
 	accountStore
 
-	db          *gorm.DB
+	db          *sqlx.DB
 	chainConfig *params.ChainConfig
 	tokenList   map[gethCommon.Address]*model.ERC20
 	balancer    client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *gorm.DB, chainConfig *params.ChainConfig) Manager {
+func NewManager(db *sqlx.DB, chainConfig *params.ChainConfig) Manager {
 	return &manager{
 		db:           db,
 		headerStore:  block_header.NewWithDB(db, block_header.Cache()),
@@ -82,9 +83,9 @@ func NewManager(db *gorm.DB, chainConfig *params.ChainConfig) Manager {
 	}
 }
 
-func (m *manager) Init(balancer client.Balancer) error {
-	list, err := account.NewWithDB(m.db).ListOldERC20()
-	if err != nil && err != gorm.ErrRecordNotFound {
+func (m *manager) Init(ctx context.Context, balancer client.Balancer) error {
+	list, err := account.NewWithDB(m.db).ListOldERC20(ctx)
+	if err != nil && !common.NotFoundError(err) {
 		return err
 	}
 	tokenList := make(map[gethCommon.Address]*model.ERC20, len(list))
@@ -116,24 +117,27 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 		return common.ErrInconsistentStates
 	}
 
-	dbTx := m.db.Begin()
+	dbTx, err := m.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err != nil {
 			dbTx.Rollback()
 			return
 		}
-		err = dbTx.Commit().Error
+		err = dbTx.Commit()
 	}()
 
 	// In ModeReOrg, delete all blocks, recipients and states within this range before insertions
 	isReorg := reorgEvent != nil
 	if isReorg {
 		reorgStore := reorg.NewWithDB(dbTx)
-		err = reorgStore.Insert(reorgEvent)
+		err = reorgStore.Insert(ctx, reorgEvent)
 		if err != nil {
 			return err
 		}
-		err = m.delete(dbTx, from, to)
+		err = m.delete(ctx, dbTx, from, to)
 		if err != nil {
 			return err
 		}
@@ -150,7 +154,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
-func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
+func (m *manager) insertBlock(ctx context.Context, dbTx DbOrTx, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
 	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
@@ -168,7 +172,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 			return err
 		}
 		txs = append(txs, tx)
-		err = txStore.Insert(tx)
+		err = txStore.Insert(ctx, tx)
 		if err != nil {
 			return err
 		}
@@ -188,7 +192,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 			return err
 		}
 
-		err = receiptStore.Insert(r)
+		err = receiptStore.Insert(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -208,7 +212,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 	if err != nil {
 		return err
 	}
-	err = headerStore.Insert(h)
+	err = headerStore.Insert(ctx, h)
 	if err != nil {
 		return err
 	}
@@ -254,47 +258,47 @@ func (m *manager) insertBlock(ctx context.Context, dbTx *gorm.DB, block *types.B
 }
 
 // delete deletes block and state data inside a DB transaction
-func (m *manager) delete(dbTx *gorm.DB, from, to int64) (err error) {
+func (m *manager) delete(ctx context.Context, dbTx DbOrTx, from, to int64) (err error) {
 	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
 	accountStore := account.NewWithDB(dbTx)
 	subscriptionStore := subscription.NewWithDB(dbTx)
 
-	err = headerStore.Delete(from, to)
+	err = headerStore.Delete(ctx, from, to)
 	if err != nil {
 		return
 	}
-	err = txStore.Delete(from, to)
+	err = txStore.Delete(ctx, from, to)
 	if err != nil {
 		return
 	}
-	err = receiptStore.Delete(from, to)
+	err = receiptStore.Delete(ctx, from, to)
 	if err != nil {
 		return
 	}
 
-	err = subscriptionStore.Reset(from, to)
+	err = subscriptionStore.Reset(ctx, from, to)
 	if err != nil {
 		return
 	}
 
 	for addr, token := range m.tokenList {
 		// Delete erc20 balances
-		err = accountStore.DeleteAccounts(addr, from, to)
+		err = accountStore.DeleteAccounts(ctx, addr, from, to)
 		if err != nil {
 			return
 		}
 
 		// Delete erc20 events
-		err = accountStore.DeleteTransfer(addr, from, to)
+		err = accountStore.DeleteTransfer(ctx, addr, from, to)
 		if err != nil {
 			return
 		}
 
 		if from <= token.BlockNumber && token.BlockNumber <= to {
 			// Reset token
-			err = accountStore.BatchUpdateERC20BlockNumber(0, [][]byte{
+			err = accountStore.BatchUpdateERC20BlockNumber(ctx, 0, [][]byte{
 				addr.Bytes(),
 			})
 			if err != nil {

@@ -20,15 +20,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/getamis/sirius/test"
-	"github.com/jinzhu/gorm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-)
-
-var (
-	mysql *test.MySQLContainer
-	db    *gorm.DB
 )
 
 var _ = Describe("Contracts Test", func() {

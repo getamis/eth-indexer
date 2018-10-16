@@ -17,15 +17,16 @@
 package subscription
 
 import (
-	"os"
+	"context"
 	"testing"
 	"time"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/test"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -33,7 +34,8 @@ import (
 var _ = Describe("Database Test", func() {
 	var (
 		mysql *test.MySQLContainer
-		db    *gorm.DB
+		db    *sqlx.DB
+		ctx   = context.Background()
 	)
 	BeforeSuite(func() {
 		var err error
@@ -42,11 +44,9 @@ var _ = Describe("Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(mysql.Start()).Should(Succeed())
 
-		db, err = gorm.Open("mysql", mysql.URL)
+		db, err = sqldb.SimpleConnect("mysql", mysql.URL)
 		Expect(err).Should(Succeed())
 		Expect(db).ShouldNot(BeNil())
-
-		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
 	})
 
 	AfterSuite(func() {
@@ -54,8 +54,10 @@ var _ = Describe("Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Delete(&model.Subscription{})
-		db.Delete(&model.TotalBalance{})
+		_, err := db.Exec("DELETE FROM subscriptions")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM total_balances")
+		Expect(err).Should(Succeed())
 	})
 
 	Context("Subscription database", func() {
@@ -67,12 +69,12 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert new subscription")
-			duplicated, err := store.BatchInsert([]*model.Subscription{data1})
+			duplicated, err := store.BatchInsert(ctx, []*model.Subscription{data1})
 			Expect(err).Should(Succeed())
 			Expect(len(duplicated)).Should(Equal(0))
 
 			By("duplicated should be 1")
-			duplicated, err = store.BatchInsert([]*model.Subscription{data1})
+			duplicated, err = store.BatchInsert(ctx, []*model.Subscription{data1})
 			Expect(err).Should(Succeed())
 			Expect(len(duplicated)).Should(Equal(1))
 
@@ -82,7 +84,7 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert another new subscription")
-			duplicated, err = store.BatchInsert([]*model.Subscription{data2})
+			duplicated, err = store.BatchInsert(ctx, []*model.Subscription{data2})
 			Expect(len(duplicated)).Should(Equal(0))
 			Expect(err).Should(Succeed())
 		})
@@ -106,18 +108,18 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			_, err := store.BatchInsert(data)
+			_, err := store.BatchInsert(ctx, data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.Find(data1.BlockNumber)
+			res, err := store.Find(ctx, data1.BlockNumber)
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 2))
 
-			res, err = store.Find(data3.BlockNumber)
+			res, err = store.Find(ctx, data3.BlockNumber)
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 1))
 
-			res, err = store.Find(0)
+			res, err = store.Find(ctx, 0)
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeZero())
 		})
@@ -142,10 +144,10 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			_, err := store.BatchInsert(data)
+			_, err := store.BatchInsert(ctx, data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.FindOldSubscriptions([][]byte{
+			res, err := store.FindOldSubscriptions(ctx, [][]byte{
 				data0.Address,
 				data1.Address,
 				data2.Address,
@@ -154,7 +156,7 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 2))
 
-			res, err = store.FindOldSubscriptions([][]byte{
+			res, err = store.FindOldSubscriptions(ctx, [][]byte{
 				data0.Address,
 				data1.Address,
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A895"),
@@ -163,7 +165,7 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 1))
 
-			res, err = store.FindOldSubscriptions([][]byte{
+			res, err = store.FindOldSubscriptions(ctx, [][]byte{
 				data0.Address,
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A895"),
 				common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A896"),
@@ -172,10 +174,10 @@ var _ = Describe("Database Test", func() {
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeZero())
 
-			err = store.Reset(100, 102)
+			err = store.Reset(ctx, 100, 102)
 			Expect(err).Should(Succeed())
 
-			res, err = store.FindOldSubscriptions([][]byte{
+			res, err = store.FindOldSubscriptions(ctx, [][]byte{
 				data0.Address,
 				data1.Address,
 				data2.Address,
@@ -209,16 +211,14 @@ var _ = Describe("Database Test", func() {
 				}
 
 				By("Should be successful to insert", func() {
-					_, err := store.BatchInsert(subs)
+					_, err := store.BatchInsert(ctx, subs)
 					Expect(err).Should(Succeed())
 				})
 
 				By("Should be successful to get subscriptions with page 1", func() {
-					result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
-						Page:    1,
-						Limit:   1,
-						OrderBy: "created_at",
-						Order:   "asc",
+					result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
+						Page:  1,
+						Limit: 1,
 					})
 					Expect(err).Should(Succeed())
 					Expect(total).Should(Equal(uint64(len(subs))))
@@ -228,11 +228,9 @@ var _ = Describe("Database Test", func() {
 				})
 
 				By("Should be successful to get subscriptions with page 2", func() {
-					result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
-						Page:    2,
-						Limit:   1,
-						OrderBy: "created_at",
-						Order:   "asc",
+					result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
+						Page:  2,
+						Limit: 1,
 					})
 					Expect(err).Should(Succeed())
 					Expect(total).Should(Equal(uint64(len(subs))))
@@ -243,11 +241,9 @@ var _ = Describe("Database Test", func() {
 			})
 
 			It("should get empty subscriptions if group id doesn't exist", func() {
-				result, total, err := store.FindByGroup(groupID, &model.QueryParameters{
-					Page:    1,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+				result, total, err := store.FindByGroup(ctx, groupID, &model.QueryParameters{
+					Page:  1,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(0)))
@@ -272,18 +268,18 @@ var _ = Describe("Database Test", func() {
 			}
 			By("insert three new subscriptions")
 			data := []*model.Subscription{data1, data2, data3}
-			_, err := store.BatchInsert(data)
+			_, err := store.BatchInsert(ctx, data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.Find(0)
+			res, err := store.Find(ctx, 0)
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 0))
 
-			err = store.BatchUpdateBlockNumber(0,
+			err = store.BatchUpdateBlockNumber(ctx, 0,
 				[][]byte{data1.Address, data2.Address, data3.Address})
 			Expect(err).Should(Succeed())
 
-			res, err = store.Find(0)
+			res, err = store.Find(ctx, 0)
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 3))
 		})
@@ -319,16 +315,14 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("Should be successful to insert", func() {
-				_, err := store.BatchInsert(subs)
+				_, err := store.BatchInsert(ctx, subs)
 				Expect(err).Should(Succeed())
 			})
 
 			By("Should be successful to get subscriptions with page 1", func() {
-				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
-					Page:    1,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
+					Page:  1,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -338,11 +332,9 @@ var _ = Describe("Database Test", func() {
 			})
 
 			By("Should be successful to get subscriptions with page 2", func() {
-				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
-					Page:    2,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
+					Page:  2,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -352,11 +344,9 @@ var _ = Describe("Database Test", func() {
 			})
 
 			By("Should be successful to get subscriptions with page 3", func() {
-				result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
-					Page:    3,
-					Limit:   1,
-					OrderBy: "created_at",
-					Order:   "asc",
+				result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
+					Page:  3,
+					Limit: 1,
 				})
 				Expect(err).Should(Succeed())
 				Expect(total).Should(Equal(uint64(2)))
@@ -365,11 +355,9 @@ var _ = Describe("Database Test", func() {
 		})
 
 		It("should get empty subscriptions", func() {
-			result, total, err := store.ListOldSubscriptions(&model.QueryParameters{
-				Page:    1,
-				Limit:   1,
-				OrderBy: "created_at",
-				Order:   "asc",
+			result, total, err := store.ListOldSubscriptions(ctx, &model.QueryParameters{
+				Page:  1,
+				Limit: 1,
 			})
 			Expect(err).Should(Succeed())
 			Expect(total).Should(Equal(uint64(0)))
@@ -392,11 +380,11 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert new total balance")
-			err := store.InsertTotalBalance(data1)
+			err := store.InsertTotalBalance(ctx, data1)
 			Expect(err).Should(Succeed())
 
 			By("failed to total balance again")
-			err = store.InsertTotalBalance(data1)
+			err = store.InsertTotalBalance(ctx, data1)
 			Expect(err).ShouldNot(BeNil())
 
 			data2 := &model.TotalBalance{
@@ -410,7 +398,7 @@ var _ = Describe("Database Test", func() {
 			}
 
 			By("insert another new subscription")
-			err = store.InsertTotalBalance(data2)
+			err = store.InsertTotalBalance(ctx, data2)
 			Expect(err).Should(Succeed())
 		})
 
@@ -446,34 +434,39 @@ var _ = Describe("Database Test", func() {
 			By("insert three new total balances")
 			data := []*model.TotalBalance{data1, data2, data3}
 			for _, d := range data {
-				err := store.InsertTotalBalance(d)
+				err := store.InsertTotalBalance(ctx, d)
 				Expect(err).Should(Succeed())
 			}
 
-			res, err := store.FindTotalBalance(data1.BlockNumber, gethCommon.BytesToAddress(data1.Token), data1.Group)
+			res, err := store.FindTotalBalance(ctx, data1.BlockNumber, gethCommon.BytesToAddress(data1.Token), data1.Group)
 			Expect(err).Should(Succeed())
 			Expect(res).Should(Equal(data1))
 
-			res, err = store.FindTotalBalance(data2.BlockNumber, gethCommon.BytesToAddress(data2.Token), data2.Group)
+			res, err = store.FindTotalBalance(ctx, data2.BlockNumber, gethCommon.BytesToAddress(data2.Token), data2.Group)
 			Expect(err).Should(Succeed())
 			Expect(res).Should(Equal(data2))
 
-			res, err = store.FindTotalBalance(data3.BlockNumber, gethCommon.BytesToAddress(data3.Token), data3.Group)
+			res, err = store.FindTotalBalance(ctx, data3.BlockNumber, gethCommon.BytesToAddress(data3.Token), data3.Group)
 			Expect(err).Should(Succeed())
 			Expect(res).Should(Equal(data3))
 
-			err = store.Reset(100, 102)
+			// Find total balance in a large block number should return the latest one
+			res, err = store.FindTotalBalance(ctx, 999999, gethCommon.BytesToAddress(data3.Token), data3.Group)
+			Expect(err).Should(Succeed())
+			Expect(res).Should(Equal(data3))
+
+			err = store.Reset(ctx, 100, 102)
 			Expect(err).Should(Succeed())
 
-			res, err = store.FindTotalBalance(data1.BlockNumber, gethCommon.BytesToAddress(data1.Token), data1.Group)
+			res, err = store.FindTotalBalance(ctx, data1.BlockNumber, gethCommon.BytesToAddress(data1.Token), data1.Group)
 			Expect(err).ShouldNot(Succeed())
 			Expect(res).Should(BeNil())
 
-			res, err = store.FindTotalBalance(data2.BlockNumber, gethCommon.BytesToAddress(data2.Token), data2.Group)
+			res, err = store.FindTotalBalance(ctx, data2.BlockNumber, gethCommon.BytesToAddress(data2.Token), data2.Group)
 			Expect(err).ShouldNot(Succeed())
 			Expect(res).Should(BeNil())
 
-			res, err = store.FindTotalBalance(data3.BlockNumber, gethCommon.BytesToAddress(data3.Token), data3.Group)
+			res, err = store.FindTotalBalance(ctx, data3.BlockNumber, gethCommon.BytesToAddress(data3.Token), data3.Group)
 			Expect(err).ShouldNot(Succeed())
 			Expect(res).Should(BeNil())
 		})

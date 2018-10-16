@@ -17,32 +17,47 @@
 package reorg
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/getamis/eth-indexer/model"
-	"github.com/jinzhu/gorm"
+	. "github.com/getamis/eth-indexer/store/sqldb"
 )
 
 //go:generate mockery -name Store
 type Store interface {
-	Insert(data *model.Reorg) error
+	Insert(ctx context.Context, data *model.Reorg) error
 	// For testing
-	List() ([]*model.Reorg, error)
+	List(ctx context.Context) ([]*model.Reorg, error)
 }
+
+const (
+	insertSQL = "INSERT INTO `reorgs` (`from`, `from_hash`, `to`, `to_hash`, `created_at`) VALUES (%d, X'%s', %d, X'%s', '%s')"
+	listSQL   = "SELECT * FROM `reorgs`"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB) Store {
+func NewWithDB(db DbOrTx) Store {
 	return &store{
 		db: db,
 	}
 }
 
-func (s *store) Insert(data *model.Reorg) error {
-	return s.db.Create(data).Error
+func (s *store) Insert(ctx context.Context, data *model.Reorg) error {
+	nowStr := ToTimeStr(time.Now())
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(insertSQL, data.From, Hex(data.FromHash), data.To, Hex(data.ToHash), nowStr))
+	return err
 }
 
-func (s *store) List() (results []*model.Reorg, err error) {
-	err = s.db.Find(&results).Error
-	return
+func (s *store) List(ctx context.Context) ([]*model.Reorg, error) {
+	result := []*model.Reorg{}
+	err := s.db.SelectContext(ctx, &result, listSQL)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

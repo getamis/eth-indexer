@@ -2,6 +2,7 @@
 package mocks
 
 import common "github.com/ethereum/go-ethereum/common"
+import context "context"
 import mock "github.com/stretchr/testify/mock"
 import model "github.com/getamis/eth-indexer/model"
 
@@ -10,13 +11,13 @@ type Store struct {
 	mock.Mock
 }
 
-// BatchInsert provides a mock function with given fields: subs
-func (_m *Store) BatchInsert(subs []*model.Subscription) ([]common.Address, error) {
-	ret := _m.Called(subs)
+// BatchInsert provides a mock function with given fields: ctx, subs
+func (_m *Store) BatchInsert(ctx context.Context, subs []*model.Subscription) ([]common.Address, error) {
+	ret := _m.Called(ctx, subs)
 
 	var r0 []common.Address
-	if rf, ok := ret.Get(0).(func([]*model.Subscription) []common.Address); ok {
-		r0 = rf(subs)
+	if rf, ok := ret.Get(0).(func(context.Context, []*model.Subscription) []common.Address); ok {
+		r0 = rf(ctx, subs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]common.Address)
@@ -24,8 +25,8 @@ func (_m *Store) BatchInsert(subs []*model.Subscription) ([]common.Address, erro
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*model.Subscription) error); ok {
-		r1 = rf(subs)
+	if rf, ok := ret.Get(1).(func(context.Context, []*model.Subscription) error); ok {
+		r1 = rf(ctx, subs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -33,13 +34,13 @@ func (_m *Store) BatchInsert(subs []*model.Subscription) ([]common.Address, erro
 	return r0, r1
 }
 
-// BatchUpdateBlockNumber provides a mock function with given fields: blockNumber, addrs
-func (_m *Store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error {
-	ret := _m.Called(blockNumber, addrs)
+// BatchUpdateBlockNumber provides a mock function with given fields: ctx, blockNumber, addrs
+func (_m *Store) BatchUpdateBlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error {
+	ret := _m.Called(ctx, blockNumber, addrs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, [][]byte) error); ok {
-		r0 = rf(blockNumber, addrs)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, [][]byte) error); ok {
+		r0 = rf(ctx, blockNumber, addrs)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -47,13 +48,13 @@ func (_m *Store) BatchUpdateBlockNumber(blockNumber int64, addrs [][]byte) error
 	return r0
 }
 
-// Find provides a mock function with given fields: blockNumber
-func (_m *Store) Find(blockNumber int64) ([]*model.Subscription, error) {
-	ret := _m.Called(blockNumber)
+// Find provides a mock function with given fields: ctx, blockNumber
+func (_m *Store) Find(ctx context.Context, blockNumber int64) ([]*model.Subscription, error) {
+	ret := _m.Called(ctx, blockNumber)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func(int64) []*model.Subscription); ok {
-		r0 = rf(blockNumber)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []*model.Subscription); ok {
+		r0 = rf(ctx, blockNumber)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
@@ -61,8 +62,8 @@ func (_m *Store) Find(blockNumber int64) ([]*model.Subscription, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(blockNumber)
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, blockNumber)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -70,13 +71,13 @@ func (_m *Store) Find(blockNumber int64) ([]*model.Subscription, error) {
 	return r0, r1
 }
 
-// FindByGroup provides a mock function with given fields: groupID, query
-func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	ret := _m.Called(groupID, query)
+// FindByGroup provides a mock function with given fields: ctx, groupID, query
+func (_m *Store) FindByGroup(ctx context.Context, groupID int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(ctx, groupID, query)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func(int64, *model.QueryParameters) []*model.Subscription); ok {
-		r0 = rf(groupID, query)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(ctx, groupID, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
@@ -84,15 +85,15 @@ func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*mo
 	}
 
 	var r1 uint64
-	if rf, ok := ret.Get(1).(func(int64, *model.QueryParameters) uint64); ok {
-		r1 = rf(groupID, query)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, *model.QueryParameters) uint64); ok {
+		r1 = rf(ctx, groupID, query)
 	} else {
 		r1 = ret.Get(1).(uint64)
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(int64, *model.QueryParameters) error); ok {
-		r2 = rf(groupID, query)
+	if rf, ok := ret.Get(2).(func(context.Context, int64, *model.QueryParameters) error); ok {
+		r2 = rf(ctx, groupID, query)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -100,13 +101,13 @@ func (_m *Store) FindByGroup(groupID int64, query *model.QueryParameters) ([]*mo
 	return r0, r1, r2
 }
 
-// FindOldSubscriptions provides a mock function with given fields: addrs
-func (_m *Store) FindOldSubscriptions(addrs [][]byte) ([]*model.Subscription, error) {
-	ret := _m.Called(addrs)
+// FindOldSubscriptions provides a mock function with given fields: ctx, addrs
+func (_m *Store) FindOldSubscriptions(ctx context.Context, addrs [][]byte) ([]*model.Subscription, error) {
+	ret := _m.Called(ctx, addrs)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func([][]byte) []*model.Subscription); ok {
-		r0 = rf(addrs)
+	if rf, ok := ret.Get(0).(func(context.Context, [][]byte) []*model.Subscription); ok {
+		r0 = rf(ctx, addrs)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
@@ -114,8 +115,8 @@ func (_m *Store) FindOldSubscriptions(addrs [][]byte) ([]*model.Subscription, er
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([][]byte) error); ok {
-		r1 = rf(addrs)
+	if rf, ok := ret.Get(1).(func(context.Context, [][]byte) error); ok {
+		r1 = rf(ctx, addrs)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -123,13 +124,13 @@ func (_m *Store) FindOldSubscriptions(addrs [][]byte) ([]*model.Subscription, er
 	return r0, r1
 }
 
-// FindTotalBalance provides a mock function with given fields: blockNumber, token, group
-func (_m *Store) FindTotalBalance(blockNumber int64, token common.Address, group int64) (*model.TotalBalance, error) {
-	ret := _m.Called(blockNumber, token, group)
+// FindTotalBalance provides a mock function with given fields: ctx, blockNumber, token, group
+func (_m *Store) FindTotalBalance(ctx context.Context, blockNumber int64, token common.Address, group int64) (*model.TotalBalance, error) {
+	ret := _m.Called(ctx, blockNumber, token, group)
 
 	var r0 *model.TotalBalance
-	if rf, ok := ret.Get(0).(func(int64, common.Address, int64) *model.TotalBalance); ok {
-		r0 = rf(blockNumber, token, group)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, common.Address, int64) *model.TotalBalance); ok {
+		r0 = rf(ctx, blockNumber, token, group)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.TotalBalance)
@@ -137,8 +138,8 @@ func (_m *Store) FindTotalBalance(blockNumber int64, token common.Address, group
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64, common.Address, int64) error); ok {
-		r1 = rf(blockNumber, token, group)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, common.Address, int64) error); ok {
+		r1 = rf(ctx, blockNumber, token, group)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -146,13 +147,13 @@ func (_m *Store) FindTotalBalance(blockNumber int64, token common.Address, group
 	return r0, r1
 }
 
-// InsertTotalBalance provides a mock function with given fields: data
-func (_m *Store) InsertTotalBalance(data *model.TotalBalance) error {
-	ret := _m.Called(data)
+// InsertTotalBalance provides a mock function with given fields: ctx, data
+func (_m *Store) InsertTotalBalance(ctx context.Context, data *model.TotalBalance) error {
+	ret := _m.Called(ctx, data)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.TotalBalance) error); ok {
-		r0 = rf(data)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.TotalBalance) error); ok {
+		r0 = rf(ctx, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -160,13 +161,13 @@ func (_m *Store) InsertTotalBalance(data *model.TotalBalance) error {
 	return r0
 }
 
-// ListOldSubscriptions provides a mock function with given fields: query
-func (_m *Store) ListOldSubscriptions(query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
-	ret := _m.Called(query)
+// ListOldSubscriptions provides a mock function with given fields: ctx, query
+func (_m *Store) ListOldSubscriptions(ctx context.Context, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(ctx, query)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func(*model.QueryParameters) []*model.Subscription); ok {
-		r0 = rf(query)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(ctx, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
@@ -174,15 +175,15 @@ func (_m *Store) ListOldSubscriptions(query *model.QueryParameters) ([]*model.Su
 	}
 
 	var r1 uint64
-	if rf, ok := ret.Get(1).(func(*model.QueryParameters) uint64); ok {
-		r1 = rf(query)
+	if rf, ok := ret.Get(1).(func(context.Context, *model.QueryParameters) uint64); ok {
+		r1 = rf(ctx, query)
 	} else {
 		r1 = ret.Get(1).(uint64)
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(*model.QueryParameters) error); ok {
-		r2 = rf(query)
+	if rf, ok := ret.Get(2).(func(context.Context, *model.QueryParameters) error); ok {
+		r2 = rf(ctx, query)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -190,13 +191,13 @@ func (_m *Store) ListOldSubscriptions(query *model.QueryParameters) ([]*model.Su
 	return r0, r1, r2
 }
 
-// Reset provides a mock function with given fields: from, to
-func (_m *Store) Reset(from int64, to int64) error {
-	ret := _m.Called(from, to)
+// Reset provides a mock function with given fields: ctx, from, to
+func (_m *Store) Reset(ctx context.Context, from int64, to int64) error {
+	ret := _m.Called(ctx, from, to)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, int64) error); ok {
-		r0 = rf(from, to)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) error); ok {
+		r0 = rf(ctx, from, to)
 	} else {
 		r0 = ret.Error(0)
 	}

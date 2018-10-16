@@ -17,12 +17,13 @@
 package reorg
 
 import (
-	"os"
+	"context"
 	"testing"
 
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/test"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -30,7 +31,8 @@ import (
 var _ = Describe("Reorg Database Test", func() {
 	var (
 		mysql *test.MySQLContainer
-		db    *gorm.DB
+		db    *sqlx.DB
+		ctx   = context.Background()
 	)
 	BeforeSuite(func() {
 		var err error
@@ -39,11 +41,9 @@ var _ = Describe("Reorg Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(mysql.Start()).Should(Succeed())
 
-		db, err = gorm.Open("mysql", mysql.URL)
+		db, err = sqldb.SimpleConnect("mysql", mysql.URL)
 		Expect(err).Should(Succeed())
 		Expect(db).ShouldNot(BeNil())
-
-		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
 	})
 
 	AfterSuite(func() {
@@ -51,7 +51,8 @@ var _ = Describe("Reorg Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Delete(&model.Reorg{})
+		_, err := db.Exec("DELETE FROM reorgs")
+		Expect(err).Should(Succeed())
 	})
 
 	It("should insert", func() {
@@ -65,15 +66,15 @@ var _ = Describe("Reorg Database Test", func() {
 		}
 
 		By("insert new reorg")
-		err := store.Insert(data1)
+		err := store.Insert(ctx, data1)
 		Expect(err).Should(Succeed())
 
 		By("insert the reorg again")
-		err = store.Insert(data1)
+		err = store.Insert(ctx, data1)
 		Expect(err).Should(Succeed())
 
 		By("check reorgs size")
-		rs, err := store.List()
+		rs, err := store.List(ctx)
 		Expect(err).Should(Succeed())
 		Expect(len(rs)).Should(BeNumerically("==", 2))
 	})
