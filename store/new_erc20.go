@@ -41,7 +41,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 	blockHash := block.Hash()
 
 	// Get latest ERC20 list
-	list, err := accountStore.ListNewERC20()
+	list, err := accountStore.ListNewERC20(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 	totalBalances := make(map[int64]map[gethCommon.Address]*big.Int)
 	for {
 		// List old subscriptions
-		subs, total, err := subStore.ListOldSubscriptions(query)
+		subs, total, err := subStore.ListOldSubscriptions(ctx, query)
 		logger := log.New("total", total, "page", query.Page, "limit", query.Limit)
 		if err != nil {
 			logger.Error("Failed to list old subscriptions", "err", err)
@@ -114,7 +114,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 					Address:         addr.Bytes(),
 					Balance:         balance.String(),
 				}
-				err := accountStore.InsertAccount(b)
+				err := accountStore.InsertAccount(ctx, b)
 				if err != nil {
 					logger.Error("Failed to insert ERC20 account", "err", err)
 					return nil, err
@@ -150,7 +150,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 				Balance:     d.String(),
 			}
 
-			err = subStore.InsertTotalBalance(tb)
+			err = subStore.InsertTotalBalance(ctx, tb)
 			if err != nil {
 				log.Error("Failed to insert total balance", "err", err)
 				return nil, err
@@ -163,7 +163,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 	for _, token := range newTokens {
 		addrs = append(addrs, token.Address)
 	}
-	err = accountStore.BatchUpdateERC20BlockNumber(nextBlockNumber, addrs)
+	err = accountStore.BatchUpdateERC20BlockNumber(ctx, nextBlockNumber, addrs)
 	if err != nil {
 		log.Error("Failed to update erc20 block number", "err", err)
 		return nil, err

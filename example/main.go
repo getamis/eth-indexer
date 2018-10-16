@@ -17,18 +17,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/database"
-	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
 )
 
 func main() {
-	db, _ := gormFactory.New("mysql",
+	db, _ := sqldb.New("mysql",
 		database.DriverOption(
 			mysql.Database("ethdb"),
 			mysql.Connector(mysql.DefaultProtocol, "127.0.0.1", "3306"),
@@ -38,7 +39,7 @@ func main() {
 	addr := common.HexToAddress("0x756f45e3fa69347a9a973a725e3c98bc4db0b5a0")
 	store := account.NewWithDB(db)
 
-	account, err := store.FindAccount(model.ETHAddress, addr)
+	account, err := store.FindAccount(context.Background(), model.ETHAddress, addr)
 	if err != nil {
 		fmt.Printf("Failed to find account: %v\n", err)
 	} else {

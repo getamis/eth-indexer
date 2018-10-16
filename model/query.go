@@ -16,20 +16,7 @@
 
 package model
 
-import (
-	"fmt"
-)
-
 type QueryParameters struct {
-	Page    uint64
-	Limit   uint64
-	OrderBy string
-	Order   string
-}
-
-func (q *QueryParameters) OrderString() string {
-	if q.OrderBy == "" || q.Order == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s %s", q.OrderBy, q.Order)
+	Page  uint64
+	Limit uint64
 }

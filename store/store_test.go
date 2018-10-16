@@ -19,8 +19,8 @@ package store
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
-	"os"
 	"testing"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -30,15 +30,16 @@ import (
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/reorg"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/test"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var (
 	mysql *test.MySQLContainer
-	db    *gorm.DB
+	db    *sqlx.DB
 )
 
 var (
@@ -65,14 +66,8 @@ var _ = Describe("Manager Test", func() {
 		events    [][]*types.TransferLog
 		signedTxs [][]*types.Transaction
 		manager   Manager
+		ctx       = context.Background()
 	)
-
-	newErc20Addr := gethCommon.HexToAddress("1234567891")
-	newErc20 := &model.ERC20{
-		Address:     newErc20Addr.Bytes(),
-		BlockNumber: 0,
-	}
-
 	BeforeSuite(func() {
 		var err error
 		mysql, err = test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
@@ -80,11 +75,9 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(mysql.Start()).Should(Succeed())
 
-		db, err = gorm.Open("mysql", mysql.URL)
+		db, err = sqldb.SimpleConnect("mysql", mysql.URL)
 		Expect(err).Should(Succeed())
 		Expect(db).ShouldNot(BeNil())
-
-		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
 	})
 	// ERC20 contract
 	erc20 := &model.ERC20{
@@ -121,9 +114,11 @@ var _ = Describe("Manager Test", func() {
 		blocks = []*types.Block{
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(100),
+				Extra:  []byte("extra100"),
 			}).WithBody(signedTxs[0], uncles[0]),
 			types.NewBlockWithHeader(&types.Header{
 				Number: big.NewInt(101),
+				Extra:  []byte("extra101"),
 			}).WithBody(signedTxs[1], uncles[1]),
 		}
 		receipts = [][]*types.Receipt{
@@ -190,42 +185,56 @@ var _ = Describe("Manager Test", func() {
 
 		var err error
 		manager = NewManager(db, params.MainnetChainConfig)
-		err = manager.Init(nil)
+		err = manager.Init(ctx, nil)
 		Expect(err).Should(BeNil())
 
-		err = manager.InsertERC20(erc20)
+		err = manager.InsertERC20(ctx, erc20)
 		Expect(err).Should(BeNil())
 
-		resERC20, err := manager.FindERC20(gethCommon.BytesToAddress(erc20.Address))
+		resERC20, err := manager.FindERC20(ctx, gethCommon.BytesToAddress(erc20.Address))
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(context.Background(), blocks, receipts, events, nil)
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 	})
 
 	AfterEach(func() {
 		// Clean all data
-		db.Delete(&model.Header{})
-		db.Delete(&model.Transaction{})
-		db.Delete(&model.Receipt{})
-		db.Delete(&model.Account{
-			ContractAddress: model.ETHBytes,
-		})
-		db.Delete(&model.ERC20{})
-		db.Delete(&model.Reorg{})
-		db.DropTable(model.Account{
-			ContractAddress: erc20.Address,
-		})
-		db.DropTable(model.Account{
-			ContractAddress: newErc20.Address,
-		})
-		db.DropTable(model.Transfer{
+		_, err := db.Exec("DELETE FROM block_headers")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM transactions")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM transaction_receipts")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM receipt_logs")
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec("DELETE FROM accounts")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM eth_transfer")
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec("DELETE FROM erc20")
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec("DELETE FROM subscriptions")
+		Expect(err).Should(Succeed())
+		_, err = db.Exec("DELETE FROM total_balances")
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec("DELETE FROM reorgs")
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", model.Transfer{
 			Address: erc20.Address,
-		})
-		db.DropTable(model.Transfer{
-			Address: newErc20.Address,
-		})
+		}.TableName()))
+		Expect(err).Should(Succeed())
+
+		_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", model.Account{
+			ContractAddress: erc20.Address,
+		}.TableName()))
+		Expect(err).Should(Succeed())
 	})
 
 	Context("UpdateBlocks()", func() {
@@ -244,11 +253,11 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, nil)
+			err := manager.UpdateBlocks(ctx, newBlocks, newReceipts, events, nil)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
-			header, err := manager.FindBlockByNumber(100)
+			header, err := manager.FindBlockByNumber(ctx, 100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
@@ -265,10 +274,12 @@ var _ = Describe("Manager Test", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(100),
+					Extra:       []byte("extra100"),
 					ReceiptHash: gethCommon.HexToHash("0x02"),
 				}).WithBody(signedTxs[1], newUncles[0]),
 				types.NewBlockWithHeader(&types.Header{
 					Number:      big.NewInt(101),
+					Extra:       []byte("extra101"),
 					ReceiptHash: gethCommon.HexToHash("0x03"),
 				}).WithBody(signedTxs[0], newUncles[1]),
 			}
@@ -276,7 +287,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(context.Background(), newBlocks, newReceipts, events, &model.Reorg{
+			err := manager.UpdateBlocks(ctx, newBlocks, newReceipts, events, &model.Reorg{
 				From:     blocks[0].Number().Int64(),
 				To:       blocks[len(blocks)-1].Number().Int64(),
 				FromHash: blocks[0].Hash().Bytes(),
@@ -285,7 +296,7 @@ var _ = Describe("Manager Test", func() {
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
-			header, err := manager.FindBlockByNumber(100)
+			header, err := manager.FindBlockByNumber(ctx, 100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 			Expect(err).Should(BeNil())
@@ -293,7 +304,7 @@ var _ = Describe("Manager Test", func() {
 			h.ID = header.ID
 			Expect(header).Should(Equal(h))
 			reorgStore := reorg.NewWithDB(db)
-			rs, err := reorgStore.List()
+			rs, err := reorgStore.List(ctx)
 			Expect(err).Should(Succeed())
 			Expect(len(rs)).Should(BeNumerically("==", 1))
 		})
@@ -306,7 +317,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(context.Background(), blocks, receipts, events, nil)
+			err := manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})
@@ -315,7 +326,7 @@ var _ = Describe("Manager Test", func() {
 		It("gets the right header", func() {
 			for i, block := range blocks {
 				minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[i].Header(), uncles[i])
-				header, err := manager.FindBlockByNumber(block.Number().Int64())
+				header, err := manager.FindBlockByNumber(ctx, block.Number().Int64())
 				Expect(err).Should(Succeed())
 
 				h, err := common.Header(block).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)

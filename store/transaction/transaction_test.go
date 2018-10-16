@@ -17,13 +17,14 @@
 package transaction
 
 import (
-	"os"
+	"context"
 	"testing"
 
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/test"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -33,6 +34,7 @@ func makeTx(blockNum int64, blockHex, txHex string) *model.Transaction {
 		Hash:        common.HexToBytes(txHex),
 		BlockHash:   common.HexToBytes(blockHex),
 		From:        common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A892"),
+		To:          common.HexToBytes("0xB287a379e6caCa6732E50b88D23c290aA990A893"),
 		Nonce:       10013,
 		GasPrice:    123456789,
 		GasLimit:    45000,
@@ -45,7 +47,8 @@ func makeTx(blockNum int64, blockHex, txHex string) *model.Transaction {
 var _ = Describe("Transaction Database Test", func() {
 	var (
 		mysql *test.MySQLContainer
-		db    *gorm.DB
+		db    *sqlx.DB
+		ctx   = context.Background()
 	)
 	BeforeSuite(func() {
 		var err error
@@ -54,11 +57,9 @@ var _ = Describe("Transaction Database Test", func() {
 		Expect(err).Should(Succeed())
 		Expect(mysql.Start()).Should(Succeed())
 
-		db, err = gorm.Open("mysql", mysql.URL)
+		db, err = sqldb.SimpleConnect("mysql", mysql.URL)
 		Expect(err).Should(Succeed())
 		Expect(db).ShouldNot(BeNil())
-
-		db.LogMode(os.Getenv("ENABLE_DB_LOG_IN_TEST") != "")
 	})
 
 	AfterSuite(func() {
@@ -66,7 +67,8 @@ var _ = Describe("Transaction Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		db.Delete(&model.Transaction{})
+		_, err := db.Exec("DELETE FROM transactions")
+		Expect(err).Should(Succeed())
 	})
 
 	It("should insert", func() {
@@ -76,16 +78,16 @@ var _ = Describe("Transaction Database Test", func() {
 		data1 := makeTx(32100, blockHex, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 
 		By("insert new transaction")
-		err := store.Insert(data1)
+		err := store.Insert(ctx, data1)
 		Expect(err).Should(Succeed())
 
 		By("failed to insert again")
-		err = store.Insert(data1)
+		err = store.Insert(ctx, data1)
 		Expect(err).ShouldNot(BeNil())
 
 		data2 := makeTx(32100, blockHex, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		By("insert another new transaction")
-		err = store.Insert(data2)
+		err = store.Insert(ctx, data2)
 		Expect(err).Should(Succeed())
 	})
 
@@ -101,21 +103,21 @@ var _ = Describe("Transaction Database Test", func() {
 		data4 := makeTx(52100, blockHex3, "0x88bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data := []*model.Transaction{data1, data2, data3, data4}
 		for _, tx := range data {
-			err := store.Insert(tx)
+			err := store.Insert(ctx, tx)
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.Delete(42100, 42100)
+		err := store.Delete(ctx, 42100, 42100)
 		Expect(err).Should(Succeed())
 
-		tx, err := store.FindTransaction(data1.Hash)
+		tx, err := store.FindTransaction(ctx, data1.Hash)
 		Expect(err).Should(Succeed())
 		Expect(*tx).Should(Equal(*data1))
-		tx, err = store.FindTransaction(data2.Hash)
+		tx, err = store.FindTransaction(ctx, data2.Hash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		tx, err = store.FindTransaction(data3.Hash)
+		tx, err = store.FindTransaction(ctx, data3.Hash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		tx, err = store.FindTransaction(data4.Hash)
+		tx, err = store.FindTransaction(ctx, data4.Hash)
 		Expect(err).Should(Succeed())
 		Expect(*tx).Should(Equal(*data4))
 	})
@@ -130,26 +132,26 @@ var _ = Describe("Transaction Database Test", func() {
 		data3 := makeTx(42100, blockHex2, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data := []*model.Transaction{data1, data2, data3}
 		for _, tx := range data {
-			err := store.Insert(tx)
+			err := store.Insert(ctx, tx)
 			Expect(err).Should(Succeed())
 		}
 
-		transaction, err := store.FindTransaction(data1.Hash)
+		transaction, err := store.FindTransaction(ctx, data1.Hash)
 		Expect(err).Should(Succeed())
 		Expect(*transaction).Should(Equal(*data1))
 
-		transaction, err = store.FindTransaction(data2.Hash)
+		transaction, err = store.FindTransaction(ctx, data2.Hash)
 		Expect(err).Should(Succeed())
 		Expect(*transaction).Should(Equal(*data2))
 
-		transaction, err = store.FindTransaction(data3.Hash)
+		transaction, err = store.FindTransaction(ctx, data3.Hash)
 		Expect(err).Should(Succeed())
 		Expect(*transaction).Should(Equal(*data3))
 
 		By("find an non-existent transaction")
-		transaction, err = store.FindTransaction(data2.BlockHash)
+		transaction, err = store.FindTransaction(ctx, data2.BlockHash)
 		Expect(common.NotFoundError(err)).Should(BeTrue())
-		Expect(*transaction).Should(Equal(model.Transaction{}))
+		Expect(transaction).Should(BeNil())
 	})
 
 	It("should get transaction by block hash", func() {
@@ -162,11 +164,11 @@ var _ = Describe("Transaction Database Test", func() {
 		data3 := makeTx(42100, blockHex2, "0x78bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data := []*model.Transaction{data1, data2, data3}
 		for _, tx := range data {
-			err := store.Insert(tx)
+			err := store.Insert(ctx, tx)
 			Expect(err).Should(Succeed())
 		}
 
-		transactions, err := store.FindTransactionsByBlockHash(data1.BlockHash)
+		transactions, err := store.FindTransactionsByBlockHash(ctx, data1.BlockHash)
 		Expect(err).Should(Succeed())
 		Expect(2).Should(Equal(len(transactions)))
 		Expect(*transactions[0]).Should(Equal(*data1))

@@ -17,27 +17,41 @@
 package block_header
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/getamis/eth-indexer/model"
-	"github.com/jinzhu/gorm"
+	. "github.com/getamis/eth-indexer/store/sqldb"
 )
 
 //go:generate mockery -name Store
 
 type Store interface {
-	InsertTd(data *model.TotalDifficulty) error
-	Insert(data *model.Header) error
-	Delete(from, to int64) (err error)
-	FindTd(hash []byte) (result *model.TotalDifficulty, err error)
-	FindBlockByNumber(blockNumber int64) (result *model.Header, err error)
-	FindBlockByHash(hash []byte) (result *model.Header, err error)
-	FindLatestBlock() (result *model.Header, err error)
+	InsertTd(ctx context.Context, data *model.TotalDifficulty) error
+	Insert(ctx context.Context, data *model.Header) error
+	Delete(ctx context.Context, from, to int64) (err error)
+	FindTd(ctx context.Context, hash []byte) (result *model.TotalDifficulty, err error)
+	FindBlockByNumber(ctx context.Context, blockNumber int64) (result *model.Header, err error)
+	FindBlockByHash(ctx context.Context, hash []byte) (result *model.Header, err error)
+	FindLatestBlock(ctx context.Context) (result *model.Header, err error)
 }
+
+const (
+	insertTdSQL          = "INSERT INTO `total_difficulty` (`block`, `hash`, `td`) VALUES (%d, X'%s', '%s')"
+	insertSQL            = "INSERT INTO `block_headers` (`hash`, `parent_hash`, `uncle_hash`, `coinbase`, `root`, `tx_hash`, `receipt_hash`, `difficulty`, `number`, `gas_limit`, `gas_used`, `time`, `extra_data`, `mix_digest`, `nonce`, `miner_reward`, `uncles_inclusion_reward`, `txs_fee`, `uncle1_reward`, `uncle1_coinbase`, `uncle1_hash`, `uncle2_reward`, `uncle2_coinbase`, `uncle2_hash`, `created_at`) VALUES (X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', X'%s', %d, %d, %d, %d, %d, X'%s', X'%s', X'%s', '%s', '%s', '%s', '%s', X'%s', X'%s', '%s', X'%s', X'%s', '%s')"
+	deleteSQL            = "DELETE FROM `block_headers` WHERE `number` >= %d AND `number` <= %d"
+	findTdSQL            = "SELECT * FROM `total_difficulty` WHERE `hash` = X'%s'"
+	findBlockByNumberSQL = "SELECT * FROM `block_headers` WHERE `number` = %d"
+	findBlockByHashSQL   = "SELECT * FROM `block_headers` WHERE `hash` = X'%s'"
+	findLatestBlockSQL   = "SELECT * FROM `block_headers` ORDER BY `number` DESC LIMIT 1"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB, opts ...Option) Store {
+func NewWithDB(db DbOrTx, opts ...Option) Store {
 	var s Store = &store{
 		db: db,
 	}
@@ -54,38 +68,54 @@ func NewWithDB(db *gorm.DB, opts ...Option) Store {
 	return s
 }
 
-func (t *store) InsertTd(data *model.TotalDifficulty) error {
-	return t.db.Create(data).Error
+func (t *store) InsertTd(ctx context.Context, data *model.TotalDifficulty) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertTdSQL, data.Block, Hex(data.Hash), data.Td))
+	return err
 }
 
-func (t *store) Insert(data *model.Header) error {
-	return t.db.Create(data).Error
+func (t *store) Insert(ctx context.Context, data *model.Header) error {
+	nowStr := ToTimeStr(time.Now())
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertSQL, Hex(data.Hash), Hex(data.ParentHash), Hex(data.UncleHash), Hex(data.Coinbase), Hex(data.Root), Hex(data.TxHash), Hex(data.ReceiptHash), data.Difficulty, data.Number, data.GasLimit, data.GasUsed, data.Time, Hex(data.ExtraData), Hex(data.MixDigest), Hex(data.Nonce), data.MinerReward, data.UnclesInclusionReward, data.TxsFee, data.Uncle1Reward, Hex(data.Uncle1Coinbase), Hex(data.Uncle1Hash), data.Uncle2Reward, Hex(data.Uncle2Coinbase), Hex(data.Uncle2Hash), nowStr))
+	return err
 }
 
-func (t *store) Delete(from, to int64) error {
-	return t.db.Delete(model.Header{}, "number >= ? AND number <= ?", from, to).Error
+func (t *store) Delete(ctx context.Context, from, to int64) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(deleteSQL, from, to))
+	return err
 }
 
-func (t *store) FindTd(hash []byte) (result *model.TotalDifficulty, err error) {
-	result = &model.TotalDifficulty{}
-	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
-	return
+func (t *store) FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error) {
+	result := &model.TotalDifficulty{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findTdSQL, Hex(hash)))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) FindBlockByNumber(blockNumber int64) (result *model.Header, err error) {
-	result = &model.Header{}
-	err = t.db.Where("number = ?", blockNumber).Limit(1).Find(result).Error
-	return
+func (t *store) FindBlockByNumber(ctx context.Context, blockNumber int64) (*model.Header, error) {
+	result := &model.Header{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findBlockByNumberSQL, blockNumber))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) FindBlockByHash(hash []byte) (result *model.Header, err error) {
-	result = &model.Header{}
-	err = t.db.Where("hash = ?", hash).Limit(1).Find(result).Error
-	return
+func (t *store) FindBlockByHash(ctx context.Context, hash []byte) (*model.Header, error) {
+	result := &model.Header{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findBlockByHashSQL, Hex(hash)))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) FindLatestBlock() (result *model.Header, err error) {
-	result = &model.Header{}
-	err = t.db.Order("number DESC").Limit(1).Find(&result).Error
-	return
+func (t *store) FindLatestBlock(ctx context.Context) (*model.Header, error) {
+	result := &model.Header{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findLatestBlockSQL))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

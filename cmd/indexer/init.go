@@ -20,19 +20,19 @@ import (
 	"fmt"
 
 	"github.com/getamis/eth-indexer/client"
+	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/database"
-	gormFactory "github.com/getamis/sirius/database/gorm"
 	"github.com/getamis/sirius/database/mysql"
 	vaultApi "github.com/hashicorp/vault/api"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 )
 
 func NewEthConn(url string) (client.EthClient, error) {
 	return client.NewClient(url)
 }
 
-func NewDatabase() (*gorm.DB, error) {
-	return gormFactory.New(dbDriver,
+func NewDatabase() (*sqlx.DB, error) {
+	return sqldb.New(dbDriver,
 		database.DriverOption(
 			mysql.Database(dbName),
 			mysql.Connector(mysql.DefaultProtocol, dbHost, fmt.Sprintf("%d", dbPort)),

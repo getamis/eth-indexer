@@ -14,13 +14,13 @@ type Manager struct {
 	mock.Mock
 }
 
-// FindBlockByNumber provides a mock function with given fields: number
-func (_m *Manager) FindBlockByNumber(number int64) (*model.Header, error) {
-	ret := _m.Called(number)
+// FindBlockByNumber provides a mock function with given fields: ctx, number
+func (_m *Manager) FindBlockByNumber(ctx context.Context, number int64) (*model.Header, error) {
+	ret := _m.Called(ctx, number)
 
 	var r0 *model.Header
-	if rf, ok := ret.Get(0).(func(int64) *model.Header); ok {
-		r0 = rf(number)
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *model.Header); ok {
+		r0 = rf(ctx, number)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Header)
@@ -28,8 +28,8 @@ func (_m *Manager) FindBlockByNumber(number int64) (*model.Header, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(number)
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, number)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -37,13 +37,13 @@ func (_m *Manager) FindBlockByNumber(number int64) (*model.Header, error) {
 	return r0, r1
 }
 
-// FindERC20 provides a mock function with given fields: address
-func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
-	ret := _m.Called(address)
+// FindERC20 provides a mock function with given fields: ctx, address
+func (_m *Manager) FindERC20(ctx context.Context, address common.Address) (*model.ERC20, error) {
+	ret := _m.Called(ctx, address)
 
 	var r0 *model.ERC20
-	if rf, ok := ret.Get(0).(func(common.Address) *model.ERC20); ok {
-		r0 = rf(address)
+	if rf, ok := ret.Get(0).(func(context.Context, common.Address) *model.ERC20); ok {
+		r0 = rf(ctx, address)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.ERC20)
@@ -51,8 +51,8 @@ func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
-		r1 = rf(address)
+	if rf, ok := ret.Get(1).(func(context.Context, common.Address) error); ok {
+		r1 = rf(ctx, address)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -60,13 +60,13 @@ func (_m *Manager) FindERC20(address common.Address) (*model.ERC20, error) {
 	return r0, r1
 }
 
-// FindLatestBlock provides a mock function with given fields:
-func (_m *Manager) FindLatestBlock() (*model.Header, error) {
-	ret := _m.Called()
+// FindLatestBlock provides a mock function with given fields: ctx
+func (_m *Manager) FindLatestBlock(ctx context.Context) (*model.Header, error) {
+	ret := _m.Called(ctx)
 
 	var r0 *model.Header
-	if rf, ok := ret.Get(0).(func() *model.Header); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(context.Context) *model.Header); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.Header)
@@ -74,8 +74,8 @@ func (_m *Manager) FindLatestBlock() (*model.Header, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -83,13 +83,13 @@ func (_m *Manager) FindLatestBlock() (*model.Header, error) {
 	return r0, r1
 }
 
-// FindTd provides a mock function with given fields: hash
-func (_m *Manager) FindTd(hash []byte) (*model.TotalDifficulty, error) {
-	ret := _m.Called(hash)
+// FindTd provides a mock function with given fields: ctx, hash
+func (_m *Manager) FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error) {
+	ret := _m.Called(ctx, hash)
 
 	var r0 *model.TotalDifficulty
-	if rf, ok := ret.Get(0).(func([]byte) *model.TotalDifficulty); ok {
-		r0 = rf(hash)
+	if rf, ok := ret.Get(0).(func(context.Context, []byte) *model.TotalDifficulty); ok {
+		r0 = rf(ctx, hash)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*model.TotalDifficulty)
@@ -97,8 +97,8 @@ func (_m *Manager) FindTd(hash []byte) (*model.TotalDifficulty, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]byte) error); ok {
-		r1 = rf(hash)
+	if rf, ok := ret.Get(1).(func(context.Context, []byte) error); ok {
+		r1 = rf(ctx, hash)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -106,13 +106,13 @@ func (_m *Manager) FindTd(hash []byte) (*model.TotalDifficulty, error) {
 	return r0, r1
 }
 
-// Init provides a mock function with given fields: balancer
-func (_m *Manager) Init(balancer client.Balancer) error {
-	ret := _m.Called(balancer)
+// Init provides a mock function with given fields: ctx, balancer
+func (_m *Manager) Init(ctx context.Context, balancer client.Balancer) error {
+	ret := _m.Called(ctx, balancer)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(client.Balancer) error); ok {
-		r0 = rf(balancer)
+	if rf, ok := ret.Get(0).(func(context.Context, client.Balancer) error); ok {
+		r0 = rf(ctx, balancer)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -120,13 +120,13 @@ func (_m *Manager) Init(balancer client.Balancer) error {
 	return r0
 }
 
-// InsertERC20 provides a mock function with given fields: code
-func (_m *Manager) InsertERC20(code *model.ERC20) error {
-	ret := _m.Called(code)
+// InsertERC20 provides a mock function with given fields: ctx, code
+func (_m *Manager) InsertERC20(ctx context.Context, code *model.ERC20) error {
+	ret := _m.Called(ctx, code)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.ERC20) error); ok {
-		r0 = rf(code)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.ERC20) error); ok {
+		r0 = rf(ctx, code)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -134,13 +134,13 @@ func (_m *Manager) InsertERC20(code *model.ERC20) error {
 	return r0
 }
 
-// InsertTd provides a mock function with given fields: data
-func (_m *Manager) InsertTd(data *model.TotalDifficulty) error {
-	ret := _m.Called(data)
+// InsertTd provides a mock function with given fields: ctx, data
+func (_m *Manager) InsertTd(ctx context.Context, data *model.TotalDifficulty) error {
+	ret := _m.Called(ctx, data)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*model.TotalDifficulty) error); ok {
-		r0 = rf(data)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.TotalDifficulty) error); ok {
+		r0 = rf(ctx, data)
 	} else {
 		r0 = ret.Error(0)
 	}

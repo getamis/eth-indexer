@@ -17,114 +17,179 @@
 package account
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/getamis/eth-indexer/model"
-	"github.com/jinzhu/gorm"
+	. "github.com/getamis/eth-indexer/store/sqldb"
+	"github.com/jmoiron/sqlx"
 )
 
 //go:generate mockery -name Store
 
 type Store interface {
 	// ERC 20
-	InsertERC20(code *model.ERC20) error
-	BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error
-	FindERC20(address common.Address) (result *model.ERC20, err error)
-	ListOldERC20() ([]*model.ERC20, error)
-	ListNewERC20() ([]*model.ERC20, error)
+	InsertERC20(ctx context.Context, code *model.ERC20) error
+	BatchUpdateERC20BlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error
+	FindERC20(ctx context.Context, address common.Address) (result *model.ERC20, err error)
+	ListERC20(ctx context.Context) ([]*model.ERC20, error)
+	ListOldERC20(ctx context.Context) ([]*model.ERC20, error)
+	ListNewERC20(ctx context.Context) ([]*model.ERC20, error)
 
 	// Accounts
-	InsertAccount(account *model.Account) error
-	FindAccount(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Account, err error)
-	FindLatestAccounts(contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error)
-	DeleteAccounts(contractAddress common.Address, from, to int64) error
+	InsertAccount(ctx context.Context, account *model.Account) error
+	FindAccount(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Account, err error)
+	FindLatestAccounts(ctx context.Context, contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error)
+	DeleteAccounts(ctx context.Context, contractAddress common.Address, from, to int64) error
 
 	// Transfer events
-	InsertTransfer(event *model.Transfer) error
-	FindTransfer(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Transfer, err error)
-	FindAllTransfers(contractAddress common.Address, address common.Address) (result []*model.Transfer, err error)
-	DeleteTransfer(contractAddress common.Address, from, to int64) error
+	InsertTransfer(ctx context.Context, event *model.Transfer) error
+	FindAllTransfers(ctx context.Context, contractAddress common.Address, address common.Address) (result []*model.Transfer, err error)
+	DeleteTransfer(ctx context.Context, contractAddress common.Address, from, to int64) error
 }
+
+const (
+	insertERC20SQL                 = "INSERT INTO `erc20` (`block_number`, `address`, `total_supply`, `decimals`, `name`) VALUES (%d, X'%s', '%s', %d, '%s')"
+	createERC20TableSQL            = "CREATE TABLE `%s`(`block_number` bigint(20) DEFAULT NULL, `address` varbinary(20) DEFAULT NULL, `balance` varchar(32) DEFAULT NULL, UNIQUE INDEX `idx_block_number_address` (`block_number`,`address`), INDEX `block_number` (`block_number`), INDEX `address` (`address`))"
+	createERC20TransferSQL         = "CREATE TABLE `%s` (`block_number` bigint(20) DEFAULT NULL,`tx_hash` varbinary(32) DEFAULT NULL, `from` varbinary(20) DEFAULT NULL, `to` varbinary(20) DEFAULT NULL, `value` varchar(32) DEFAULT NULL, INDEX `block_number` (`block_number`), INDEX `tx_hash` (`tx_hash`), INDEX `from` (`from`), INDEX `to` (`to`))"
+	batchUpdateERC20BlockNumberSQL = "UPDATE `erc20` SET `block_number` = %d WHERE `address` IN (%s)"
+	findERC20SQL                   = "SELECT * FROM `erc20` WHERE `address` = X'%s'"
+	listERC20SQL                   = "SELECT * FROM `erc20`"
+	listOldERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` > 0"
+	listNewERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` = 0"
+	insertAccountSQL               = "INSERT INTO `%s` (`block_number`, `address`, `balance`) VALUES (%d, X'%s', '%s')"
+	findAccountSQL                 = "SELECT * FROM `%s` WHERE `address` = X'%s' ORDER BY `block_number` DESC LIMIT 1"
+	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE `address` = X'%s' AND `block_number` <= %d ORDER BY `block_number` DESC LIMIT 1"
+	deleteAccountsSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
+	insertTransferSQL              = "INSERT INTO `%s` (`block_number`, `tx_hash`, `from`, `to`, `value`) VALUES (%d, X'%s', X'%s', X'%s', '%s')"
+	findTransferSQL                = "SELECT * FROM `%s` WHERE (`from` = X'%s' OR `to` = X'%s') ORDER BY `block_number` DESC"
+	deleteTransferSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
+)
 
 type store struct {
-	db *gorm.DB
+	db DbOrTx
 }
 
-func NewWithDB(db *gorm.DB) Store {
+func NewWithDB(db DbOrTx) Store {
 	return &store{
 		db: db,
 	}
 }
 
-func (t *store) InsertERC20(code *model.ERC20) error {
+func (t *store) InsertERC20(ctx context.Context, code *model.ERC20) (err error) {
+	// Ensure we are in a db transaction
+	var dbTx *sqlx.Tx
+	db, ok := t.db.(*sqlx.DB)
+	if ok {
+		dbTx, err = db.BeginTxx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				dbTx.Rollback()
+				return
+			}
+			err = dbTx.Commit()
+		}()
+	} else {
+		dbTx, ok = t.db.(*sqlx.Tx)
+		if !ok {
+			return errors.New("not in a transaction")
+		}
+	}
+
 	// Insert contract code
-	if err := t.db.Create(code).Error; err != nil {
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(insertERC20SQL, code.BlockNumber, Hex(code.Address), code.TotalSupply, code.Decimals, code.Name))
+	if err != nil {
 		return err
 	}
 
 	// Create a account table for this contract
-	if err := t.db.CreateTable(model.Account{
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(createERC20TableSQL, model.Account{
 		ContractAddress: code.Address,
-	}).Error; err != nil {
+	}.TableName()))
+	if err != nil {
 		return err
 	}
 
 	// Create erc20 transfer event table
-	if err := t.db.CreateTable(model.Transfer{
+	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(createERC20TransferSQL, model.Transfer{
 		Address: code.Address,
-	}).Error; err != nil {
-		return err
+	}.TableName()))
+	return err
+}
+
+func (t *store) FindERC20(ctx context.Context, address common.Address) (*model.ERC20, error) {
+	result := &model.ERC20{}
+	err := t.db.GetContext(ctx, result, fmt.Sprintf(findERC20SQL, Hex(address.Bytes())))
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return result, nil
 }
 
-func (t *store) FindERC20(address common.Address) (result *model.ERC20, err error) {
-	result = &model.ERC20{}
-	err = t.db.Where("address = ?", address.Bytes()).Limit(1).Find(result).Error
-	return
+func (t *store) ListERC20(ctx context.Context) ([]*model.ERC20, error) {
+	result := []*model.ERC20{}
+	err := t.db.SelectContext(ctx, &result, listERC20SQL)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) ListOldERC20() (results []*model.ERC20, err error) {
-	results = []*model.ERC20{}
-	err = t.db.Where("block_number > 0").Find(&results).Error
-	return
+func (t *store) ListOldERC20(ctx context.Context) ([]*model.ERC20, error) {
+	result := []*model.ERC20{}
+	err := t.db.SelectContext(ctx, &result, listOldERC20SQL)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) ListNewERC20() (results []*model.ERC20, err error) {
-	results = []*model.ERC20{}
-	err = t.db.Where("block_number = 0").Find(&results).Error
-	return
+func (t *store) ListNewERC20(ctx context.Context) ([]*model.ERC20, error) {
+	result := []*model.ERC20{}
+	err := t.db.SelectContext(ctx, &result, listNewERC20SQL)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (t *store) BatchUpdateERC20BlockNumber(blockNumber int64, addrs [][]byte) error {
+func (t *store) BatchUpdateERC20BlockNumber(ctx context.Context, blockNumber int64, addrs [][]byte) error {
 	if len(addrs) == 0 {
 		return nil
 	}
-	return t.db.Model(model.ERC20{}).Where("address in (?)", addrs).Updates(map[string]interface{}{"block_number": blockNumber}).Error
+
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(batchUpdateERC20BlockNumberSQL, blockNumber, InClauseForBytes(addrs)))
+	return err
 }
 
-func (t *store) InsertAccount(account *model.Account) error {
-	return t.db.Create(account).Error
+func (t *store) InsertAccount(ctx context.Context, account *model.Account) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertAccountSQL, account.TableName(), account.BlockNumber, Hex(account.Address), account.Balance))
+	return err
 }
 
-func (t *store) FindAccount(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Account, err error) {
+func (t *store) FindAccount(ctx context.Context, contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Account, err error) {
 	result = &model.Account{
 		ContractAddress: contractAddress.Bytes(),
 	}
 	if len(blockNr) == 0 {
-		err = t.db.Where("address = ?", address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.GetContext(ctx, result, fmt.Sprintf(findAccountSQL, result.TableName(), Hex(address.Bytes())))
 	} else {
-		err = t.db.Where("address = ? AND block_number <= ?", address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
+		err = t.db.GetContext(ctx, result, fmt.Sprintf(findAccountByNumberSQL, result.TableName(), Hex(address.Bytes()), blockNr[0]))
 	}
 	return
 }
 
-func (t *store) FindLatestAccounts(contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error) {
+func (t *store) FindLatestAccounts(ctx context.Context, contractAddress common.Address, addrs [][]byte) (result []*model.Account, err error) {
 	if len(addrs) == 0 {
 		return []*model.Account{}, nil
 	}
 
+	result = []*model.Account{}
 	acct := model.Account{
 		ContractAddress: contractAddress.Bytes(),
 	}
@@ -134,46 +199,43 @@ func (t *store) FindLatestAccounts(contractAddress common.Address, addrs [][]byt
 	// "select address, balance, MAX(block_number) as block_number from %s where address in (?) group by (address, balance)"
 	// is not what we want, because (address, balance) isn't unique
 	query := fmt.Sprintf(
-		"select t1.address, t1.block_number, t1.balance from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (?) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
-		acct.TableName(), acct.TableName())
-	err = t.db.Raw(query, addrs).Scan(&result).Error
+		"select t1.address, t1.block_number, t1.balance from %s as t1, (select address, MAX(block_number) as block_number from %s where address in (%s) group by address) as t2 where t1.address = t2.address and t1.block_number = t2.block_number",
+		acct.TableName(), acct.TableName(), InClauseForBytes(addrs))
+	err = t.db.SelectContext(ctx, &result, query)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (t *store) DeleteAccounts(contractAddress common.Address, from, to int64) error {
-	return t.db.Delete(model.Account{
+func (t *store) DeleteAccounts(ctx context.Context, contractAddress common.Address, from, to int64) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(deleteAccountsSQL, model.Account{
 		ContractAddress: contractAddress.Bytes(),
-	}, "block_number >= ? AND block_number <= ?", from, to).Error
+	}.TableName(), from, to))
+	return err
 }
 
-func (t *store) InsertTransfer(event *model.Transfer) error {
-	return t.db.Create(event).Error
+func (t *store) InsertTransfer(ctx context.Context, event *model.Transfer) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertTransferSQL, event.TableName(), event.BlockNumber, Hex(event.TxHash), Hex(event.From), Hex(event.To), event.Value))
+	return err
 }
 
-func (t *store) FindTransfer(contractAddress common.Address, address common.Address, blockNr ...int64) (result *model.Transfer, err error) {
-	result = &model.Transfer{
+func (t *store) FindAllTransfers(ctx context.Context, contractAddress common.Address, address common.Address) ([]*model.Transfer, error) {
+	tableName := model.Transfer{
 		Address: contractAddress.Bytes(),
+	}.TableName()
+
+	result := []*model.Transfer{}
+	err := t.db.SelectContext(ctx, &result, fmt.Sprintf(findTransferSQL, tableName, Hex(address.Bytes()), Hex(address.Bytes())))
+	if err != nil {
+		return nil, err
 	}
-	if len(blockNr) == 0 {
-		err = t.db.Where("`from` = ? OR `to` = ?", address.Bytes(), address.Bytes()).Order("block_number DESC").Limit(1).Find(result).Error
-	} else {
-		err = t.db.Where("(`from` = ? OR `to` = ?) AND block_number <= ?", address.Bytes(), address.Bytes(), blockNr[0]).Order("block_number DESC").Limit(1).Find(result).Error
-	}
-	return
+	return result, nil
 }
 
-func (t *store) FindAllTransfers(contractAddress common.Address, address common.Address) (result []*model.Transfer, err error) {
-	err = t.db.Table(model.Transfer{
+func (t *store) DeleteTransfer(ctx context.Context, contractAddress common.Address, from, to int64) error {
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(deleteTransferSQL, model.Transfer{
 		Address: contractAddress.Bytes(),
-	}.TableName()).Where("`from` = ? OR `to` = ?", address.Bytes(), address.Bytes()).Order("block_number DESC").Find(&result).Error
-	return
-}
-
-func (t *store) DeleteTransfer(contractAddress common.Address, from, to int64) error {
-	return t.db.Delete(model.Transfer{
-		Address: contractAddress.Bytes(),
-	}, "block_number >= ? AND block_number <= ?", from, to).Error
+	}.TableName(), from, to))
+	return err
 }
