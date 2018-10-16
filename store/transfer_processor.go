@@ -28,7 +28,6 @@ import (
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/sirius/log"
-	"github.com/jinzhu/gorm"
 )
 
 type transferProcessor struct {
@@ -103,7 +102,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 	}
 	// Add new subscriptions
-	newSubResults, err := s.subStore.Find(0)
+	newSubResults, err := s.subStore.Find(ctx, 0)
 	if err != nil {
 		s.logger.Error("Failed to find subscriptions", "err", err)
 		return err
@@ -126,7 +125,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	}
 
 	// Get subscribed accounts whose balances are changed, including the new subscriptions
-	subs, err := s.subStore.FindOldSubscriptions(addrs)
+	subs, err := s.subStore.FindOldSubscriptions(ctx, addrs)
 	if err != nil {
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
 		return err
@@ -155,7 +154,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			continue
 		}
 
-		err := s.accountStore.InsertTransfer(e)
+		err := s.accountStore.InsertTransfer(ctx, e)
 		if err != nil {
 			s.logger.Error("Failed to insert ERC20 transfer event", "value", e.Value, "from", common.BytesToHex(e.From), "to", common.BytesToHex(e.To), "err", err)
 			return err
@@ -233,7 +232,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	allAddrs := append(addrs, newAddrs...)
 	for contractAddr, addrs := range balancesByContracts {
 		// Get last recorded balance for these accounts
-		latestBalances, err := s.getLatestBalances(contractAddr, allAddrs)
+		latestBalances, err := s.getLatestBalances(ctx, contractAddr, allAddrs)
 		if err != nil {
 			s.logger.Error("Failed to get previous balances", "contractAddr", contractAddr.Hex(), "len", len(allAddrs), "err", err)
 			return err
@@ -245,7 +244,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 				Address:         addr.Bytes(),
 				Balance:         balance.String(),
 			}
-			err := s.accountStore.InsertAccount(b)
+			err := s.accountStore.InsertAccount(ctx, b)
 			if err != nil {
 				s.logger.Error("Failed to insert ERC20 account", "err", err)
 				return err
@@ -279,7 +278,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 	}
 
 	// Update the subscriptions table for the new subscriptions
-	err = s.subStore.BatchUpdateBlockNumber(s.blockNumber, newAddrs)
+	err = s.subStore.BatchUpdateBlockNumber(ctx, s.blockNumber, newAddrs)
 	if err != nil {
 		s.logger.Error("Failed to update block number", "err", err)
 		return err
@@ -300,8 +299,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			}
 			tb, ok := totalBalances[sub.Group][token]
 			if !ok {
-				b, err := s.subStore.FindTotalBalance(s.blockNumber-1, token, sub.Group)
-				if err == gorm.ErrRecordNotFound {
+				b, err := s.subStore.FindTotalBalance(ctx, s.blockNumber-1, token, sub.Group)
+				if common.NotFoundError(err) {
 					s.logger.Debug("Total balance cannot be found", "group", sub.Group, "number", s.blockNumber-1, "token", token.Hex())
 					b = &model.TotalBalance{
 						BlockNumber:  s.blockNumber - 1,
@@ -374,7 +373,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 					tb.UnclesReward = r.String()
 				}
 			}
-			err = s.subStore.InsertTotalBalance(tb)
+			err = s.subStore.InsertTotalBalance(ctx, tb)
 			if err != nil {
 				return
 			}
@@ -384,8 +383,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 }
 
 // Get last recorded balance data for these accounts
-func (s *transferProcessor) getLatestBalances(contractAddr gethCommon.Address, addrs [][]byte) (map[gethCommon.Address]*model.Account, error) {
-	balances, err := s.accountStore.FindLatestAccounts(contractAddr, addrs)
+func (s *transferProcessor) getLatestBalances(ctx context.Context, contractAddr gethCommon.Address, addrs [][]byte) (map[gethCommon.Address]*model.Account, error) {
+	balances, err := s.accountStore.FindLatestAccounts(ctx, contractAddr, addrs)
 	if err != nil {
 		return nil, err
 	}
