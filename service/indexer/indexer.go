@@ -115,6 +115,7 @@ func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, in
 	for {
 		select {
 		case head := <-ch:
+			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex(), "index", index)
 			outChannel <- &Result{
 				header:      head,
 				clientIndex: index,
@@ -170,7 +171,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 				continue
 			}
 
-			log.Trace("Got new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
+			start := time.Now()
 			// switch the current ethClient to the source
 			idx.latestClient = idx.clients[result.clientIndex]
 			err := idx.sync(listenCtx, header)
@@ -178,6 +179,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
 				return err
 			}
+			log.Trace("Handled new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex, "duration", time.Since(start))
 		case <-listenCtx.Done():
 			return listenCtx.Err()
 		}
