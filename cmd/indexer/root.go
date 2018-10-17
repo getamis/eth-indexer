@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/cmd/flags"
@@ -32,6 +33,7 @@ import (
 	"github.com/getamis/eth-indexer/service/indexer"
 	"github.com/getamis/eth-indexer/store"
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/metrics"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -73,6 +75,11 @@ var (
 	// flags for vault config
 	vaultHost   string
 	vaultCAPath string
+
+	// flags for metrics
+	metricsEnabled bool
+	metricsHost    string
+	metricsPort    int
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -103,6 +110,29 @@ var ServerCmd = &cobra.Command{
 			defer ethClient.Close()
 
 			clients = append(clients, ethClient)
+		}
+
+		if metricsEnabled {
+			r, ok := metrics.DefaultRegistry.(*metrics.PrometheusRegistry)
+			if !ok {
+				log.Error("Failed to convert to prometheus registry")
+				return errors.New("not a prometheus registry")
+			}
+			r.SetNamespace("indexer")
+			// start metrics service
+			httpServer := MetricsDefaultHttpServer(metricsHost, metricsPort)
+			go func() {
+				if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					log.Error("Metric server stopped unexpectedly", "err", err)
+				}
+			}()
+
+			// Shutdown http server before termination
+			defer func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				httpServer.Shutdown(ctx)
+			}()
 		}
 
 		// database
@@ -203,6 +233,10 @@ func init() {
 	ServerCmd.Flags().String(flags.VaultHost, "", "The vault server host")
 	ServerCmd.Flags().String(flags.VaultCAPath, "/etc/ssl/certs/amis/vault.pem", "The path of vault CA file")
 
+	// Metrics flags
+	ServerCmd.Flags().Bool(metrics.MetricsEnabledFlag, false, "Enable metrics")
+	ServerCmd.Flags().String(flags.MetricsHostFlag, "", "Metrics listening host")
+	ServerCmd.Flags().Int(flags.MetricsPortFlag, 9092, "Metrics listening port")
 }
 
 func initViper() {
@@ -260,4 +294,9 @@ func assignVarFromViper() {
 		dbUser = viper.GetString(flags.DbUser)
 		dbPassword = viper.GetString(flags.DbPassword)
 	}
+
+	// flags for metrics
+	metricsEnabled = viper.GetBool(metrics.MetricsEnabledFlag)
+	metricsHost = viper.GetString(flags.MetricsHostFlag)
+	metricsPort = viper.GetInt(flags.MetricsPortFlag)
 }
