@@ -113,12 +113,6 @@ var ServerCmd = &cobra.Command{
 		}
 
 		if metricsEnabled {
-			r, ok := metrics.DefaultRegistry.(*metrics.PrometheusRegistry)
-			if !ok {
-				log.Error("Failed to convert to prometheus registry")
-				return errors.New("not a prometheus registry")
-			}
-			r.SetNamespace("indexer")
 			// start metrics service
 			httpServer := MetricsDefaultHttpServer(metricsHost, metricsPort)
 			go func() {
