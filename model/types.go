@@ -26,6 +26,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
+// Ensure the timezone in model is UTC
+func init() {
+	time.Local = time.UTC
+}
+
 var (
 	// ETHAddress represents ether type in address type
 	ETHAddress = common.BytesToAddress([]byte("ETH"))
