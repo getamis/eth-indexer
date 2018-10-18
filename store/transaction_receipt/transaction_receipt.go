@@ -52,8 +52,11 @@ func NewWithDB(db DbOrTx) Store {
 
 func (r *store) Insert(ctx context.Context, data *model.Receipt) (err error) {
 	// Ensure we are in a db transaction
-	dbTx, deferFunc, err := NewTx(ctx, r.db)
-	defer deferFunc(err)
+	dbTx, deferFunc, txErr := NewTx(ctx, r.db)
+	if txErr != nil {
+		return txErr
+	}
+	defer deferFunc(&err)
 
 	// Insert receipt
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(insertReceiptSQL, Hex(data.Root), data.Status, data.CumulativeGasUsed, Hex(data.Bloom), Hex(data.TxHash), Hex(data.ContractAddress), data.GasUsed, data.BlockNumber))
@@ -72,8 +75,11 @@ func (r *store) Insert(ctx context.Context, data *model.Receipt) (err error) {
 
 func (r *store) Delete(ctx context.Context, from, to int64) (err error) {
 	// Ensure we are in a db transaction
-	dbTx, deferFunc, err := NewTx(ctx, r.db)
-	defer deferFunc(err)
+	dbTx, deferFunc, txErr := NewTx(ctx, r.db)
+	if txErr != nil {
+		return txErr
+	}
+	defer deferFunc(&err)
 
 	// Delete receipt
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(deleteReceiptSQL, from, to))
@@ -90,8 +96,11 @@ func (r *store) Delete(ctx context.Context, from, to int64) (err error) {
 
 func (r *store) FindReceipt(ctx context.Context, hash []byte) (result *model.Receipt, err error) {
 	// Ensure we are in a db transaction
-	dbTx, deferFunc, err := NewTx(ctx, r.db)
-	defer deferFunc(err)
+	dbTx, deferFunc, txErr := NewTx(ctx, r.db)
+	if txErr != nil {
+		return nil, txErr
+	}
+	defer deferFunc(&err)
 
 	// Find receipt
 	receipt := &model.Receipt{}

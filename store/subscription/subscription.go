@@ -77,9 +77,11 @@ func NewWithDB(db DbOrTx) Store {
 }
 
 func (t *store) BatchInsert(ctx context.Context, subs []*model.Subscription) (duplicated []common.Address, err error) {
-	dbTx, deferFunc, err := NewTx(ctx, t.db)
-	defer deferFunc(err)
-
+	dbTx, deferFunc, txErr := NewTx(ctx, t.db)
+	if txErr != nil {
+		return nil, txErr
+	}
+	defer deferFunc(&err)
 	nowStr := ToTimeStr(time.Now())
 	for _, sub := range subs {
 		_, createErr := dbTx.ExecContext(ctx, fmt.Sprintf(insertSQL, sub.BlockNumber, sub.Group, Hex(sub.Address), nowStr, nowStr))
@@ -140,8 +142,11 @@ func (t *store) FindTotalBalance(ctx context.Context, blockNumber int64, token c
 
 func (t *store) Reset(ctx context.Context, from, to int64) (err error) {
 	// Ensure we are in a db transaction
-	dbTx, deferFunc, err := NewTx(ctx, t.db)
-	defer deferFunc(err)
+	dbTx, deferFunc, txErr := NewTx(ctx, t.db)
+	if txErr != nil {
+		return txErr
+	}
+	defer deferFunc(&err)
 
 	// Set the block number of subscription to 0
 	_, err = dbTx.ExecContext(ctx, fmt.Sprintf(resetSupscriptionsSQL, from, to))
