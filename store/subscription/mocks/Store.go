@@ -48,27 +48,34 @@ func (_m *Store) BatchUpdateBlockNumber(ctx context.Context, blockNumber int64, 
 	return r0
 }
 
-// Find provides a mock function with given fields: ctx, blockNumber
-func (_m *Store) Find(ctx context.Context, blockNumber int64) ([]*model.Subscription, error) {
-	ret := _m.Called(ctx, blockNumber)
+// Find provides a mock function with given fields: ctx, blockNumber, query
+func (_m *Store) Find(ctx context.Context, blockNumber int64, query *model.QueryParameters) ([]*model.Subscription, uint64, error) {
+	ret := _m.Called(ctx, blockNumber, query)
 
 	var r0 []*model.Subscription
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []*model.Subscription); ok {
-		r0 = rf(ctx, blockNumber)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *model.QueryParameters) []*model.Subscription); ok {
+		r0 = rf(ctx, blockNumber, query)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*model.Subscription)
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, blockNumber)
+	var r1 uint64
+	if rf, ok := ret.Get(1).(func(context.Context, int64, *model.QueryParameters) uint64); ok {
+		r1 = rf(ctx, blockNumber, query)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(uint64)
 	}
 
-	return r0, r1
+	var r2 error
+	if rf, ok := ret.Get(2).(func(context.Context, int64, *model.QueryParameters) error); ok {
+		r2 = rf(ctx, blockNumber, query)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // FindByGroup provides a mock function with given fields: ctx, groupID, query
