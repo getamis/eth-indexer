@@ -781,6 +781,6 @@ var _ = Describe("Subscription Test", func() {
 		Expect(res[1].BlockNumber).Should(Equal(int64(101)))
 		Expect(res[2].BlockNumber).Should(Equal(int64(102)))
 
-		newSubscriptionLimit = uint64(client.ChunkSize - estNumDiffAcct)
+		newSubscriptionLimit = uint64(client.ChunkSize - esChangedAccountPerBlock)
 	})
 })
