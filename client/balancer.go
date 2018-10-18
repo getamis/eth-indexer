@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	chunkSize = 200
+	// ChunkSize defines the chuck size to get balances from geth
+	ChunkSize = 200
 )
 
 //go:generate mockery -name Balancer
@@ -58,14 +59,14 @@ func (c *client) BalanceOf(ctx context.Context, blockHash ethCommon.Hash, balanc
 
 	// Get batch results
 	lens := len(msgs)
-	for begin := 0; begin < lens; begin += chunkSize {
-		end := begin + chunkSize
+	for begin := 0; begin < lens; begin += ChunkSize {
+		end := begin + ChunkSize
 		if end > lens {
 			end = lens
 		}
 
 		chunk := msgs[begin:end]
-		logger.Info("processing ERC20 balance chunk", "total", lens, "begin", begin, "end", end)
+		logger.Trace("Processing ERC20 balance chunk", "total", lens, "begin", begin, "end", end)
 		outputs, err := c.BatchCallContract(ctx, chunk, blockHash)
 		if err != nil {
 			return err
@@ -94,14 +95,14 @@ func (c *client) BalanceOf(ctx context.Context, blockHash ethCommon.Hash, balanc
 
 	// Get ethers
 	lens = len(addrList)
-	for begin := 0; begin < lens; begin += chunkSize {
-		end := begin + chunkSize
+	for begin := 0; begin < lens; begin += ChunkSize {
+		end := begin + ChunkSize
 		if end > lens {
 			end = lens
 		}
 
 		chunk := addrList[begin:end]
-		logger.Info("processing ETH balance chunk", "total", lens, "begin", begin, "end", end)
+		logger.Trace("Processing ETH balance chunk", "total", lens, "begin", begin, "end", end)
 		ethers, err := c.BatchBalanceAt(ctx, chunk, blockHash)
 		if err != nil {
 			return err
