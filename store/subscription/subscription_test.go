@@ -111,17 +111,29 @@ var _ = Describe("Database Test", func() {
 			_, err := store.BatchInsert(ctx, data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.Find(ctx, data1.BlockNumber)
-			Expect(err).Should(Succeed())
-			Expect(len(res)).Should(BeNumerically("==", 2))
-
-			res, err = store.Find(ctx, data3.BlockNumber)
+			res, total, err := store.Find(ctx, data1.BlockNumber, &model.QueryParameters{
+				Page:  1,
+				Limit: 1,
+			})
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 1))
+			Expect(total).Should(BeNumerically("==", 2))
 
-			res, err = store.Find(ctx, 0)
+			res, total, err = store.Find(ctx, data3.BlockNumber, &model.QueryParameters{
+				Page:  1,
+				Limit: 1,
+			})
+			Expect(err).Should(Succeed())
+			Expect(len(res)).Should(BeNumerically("==", 1))
+			Expect(total).Should(BeNumerically("==", 1))
+
+			res, total, err = store.Find(ctx, 0, &model.QueryParameters{
+				Page:  1,
+				Limit: 1,
+			})
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeZero())
+			Expect(total).Should(BeZero())
 		})
 
 		It("should get subscriptions by addresses", func() {
@@ -271,17 +283,25 @@ var _ = Describe("Database Test", func() {
 			_, err := store.BatchInsert(ctx, data)
 			Expect(err).Should(Succeed())
 
-			res, err := store.Find(ctx, 0)
+			res, total, err := store.Find(ctx, 0, &model.QueryParameters{
+				Page:  1,
+				Limit: 100,
+			})
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 0))
+			Expect(total).Should(BeNumerically("==", 0))
 
 			err = store.BatchUpdateBlockNumber(ctx, 0,
 				[][]byte{data1.Address, data2.Address, data3.Address})
 			Expect(err).Should(Succeed())
 
-			res, err = store.Find(ctx, 0)
+			res, total, err = store.Find(ctx, 0, &model.QueryParameters{
+				Page:  1,
+				Limit: 100,
+			})
 			Expect(err).Should(Succeed())
 			Expect(len(res)).Should(BeNumerically("==", 3))
+			Expect(total).Should(BeNumerically("==", 3))
 		})
 	})
 

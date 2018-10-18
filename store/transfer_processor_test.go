@@ -24,6 +24,7 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/client/mocks"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
@@ -663,5 +664,123 @@ var _ = Describe("Subscription Test", func() {
 		a2_2, err := acctStore.FindAccount(ctx, model.ETHAddress, acc2Addr, 102)
 		Expect(err).Should(BeNil())
 		Expect(a2_2).Should(Equal(a2_0))
+	})
+
+	It("handle new subscription partially", func() {
+		newSubscriptionLimit = 1
+		ctx := context.Background()
+		By("Normal blocks comes")
+		// subscriptions
+		subs := []*model.Subscription{
+			{
+				BlockNumber: 0,
+				Group:       1,
+				Address:     acc0Addr.Bytes(),
+			},
+			{
+				BlockNumber: 0,
+				Group:       1,
+				Address:     acc1Addr.Bytes(),
+			},
+			{
+				BlockNumber: 0,
+				Group:       1,
+				Address:     acc2Addr.Bytes(),
+			},
+		}
+		// Insert subscription
+		subStore := subsStore.NewWithDB(db)
+		duplicated, err := subStore.BatchInsert(ctx, subs)
+		Expect(err).Should(BeNil())
+		Expect(len(duplicated)).Should(Equal(0))
+
+		// Init initial states
+		signedTxs = [][]*types.Transaction{
+			{},
+			{},
+			{},
+		}
+
+		blocks = []*types.Block{
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(100),
+				Coinbase: unknownRecipientAddr,
+			}),
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(101),
+				Coinbase: unknownRecipientAddr,
+			}),
+			types.NewBlockWithHeader(&types.Header{
+				Number:   big.NewInt(102),
+				Coinbase: unknownRecipientAddr,
+			}),
+		}
+		receipts = [][]*types.Receipt{
+			{},
+			{},
+			{},
+		}
+		events = [][]*types.TransferLog{
+			{},
+			{},
+			{},
+		}
+
+		manager = NewManager(db, params.MainnetChainConfig)
+
+		err = manager.InsertERC20(ctx, erc20)
+		Expect(err).Should(BeNil())
+		err = manager.Init(ctx, mockBalancer)
+		Expect(err).Should(BeNil())
+
+		// For the 100 block
+		mockBalancer.On("BalanceOf", ctx, blocks[0].Hash(), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(100)
+		}).Return(nil).Once()
+
+		// For the 101 block
+		mockBalancer.On("BalanceOf", ctx, blocks[1].Hash(), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[1].Address)] = big.NewInt(200)
+		}).Return(nil).Once()
+
+		// For the 102 block
+		mockBalancer.On("BalanceOf", ctx, blocks[2].Hash(), mock.Anything).Run(func(args mock.Arguments) {
+			result := args.Get(2).(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
+			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(300)
+		}).Return(nil).Once()
+
+		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
+		Expect(err).Should(BeNil())
+
+		// Verify total balances
+		et1_100, err := subStore.FindTotalBalance(ctx, 100, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_100.Balance).Should(Equal("100"))
+		Expect(et1_100.TxFee).Should(Equal("0"))
+		Expect(et1_100.MinerReward).Should(Equal("0"))
+		Expect(et1_100.UnclesReward).Should(Equal("0"))
+		et1_101, err := subStore.FindTotalBalance(ctx, 101, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_101.Balance).Should(Equal("300"))
+		Expect(et1_101.TxFee).Should(Equal("0"))
+		Expect(et1_101.MinerReward).Should(Equal("0"))
+		Expect(et1_101.UnclesReward).Should(Equal("0"))
+		et1_102, err := subStore.FindTotalBalance(ctx, 102, model.ETHAddress, 1)
+		Expect(err).Should(BeNil())
+		Expect(et1_102.Balance).Should(Equal("600"))
+		Expect(et1_102.TxFee).Should(Equal("0"))
+		Expect(et1_102.MinerReward).Should(Equal("0"))
+		Expect(et1_102.UnclesReward).Should(Equal("0"))
+
+		// Verify new subscriptions' block numbers updated
+		res, err := subStore.FindOldSubscriptions(ctx, [][]byte{subs[0].Address, subs[1].Address, subs[2].Address})
+		Expect(err).Should(BeNil())
+		Expect(res[0].BlockNumber).Should(Equal(int64(100)))
+		Expect(res[1].BlockNumber).Should(Equal(int64(101)))
+		Expect(res[2].BlockNumber).Should(Equal(int64(102)))
+
+		newSubscriptionLimit = uint64(client.ChunkSize - estNumDiffAcct)
 	})
 })

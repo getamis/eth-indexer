@@ -30,6 +30,13 @@ import (
 	"github.com/getamis/sirius/log"
 )
 
+var (
+	// estNumDiffAcct defines the estimated number of changed accounts in this block
+	estNumDiffAcct = 10
+	// newSubscriptionLimit defines the number of new subscriptions processed for each block, hoping to keep total number of accounts sent to geth in a single batch
+	newSubscriptionLimit = uint64(client.ChunkSize - estNumDiffAcct)
+)
+
 type transferProcessor struct {
 	logger      log.Logger
 	blockNumber int64
@@ -102,11 +109,15 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 	}
 	// Add new subscriptions
-	newSubResults, err := s.subStore.Find(ctx, 0)
+	newSubResults, total, err := s.subStore.Find(ctx, 0, &model.QueryParameters{
+		Page:  1,
+		Limit: newSubscriptionLimit,
+	})
 	if err != nil {
 		s.logger.Error("Failed to find subscriptions", "err", err)
 		return err
 	}
+	s.logger.Trace("Find new subscriptions", "handled", len(newSubResults), "total", total)
 
 	balancesByContracts := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
 	newSubs := make(map[gethCommon.Address]*model.Subscription)
