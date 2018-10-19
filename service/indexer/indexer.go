@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store"
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/metrics"
 )
 
 var (
@@ -45,10 +47,20 @@ var (
 
 // New news an indexer service
 func New(clients []client.EthClient, storeManager store.Manager) *indexer {
+	lens := len(clients)
+	var newBlockCounters []metrics.Counter
+	for i := 0; i < lens; i++ {
+		newBlockCounters = append(newBlockCounters, metrics.NewCounter("new_block", metrics.Labels(map[string]string{
+			"index": strconv.Itoa(i),
+		})))
+	}
 	return &indexer{
 		clients:      clients,
 		latestClient: clients[0],
 		manager:      storeManager,
+
+		newBlockCounters:     newBlockCounters,
+		insertBlockHistogram: metrics.DefaultRegistry.NewHistogram("insert_block"),
 	}
 }
 
@@ -58,6 +70,9 @@ type indexer struct {
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int
+
+	newBlockCounters     []metrics.Counter
+	insertBlockHistogram metrics.Histogram
 }
 
 type Result struct {
@@ -102,6 +117,8 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 
 func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, index int) error {
 	client := idx.clients[index]
+	newBlockCounter := idx.newBlockCounters[index]
+
 	ch := make(chan *types.Header)
 	childCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -115,6 +132,8 @@ func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, in
 	for {
 		select {
 		case head := <-ch:
+			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex(), "index", index)
+			newBlockCounter.Inc()
 			outChannel <- &Result{
 				header:      head,
 				clientIndex: index,
@@ -170,7 +189,7 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 				continue
 			}
 
-			log.Trace("Got new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
+			start := time.Now()
 			// switch the current ethClient to the source
 			idx.latestClient = idx.clients[result.clientIndex]
 			err := idx.sync(listenCtx, header)
@@ -178,6 +197,9 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
 				return err
 			}
+			duration := time.Since(start)
+			idx.insertBlockHistogram.Observe(duration.Seconds())
+			log.Trace("Handled new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex, "duration", duration)
 		case <-listenCtx.Done():
 			return listenCtx.Err()
 		}

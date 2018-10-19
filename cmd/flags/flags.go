@@ -55,4 +55,8 @@ const (
 	// flag names for vault
 	VaultHost   = "vault.host"
 	VaultCAPath = "vault.ca.path"
+
+	// flags for metrics
+	MetricsHostFlag = "metrics.host"
+	MetricsPortFlag = "metrics.port"
 )

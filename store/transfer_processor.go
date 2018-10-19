@@ -28,13 +28,18 @@ import (
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/metrics"
 )
 
 var (
-	// estNumDiffAcct defines the estimated number of changed accounts in this block
-	estNumDiffAcct = 10
+	// esChangedAccountPerBlock defines the estimated number of changed accounts in this block
+	esChangedAccountPerBlock = 10
 	// newSubscriptionLimit defines the number of new subscriptions processed for each block, hoping to keep total number of accounts sent to geth in a single batch
-	newSubscriptionLimit = uint64(client.ChunkSize - estNumDiffAcct)
+	newSubscriptionLimit = uint64(client.ChunkSize - esChangedAccountPerBlock)
+
+	// metrics
+	newSubscriptionGauge            = metrics.NewGauge("new_subscription")
+	changedAccountPerBlockAcctGauge = metrics.NewGauge("changed_account_per_block")
 )
 
 type transferProcessor struct {
@@ -117,6 +122,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		s.logger.Error("Failed to find subscriptions", "err", err)
 		return err
 	}
+	newSubscriptionGauge.Set(float64(total))
 	s.logger.Trace("Find new subscriptions", "handled", len(newSubResults), "total", total)
 
 	balancesByContracts := make(map[gethCommon.Address]map[gethCommon.Address]*big.Int)
@@ -141,6 +147,7 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		s.logger.Error("Failed to find subscription address", "len", len(addrs), "err", err)
 		return err
 	}
+	changedAccountPerBlockAcctGauge.Set(float64(len(subs)))
 
 	// Add new subscriptions to the processing list
 	subs = append(subs, newSubResults...)

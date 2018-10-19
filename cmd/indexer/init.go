@@ -18,11 +18,13 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/database"
 	"github.com/getamis/sirius/database/mysql"
+	"github.com/getamis/sirius/metrics"
 	vaultApi "github.com/hashicorp/vault/api"
 	"github.com/jmoiron/sqlx"
 )
@@ -59,4 +61,16 @@ func MustNewVaultClient() *vaultApi.Client {
 		panic(err)
 	}
 	return client
+}
+
+func MetricsDefaultHttpServer(metricsHost string, metricsPort int) *http.Server {
+	serveMux := http.NewServeMux()
+	serveMux.HandleFunc("/metrics", metrics.DefaultRegistry.ServeHTTP)
+
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Handler: serveMux,
+	}
+
+	return httpServer
 }
