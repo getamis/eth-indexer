@@ -96,7 +96,7 @@ var _ = Describe("Indexer Test", func() {
 		It("with valid parameters", func() {
 			addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 			ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-			mockStoreManager.On("Init", mock.Anything, idx.latestClient).Return(nil).Once()
+			mockStoreManager.On("Init", mock.Anything).Return(nil).Once()
 			// The first erc20 is not found
 			mockStoreManager.On("FindERC20", mock.Anything, ethAddresses[0]).Return(nil, sql.ErrNoRows).Once()
 			erc20 := &model.ERC20{
@@ -119,7 +119,7 @@ var _ = Describe("Indexer Test", func() {
 			It("failed to init store manager", func() {
 				addresses := []string{"0x1234567890123456789012345678901234567890", "0x1234567890123456789012345678901234567891"}
 				ethAddresses := []common.Address{common.HexToAddress(addresses[0]), common.HexToAddress(addresses[1])}
-				mockStoreManager.On("Init", mock.Anything, idx.latestClient).Return(unknownErr).Once()
+				mockStoreManager.On("Init", mock.Anything).Return(unknownErr).Once()
 				// The first erc20 is not found
 				mockStoreManager.On("FindERC20", mock.Anything, ethAddresses[0]).Return(nil, sql.ErrNoRows).Once()
 				erc20 := &model.ERC20{
@@ -252,9 +252,9 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
 
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -317,7 +317,7 @@ var _ = Describe("Indexer Test", func() {
 				// Check if from block exists
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(15)).Return(blocks[15], nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -326,7 +326,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[16:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, blocks[16:20], rs, ts, nilReorg).Return(nil).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -387,7 +387,7 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(blocks[0], nil).Once()
 				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(blocks[0], big.NewInt(1))).Return(nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -396,7 +396,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[1:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, blocks[1:20], rs, ts, nilReorg).Return(nil).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -508,7 +508,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[11:16], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, blocks[11:16], rs, ts, nilReorg).Return(nil).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -721,7 +721,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(unknownErr).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(unknownErr).Once()
 
 				for i, c := range mockEthClients {
 					c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
@@ -925,7 +925,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+			mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       15,
@@ -1025,7 +1025,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+			mockStoreManager.On("UpdateBlocks", mock.Anything, idx.latestClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       17,
@@ -1138,8 +1138,8 @@ var _ = Describe("Indexer Test", func() {
 				rs = append(rs, []*types.Receipt{receipt})
 				ts = append(ts, nilTransferLogs)
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
-			mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", mock.Anything, idx.clients[0], blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
+			mockStoreManager.On("UpdateBlocks", mock.Anything, idx.clients[1], blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
 			for i, c := range mockEthClients {
 				c.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc(i), nil).Once()
