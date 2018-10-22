@@ -22,6 +22,7 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
@@ -36,7 +37,7 @@ var (
 // initNewERC20 inits all new erc20 tokens.
 // 1. insert balances of ALL subscriptions and total balances for these new tokens at the given block.
 // 2. return new tokens with the next block number
-func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, subStore subscription.Store, block *types.Block) (map[gethCommon.Address]*model.ERC20, error) {
+func (m *manager) initNewERC20(ctx context.Context, balancer client.Balancer, accountStore account.Store, subStore subscription.Store, block *types.Block) (map[gethCommon.Address]*model.ERC20, error) {
 	blockNumber := block.Number().Int64()
 	blockHash := block.Hash()
 
@@ -92,7 +93,7 @@ func (m *manager) initNewERC20(ctx context.Context, accountStore account.Store, 
 			}
 		}
 		// Get balances
-		err = m.balancer.BalanceOf(ctx, blockHash, balancesByContracts)
+		err = balancer.BalanceOf(ctx, blockHash, balancesByContracts)
 		if err != nil {
 			logger.Error("Failed to get ERC20 balance", "len", len(balancesByContracts), "err", err)
 			return nil, err

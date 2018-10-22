@@ -42,7 +42,7 @@ import (
 // Manager is a wrapper interface to insert block, receipt and states quickly
 type Manager interface {
 	// Init the store manager to load the erc20 list
-	Init(ctx context.Context, balancer client.Balancer) error
+	Init(ctx context.Context) error
 	// FindERC20 finds the erc20 code
 	FindERC20(ctx context.Context, address gethCommon.Address) (*model.ERC20, error)
 	// InsertERC20 inserts the erc20 code
@@ -56,7 +56,7 @@ type Manager interface {
 	// FindTd returns the TD of the given block hash
 	FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data
-	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
+	UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
 }
 
 type headerStore = block_header.Store
@@ -70,7 +70,6 @@ type manager struct {
 	db          *sqlx.DB
 	chainConfig *params.ChainConfig
 	tokenList   map[gethCommon.Address]*model.ERC20
-	balancer    client.Balancer
 }
 
 // NewManager news a store manager to insert block, receipts and states.
@@ -83,7 +82,7 @@ func NewManager(db *sqlx.DB, chainConfig *params.ChainConfig) Manager {
 	}
 }
 
-func (m *manager) Init(ctx context.Context, balancer client.Balancer) error {
+func (m *manager) Init(ctx context.Context) error {
 	list, err := account.NewWithDB(m.db).ListOldERC20(ctx)
 	if err != nil && !common.NotFoundError(err) {
 		return err
@@ -97,13 +96,10 @@ func (m *manager) Init(ctx context.Context, balancer client.Balancer) error {
 		tokenList[gethCommon.BytesToAddress(e.Address)] = e
 	}
 	m.tokenList = tokenList
-
-	// Init balance of function
-	m.balancer = balancer
 	return nil
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
 	size := len(blocks)
 	if size != len(receipts) || size != len(events) {
 		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
@@ -145,7 +141,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
-		err = m.insertBlock(ctx, dbTx, blocks[i], receipts[i], events[i])
+		err = m.insertBlock(ctx, dbTx, balancer, blocks[i], receipts[i], events[i])
 		if err != nil {
 			return
 		}
@@ -154,7 +150,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, recei
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
-func (m *manager) insertBlock(ctx context.Context, dbTx DbOrTx, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
+func (m *manager) insertBlock(ctx context.Context, dbTx DbOrTx, balancer client.Balancer, block *types.Block, receipts []*types.Receipt, ethEvents []*types.TransferLog) (err error) {
 	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
 	txStore := transaction.NewWithDB(dbTx)
 	receiptStore := transaction_receipt.NewWithDB(dbTx)
@@ -240,13 +236,13 @@ func (m *manager) insertBlock(ctx context.Context, dbTx DbOrTx, block *types.Blo
 		Value:       h.MinerReward,
 	})
 
-	err = newTransferProcessor(block, m.tokenList, receipts, txs, subsStore, accountStore, m.balancer).process(ctx, events)
+	err = newTransferProcessor(block, m.tokenList, receipts, txs, subsStore, accountStore, balancer).process(ctx, events)
 	if err != nil {
 		return err
 	}
 
 	// Init new erc20 tokens if existed
-	newTokens, err := m.initNewERC20(ctx, accountStore, subsStore, block)
+	newTokens, err := m.initNewERC20(ctx, balancer, accountStore, subsStore, block)
 	if err != nil {
 		return err
 	}
