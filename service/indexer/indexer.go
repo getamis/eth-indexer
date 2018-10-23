@@ -112,7 +112,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 		}
 	}
 
-	return idx.manager.Init(ctx, idx.latestClient)
+	return idx.manager.Init(ctx)
 }
 
 func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, index int) error {
@@ -336,7 +336,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 		receipts = append(receipts, receipt)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, reorgEvent)
+	err := idx.manager.UpdateBlocks(ctx, idx.latestClient, newBlocks, receipts, events, reorgEvent)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
