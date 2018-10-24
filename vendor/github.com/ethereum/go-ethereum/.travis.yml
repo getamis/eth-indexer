@@ -7,24 +7,23 @@ matrix:
     - os: linux
       dist: trusty
       sudo: required
-      go: 1.10.x
+      go: 1.11.x
       script:
         - sudo modprobe fuse
         - sudo chmod 666 /dev/fuse
         - sudo chown root:$USER /etc/fuse.conf
         - go run build/ci.go install
         - go run build/ci.go test -coverage $TEST_PACKAGES
-
     - stage: Develop Release
       script:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin quay.io/amis
       - make docker
       - make docker.push
-      if: branch = feature/indexer_diff_1.8.14 AND (NOT type IN (pull_request))
+      if: branch =~ ^indexer-([0-9]+.)+[0-9]+ AND (NOT type IN (pull_request))
     - stage: Staging Release
       script:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin quay.io/amis
       - make docker
       - make docker.push
-      if: tag =~ ^indexer_diff_1.8.14/v
+      if: tag =~ ^indexer-([0-9]+.)+[0-9]+
       env: DOCKER_IMAGE_TAG="$TRAVIS_TAG"

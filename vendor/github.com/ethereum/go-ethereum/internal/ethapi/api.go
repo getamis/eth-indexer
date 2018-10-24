@@ -34,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -47,7 +48,7 @@ import (
 )
 
 const (
-	defaultGasPrice = 50 * params.Shannon
+	defaultGasPrice = params.GWei
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -449,7 +450,7 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 // addr = ecrecover(hash, signature)
 //
 // Note, the signature must conform to the secp256k1 curve R, S and V values, where
-// the V value must be be 27 or 28 for legacy reasons.
+// the V value must be 27 or 28 for legacy reasons.
 //
 // https://github.com/ethereum/go-ethereum/wiki/Management-APIs#personal_ecRecover
 func (s *PrivateAccountAPI) EcRecover(ctx context.Context, data, sig hexutil.Bytes) (common.Address, error) {
@@ -496,6 +497,17 @@ func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {
 // block numbers are also allowed.
 func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (*hexutil.Big, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	return (*hexutil.Big)(state.GetBalance(address)), state.Error()
+}
+
+// GetBalanceByHash returns the amount of wei for the given address in the state of the
+// given block hash. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
+// block numbers are also allowed.
+func (s *PublicBlockChainAPI) GetBalanceByHash(ctx context.Context, address common.Address, blockHash common.Hash) (*hexutil.Big, error) {
+	state, _, err := s.b.StateAndHeaderByHash(ctx, blockHash)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -611,13 +623,26 @@ type CallArgs struct {
 	Data     hexutil.Bytes   `json:"data"`
 }
 
-func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
-	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+func (s *PublicBlockChainAPI) doCallByHash(ctx context.Context, args CallArgs, blockHash common.Hash, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
+	state, header, err := s.b.StateAndHeaderByHash(ctx, blockHash)
+	if state == nil || err != nil {
+		return nil, 0, false, err
+	}
+	return s.call(ctx, args, state, header, vmCfg, timeout)
+}
 
+func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, 0, false, err
 	}
+
+	return s.call(ctx, args, state, header, vmCfg, timeout)
+}
+
+func (s *PublicBlockChainAPI) call(ctx context.Context, args CallArgs, state *state.StateDB, header *types.Header, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
+	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+
 	// Set sender address or use a default if none specified
 	addr := args.From
 	if addr == (common.Address{}) {
@@ -677,6 +702,13 @@ func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr
 // It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
 func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
 	result, _, _, err := s.doCall(ctx, args, blockNr, vm.Config{}, 5*time.Second)
+	return (hexutil.Bytes)(result), err
+}
+
+// CallByHash executes the given transaction on the state for the given block hash.
+// It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
+func (s *PublicBlockChainAPI) CallByHash(ctx context.Context, args CallArgs, blockHash common.Hash) (hexutil.Bytes, error) {
+	result, _, _, err := s.doCallByHash(ctx, args, blockHash, vm.Config{}, 5*time.Second)
 	return (hexutil.Bytes)(result), err
 }
 

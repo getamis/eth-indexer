@@ -26,13 +26,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/params"
 )
 
 // lesCommons contains fields needed by both server and client.
 type lesCommons struct {
 	config                       *eth.Config
+	iConfig                      *light.IndexerConfig
 	chainDb                      ethdb.Database
 	protocolManager              *ProtocolManager
 	chtIndexer, bloomTrieIndexer *core.ChainIndexer
@@ -41,12 +42,12 @@ type lesCommons struct {
 // NodeInfo represents a short summary of the Ethereum sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
-	Network    uint64                  `json:"network"`    // Ethereum network ID (1=Frontier, 2=Morden, Ropsten=3, Rinkeby=4)
-	Difficulty *big.Int                `json:"difficulty"` // Total difficulty of the host's blockchain
-	Genesis    common.Hash             `json:"genesis"`    // SHA3 hash of the host's genesis block
-	Config     *params.ChainConfig     `json:"config"`     // Chain configuration for the fork rules
-	Head       common.Hash             `json:"head"`       // SHA3 hash of the host's best owned block
-	CHT        light.TrustedCheckpoint `json:"cht"`        // Trused CHT checkpoint for fast catchup
+	Network    uint64                   `json:"network"`    // Ethereum network ID (1=Frontier, 2=Morden, Ropsten=3, Rinkeby=4)
+	Difficulty *big.Int                 `json:"difficulty"` // Total difficulty of the host's blockchain
+	Genesis    common.Hash              `json:"genesis"`    // SHA3 hash of the host's genesis block
+	Config     *params.ChainConfig      `json:"config"`     // Chain configuration for the fork rules
+	Head       common.Hash              `json:"head"`       // SHA3 hash of the host's best owned block
+	CHT        params.TrustedCheckpoint `json:"cht"`        // Trused CHT checkpoint for fast catchup
 }
 
 // makeProtocols creates protocol descriptors for the given LES versions.
@@ -62,7 +63,7 @@ func (c *lesCommons) makeProtocols(versions []uint) []p2p.Protocol {
 			Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
 				return c.protocolManager.runPeer(version, p, rw)
 			},
-			PeerInfo: func(id discover.NodeID) interface{} {
+			PeerInfo: func(id enode.ID) interface{} {
 				if p := c.protocolManager.peers.Peer(fmt.Sprintf("%x", id[:8])); p != nil {
 					return p.Info()
 				}
@@ -75,13 +76,13 @@ func (c *lesCommons) makeProtocols(versions []uint) []p2p.Protocol {
 
 // nodeInfo retrieves some protocol metadata about the running host node.
 func (c *lesCommons) nodeInfo() interface{} {
-	var cht light.TrustedCheckpoint
+	var cht params.TrustedCheckpoint
 	sections, _, _ := c.chtIndexer.Sections()
 	sections2, _, _ := c.bloomTrieIndexer.Sections()
 
 	if !c.protocolManager.lightSync {
 		// convert to client section size if running in server mode
-		sections /= light.CHTFrequencyClient / light.CHTFrequencyServer
+		sections /= c.iConfig.PairChtSize / c.iConfig.ChtSize
 	}
 
 	if sections2 < sections {
@@ -94,13 +95,14 @@ func (c *lesCommons) nodeInfo() interface{} {
 		if c.protocolManager.lightSync {
 			chtRoot = light.GetChtRoot(c.chainDb, sectionIndex, sectionHead)
 		} else {
-			chtRoot = light.GetChtV2Root(c.chainDb, sectionIndex, sectionHead)
+			idxV2 := (sectionIndex+1)*c.iConfig.PairChtSize/c.iConfig.ChtSize - 1
+			chtRoot = light.GetChtRoot(c.chainDb, idxV2, sectionHead)
 		}
-		cht = light.TrustedCheckpoint{
-			SectionIdx:  sectionIndex,
-			SectionHead: sectionHead,
-			CHTRoot:     chtRoot,
-			BloomRoot:   light.GetBloomTrieRoot(c.chainDb, sectionIndex, sectionHead),
+		cht = params.TrustedCheckpoint{
+			SectionIndex: sectionIndex,
+			SectionHead:  sectionHead,
+			CHTRoot:      chtRoot,
+			BloomRoot:    light.GetBloomTrieRoot(c.chainDb, sectionIndex, sectionHead),
 		}
 	}
 

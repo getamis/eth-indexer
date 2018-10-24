@@ -143,8 +143,8 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  branch = "feature/indexer_diff_1.8.14"
-  digest = "1:3e3e23cfa7cd07555a0ebb70af72e7d751f48a3611a99a4f7cf3c774b5656df1"
+  branch = "indexer-1.8.17"
+  digest = "1:640128ac1e9ef53b994fbdd09dd589bce724e9843d4e4e3de6a42d3703c20672"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -157,32 +157,20 @@
     "common/hexutil",
     "common/math",
     "common/mclock",
+    "common/prque",
     "consensus",
     "consensus/ethash",
     "consensus/misc",
-    "core",
-    "core/bloombits",
-    "core/rawdb",
     "core/state",
     "core/types",
-    "core/vm",
     "crypto",
-    "crypto/bn256",
-    "crypto/bn256/cloudflare",
-    "crypto/bn256/google",
-    "crypto/ecies",
     "crypto/secp256k1",
     "crypto/sha3",
-    "eth/filters",
     "ethclient",
     "ethdb",
     "event",
     "log",
     "metrics",
-    "p2p",
-    "p2p/discover",
-    "p2p/discv5",
-    "p2p/nat",
     "p2p/netutil",
     "params",
     "rlp",
@@ -190,7 +178,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "08d1d428ab9274c769cfc391a2348c3f6a7d032a"
+  revision = "d939091dc356a99cbdc51fc4b549b0c1c6871bf9"
   source = "github.com/getamis/go-ethereum"
 
 [[projects]]
@@ -373,36 +361,12 @@
   version = "v0.11.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:bbbedfea3b4957b6eb471729c7e7c229d3deccfbc518013a902771d1a6893dc2"
-  name = "github.com/huin/goupnp"
-  packages = [
-    ".",
-    "dcps/internetgateway1",
-    "dcps/internetgateway2",
-    "httpu",
-    "scpd",
-    "soap",
-    "ssdp",
-  ]
-  pruneopts = "NUT"
-  revision = "1395d1447324cbea88d249fbfcfd70ea878fdfca"
-
-[[projects]]
   digest = "1:406338ad39ab2e37b7f4452906442a3dbf0eb3379dd1f06aafb5c07e769a5fbb"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   pruneopts = "NUT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  digest = "1:9a902b21167021de840fcf5e44245f222b89e6d1b02ec5c46f8315ded0911e87"
-  name = "github.com/jackpal/go-nat-pmp"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "c9cfead9f2a36ddf3daa40ba269aa7f4bbba6b62"
-  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
@@ -751,11 +715,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7b9264f3906c9659c7edac4c3bed9f8e75bd4106257d329a23de2902a53f8e37"
+  digest = "1:69b3fcb7a41b18436a85471cbdcfc70ad10ba3206f8c87563e1c773610e1bcad"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
-    "ripemd160",
     "scrypt",
     "ssh/terminal",
   ]
@@ -785,10 +748,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e1b156a34815c32bf05393226a0a03f51a021afb25b2eed086e825cda0da1410"
+  digest = "1:0dbe2a3199cde81dd841ea2de1386165f953d227ddb2b5c2c4b591209bf37746"
   name = "golang.org/x/sys"
   packages = [
-    "cpu",
     "unix",
     "windows",
   ]
@@ -840,18 +802,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4d63ca26a477869856c95a8a9760a8405686065538bd375d1f1481a8f5528094"
-  name = "golang.org/x/tools"
-  packages = [
-    "go/ast/astutil",
-    "imports",
-    "internal/fastwalk",
-  ]
-  pruneopts = "NUT"
-  revision = "a5b4c53f6e8bdcafa95a94671bf2d1203365858b"
-
-[[projects]]
-  branch = "master"
   digest = "1:56b0bca90b7e5d1facf5fbdacba23e4e0ce069d25381b8e2f70ef1e7ebfb9c1a"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
@@ -895,14 +845,6 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:0a2f4b974a413866afa1b41130d756643841fb9ad661b81c9a6dd9f1364ed19f"
-  name = "gopkg.in/karalabe/cookiejar.v2"
-  packages = ["collections/prque"]
-  pruneopts = "NUT"
-  revision = "8dcd6a7f4951f6ff3ee9cbb919a06d8925822e57"
-
-[[projects]]
-  branch = "v2"
   digest = "1:85815bf6f46dc1855ae4e236b496bfa463f04fce83f700d74357ef220476abb7"
   name = "gopkg.in/natefinch/npipe.v2"
   packages = ["."]
@@ -941,21 +883,11 @@
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
     "github.com/ethereum/go-ethereum/common/hexutil",
-    "github.com/ethereum/go-ethereum/common/math",
     "github.com/ethereum/go-ethereum/consensus/ethash",
-    "github.com/ethereum/go-ethereum/core",
-    "github.com/ethereum/go-ethereum/core/bloombits",
-    "github.com/ethereum/go-ethereum/core/rawdb",
-    "github.com/ethereum/go-ethereum/core/state",
     "github.com/ethereum/go-ethereum/core/types",
-    "github.com/ethereum/go-ethereum/core/vm",
     "github.com/ethereum/go-ethereum/crypto",
-    "github.com/ethereum/go-ethereum/eth/filters",
     "github.com/ethereum/go-ethereum/ethclient",
-    "github.com/ethereum/go-ethereum/ethdb",
     "github.com/ethereum/go-ethereum/event",
-    "github.com/ethereum/go-ethereum/p2p",
-    "github.com/ethereum/go-ethereum/p2p/discover",
     "github.com/ethereum/go-ethereum/params",
     "github.com/ethereum/go-ethereum/rpc",
     "github.com/getamis/sirius/database",
