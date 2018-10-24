@@ -27,7 +27,7 @@
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "feature/indexer_diff_1.8.14"
+  branch = "indexer-1.8.17"
 
 [[constraint]]
   name = "github.com/getamis/sirius"

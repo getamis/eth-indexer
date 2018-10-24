@@ -48,6 +48,7 @@ var (
 // interface. It only does header validation during chain insertion.
 type LightChain struct {
 	hc            *core.HeaderChain
+	indexerConfig *IndexerConfig
 	chainDb       ethdb.Database
 	odr           OdrBackend
 	chainFeed     event.Feed
@@ -81,13 +82,14 @@ func NewLightChain(odr OdrBackend, config *params.ChainConfig, engine consensus.
 	blockCache, _ := lru.New(blockCacheLimit)
 
 	bc := &LightChain{
-		chainDb:      odr.Database(),
-		odr:          odr,
-		quit:         make(chan struct{}),
-		bodyCache:    bodyCache,
-		bodyRLPCache: bodyRLPCache,
-		blockCache:   blockCache,
-		engine:       engine,
+		chainDb:       odr.Database(),
+		indexerConfig: odr.IndexerConfig(),
+		odr:           odr,
+		quit:          make(chan struct{}),
+		bodyCache:     bodyCache,
+		bodyRLPCache:  bodyRLPCache,
+		blockCache:    blockCache,
+		engine:        engine,
 	}
 	var err error
 	bc.hc, err = core.NewHeaderChain(odr.Database(), config, bc.engine, bc.getProcInterrupt)
@@ -116,19 +118,19 @@ func NewLightChain(odr OdrBackend, config *params.ChainConfig, engine consensus.
 }
 
 // addTrustedCheckpoint adds a trusted checkpoint to the blockchain
-func (self *LightChain) addTrustedCheckpoint(cp TrustedCheckpoint) {
+func (self *LightChain) addTrustedCheckpoint(cp *params.TrustedCheckpoint) {
 	if self.odr.ChtIndexer() != nil {
-		StoreChtRoot(self.chainDb, cp.SectionIdx, cp.SectionHead, cp.CHTRoot)
-		self.odr.ChtIndexer().AddKnownSectionHead(cp.SectionIdx, cp.SectionHead)
+		StoreChtRoot(self.chainDb, cp.SectionIndex, cp.SectionHead, cp.CHTRoot)
+		self.odr.ChtIndexer().AddCheckpoint(cp.SectionIndex, cp.SectionHead)
 	}
 	if self.odr.BloomTrieIndexer() != nil {
-		StoreBloomTrieRoot(self.chainDb, cp.SectionIdx, cp.SectionHead, cp.BloomRoot)
-		self.odr.BloomTrieIndexer().AddKnownSectionHead(cp.SectionIdx, cp.SectionHead)
+		StoreBloomTrieRoot(self.chainDb, cp.SectionIndex, cp.SectionHead, cp.BloomRoot)
+		self.odr.BloomTrieIndexer().AddCheckpoint(cp.SectionIndex, cp.SectionHead)
 	}
 	if self.odr.BloomIndexer() != nil {
-		self.odr.BloomIndexer().AddKnownSectionHead(cp.SectionIdx, cp.SectionHead)
+		self.odr.BloomIndexer().AddCheckpoint(cp.SectionIndex, cp.SectionHead)
 	}
-	log.Info("Added trusted checkpoint", "chain", cp.name, "block", (cp.SectionIdx+1)*CHTFrequencyClient-1, "hash", cp.SectionHead)
+	log.Info("Added trusted checkpoint", "chain", cp.Name, "block", (cp.SectionIndex+1)*self.indexerConfig.ChtSize-1, "hash", cp.SectionHead)
 }
 
 func (self *LightChain) getProcInterrupt() bool {
@@ -155,7 +157,7 @@ func (self *LightChain) loadLastState() error {
 	// Issue a status log and return
 	header := self.hc.CurrentHeader()
 	headerTd := self.GetTd(header.Hash(), header.Number.Uint64())
-	log.Info("Loaded most recent local header", "number", header.Number, "hash", header.Hash(), "td", headerTd)
+	log.Info("Loaded most recent local header", "number", header.Number, "hash", header.Hash(), "td", headerTd, "age", common.PrettyAge(time.Unix(header.Time.Int64(), 0)))
 
 	return nil
 }
@@ -472,7 +474,7 @@ func (self *LightChain) SyncCht(ctx context.Context) bool {
 	head := self.CurrentHeader().Number.Uint64()
 	sections, _, _ := self.odr.ChtIndexer().Sections()
 
-	latest := sections*CHTFrequencyClient - 1
+	latest := sections*self.indexerConfig.ChtSize - 1
 	if clique := self.hc.Config().Clique; clique != nil {
 		latest -= latest % clique.Epoch // epoch snapshot for clique
 	}
@@ -486,7 +488,7 @@ func (self *LightChain) SyncCht(ctx context.Context) bool {
 
 		// Ensure the chain didn't move past the latest block while retrieving it
 		if self.hc.CurrentHeader().Number.Uint64() < header.Number.Uint64() {
-			log.Info("Updated latest header based on CHT", "number", header.Number, "hash", header.Hash())
+			log.Info("Updated latest header based on CHT", "number", header.Number, "hash", header.Hash(), "age", common.PrettyAge(time.Unix(header.Time.Int64(), 0)))
 			self.hc.SetCurrentHeader(header)
 		}
 		return true
