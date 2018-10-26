@@ -150,11 +150,7 @@ var ServerCmd = &cobra.Command{
 		indexService := indexer.New(clients, store.NewManager(db, config))
 
 		if subscribeErc20token {
-			erc20Addresses, err := LoadTokensFromConfig()
-			if err != nil {
-				log.Error("Fail to load ERC20Token List from Config File", "err", err)
-				return err
-			}
+			erc20Addresses := LoadTokensFromConfig()
 			log.Debug("erc20Addresses Successfully Loaded")
 
 			if err := indexService.SubscribeErc20Tokens(ctx, erc20Addresses); err != nil {
