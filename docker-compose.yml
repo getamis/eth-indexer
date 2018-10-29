@@ -42,6 +42,11 @@ services:
       dockerfile: ./cmd/Dockerfile
     command:
       - indexer
+      - --eth
+      - "ws://geth:8546"
+      - --functions.erc20token
+      - --indexer.db.cred.host
+      - "idx-database"
     restart: on-failure
     depends_on:
       - idx-database
