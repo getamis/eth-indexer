@@ -33,14 +33,14 @@ GEM
     erubi (1.7.1)
     i18n (1.0.1)
       concurrent-ruby (~> 1.0)
-    loofah (2.2.2)
+    loofah (2.2.3)
       crass (~> 1.0.2)
       nokogiri (>= 1.5.9)
     method_source (0.9.0)
     mini_portile2 (2.3.0)
     minitest (5.11.3)
     mysql2 (0.5.1)
-    nokogiri (1.8.2)
+    nokogiri (1.8.5)
       mini_portile2 (~> 2.3.0)
     rack (2.0.5)
     rack-test (1.0.0)
@@ -72,6 +72,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  loofah (~> 2.2.3)
   mysql2 (~> 0.5.1)
   standalone_migrations (~> 5.2.5)
   vault (~> 0.1)
