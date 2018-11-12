@@ -17,7 +17,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/getamis/eth-indexer/client"
@@ -34,13 +37,25 @@ func NewEthConn(url string) (client.EthClient, error) {
 }
 
 func NewDatabase() (*sqlx.DB, error) {
-	return sqldb.New(dbDriver,
-		database.DriverOption(
-			mysql.Database(dbName),
-			mysql.Connector(mysql.DefaultProtocol, dbHost, fmt.Sprintf("%d", dbPort)),
-			mysql.UserInfo(dbUser, dbPassword),
-		),
-	)
+	option := []interface{}{
+		mysql.Database(dbName),
+		mysql.Connector(mysql.DefaultProtocol, dbHost, fmt.Sprintf("%d", dbPort)),
+		mysql.UserInfo(dbUser, dbPassword),
+	}
+
+	if len(dbCAPath) != 0 {
+		rootCertPool := x509.NewCertPool()
+		pem, err := ioutil.ReadFile(dbCAPath)
+		if err != nil {
+			panic(err)
+		}
+		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+			panic("Failed to append PEM.")
+		}
+		option = append(option, mysql.EnableTLS(&tls.Config{RootCAs: rootCertPool}))
+	}
+
+	return sqldb.New(dbDriver, database.DriverOption(option...))
 }
 
 func MustNewVaultClient() *vaultApi.Client {

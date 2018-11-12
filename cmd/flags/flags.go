@@ -30,6 +30,7 @@ const (
 	DbUser          = "indexer.db.cred.user"
 	DbPassword      = "indexer.db.cred.password"
 	DbCredVaultPath = "indexer.db.cred.vault.path"
+	DbCAPath        = "indexer.db.ca.path"
 
 	DbDriver = "indexer.db.config.driver"
 	DbName   = "indexer.db.config.name"

@@ -57,6 +57,7 @@ var (
 	dbName     string
 	dbUser     string
 	dbPassword string
+	dbCAPath   string
 
 	// flags for syncing
 	fromBlock int64
@@ -204,6 +205,7 @@ func init() {
 	ServerCmd.Flags().String(flags.DbUser, "root", "The database username to login")
 	ServerCmd.Flags().String(flags.DbPassword, "my-secret-pw", "The database password to login")
 	ServerCmd.Flags().String(flags.DbCredVaultPath, "database/creds/ethdb", "Vault path for indexer database credential")
+	ServerCmd.Flags().String(flags.DbCAPath, "", "The path of aurora CA file")
 
 	// Syncing related flags
 	ServerCmd.Flags().Int64(flags.SyncFromBlock, 0, "The init block number to sync to initially")
@@ -251,6 +253,7 @@ func assignVarFromViper() {
 	// flags for database
 	dbDriver = viper.GetString(flags.DbDriver)
 	dbName = viper.GetString(flags.DbName)
+	dbCAPath = viper.GetString(flags.DbCAPath)
 
 	// flags for syncing
 	fromBlock = viper.GetInt64(flags.SyncFromBlock)
@@ -279,7 +282,6 @@ func assignVarFromViper() {
 		}
 		dbUser = secret.Data["username"].(string)
 		dbPassword = secret.Data["password"].(string)
-
 	} else {
 		dbUser = viper.GetString(flags.DbUser)
 		dbPassword = viper.GetString(flags.DbPassword)
