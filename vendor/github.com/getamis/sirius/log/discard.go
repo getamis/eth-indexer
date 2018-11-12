@@ -51,3 +51,6 @@ func (l *discard) SetHandler(h Handler) {
 func (l *discard) GetHandler() Handler {
 	return nil
 }
+
+func (l *discard) SetSkipLevel(skip int) {
+}

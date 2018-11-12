@@ -37,6 +37,47 @@
   revision = "59652c8de980f3fef4d4f996665828d89574dbef"
 
 [[projects]]
+  digest = "1:c2bdcea635205f617db62e562a8e04e1d45d4311de9ace44ec7f2f53b3e1b2c2"
+  name = "github.com/aws/aws-sdk-go"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client",
+    "aws/client/metadata",
+    "aws/corehandlers",
+    "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/stscreds",
+    "aws/crr",
+    "aws/csm",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/endpoints",
+    "aws/request",
+    "aws/session",
+    "aws/signer/v4",
+    "internal/ini",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/sdkuri",
+    "internal/shareddefaults",
+    "private/protocol",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/xml/xmlutil",
+    "service/dynamodb",
+    "service/sts",
+  ]
+  pruneopts = "NUT"
+  revision = "cf00ea20983ce38df17ab0a0814463ab8838459f"
+  version = "v1.15.73"
+
+[[projects]]
   branch = "master"
   digest = "1:707ebe952a8b3d00b343c01536c79c73771d100f63ec6babeaed5c79e2b8a8dd"
   name = "github.com/beorn7/perks"
@@ -198,7 +239,8 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:d4b6b93cb9a819b90d109bb780cd754fba3b58d4dbcd8dff119f152811e59062"
+  branch = "master"
+  digest = "1:48ce0d705a1c91c85ccdaf41c0c4320f63c6fa38a2b657d35eb0b1388148394a"
   name = "github.com/getamis/sirius"
   packages = [
     "crypto/rand",
@@ -209,8 +251,7 @@
     "test",
   ]
   pruneopts = "NUT"
-  revision = "10abc6819b876cb480e394cb187eef5c648daf2f"
-  version = "v1.0.0"
+  revision = "70fc6b7c67ce9a9f1c61364d587e7af913813c42"
 
 [[projects]]
   digest = "1:1c9db302f5e172d283a37560842163450a1ebfd478581afa4f7bf00882c93a39"
@@ -367,6 +408,13 @@
   pruneopts = "NUT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  digest = "1:ac6d01547ec4f7f673311b4663909269bfb8249952de3279799289467837c3cc"
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "0b12d6b5"
 
 [[projects]]
   branch = "master"
@@ -573,6 +621,14 @@
   pruneopts = "NUT"
   revision = "69d839f37b13a8cb7a78366f7633a4071cb43be7"
   version = "v0.9.2"
+
+[[projects]]
+  digest = "1:dd2b1b3d884037fe4d86bf06313b192e67ca3b1acb4c7b12e030f1d158d8c1a3"
+  name = "github.com/rollbar/rollbar-go"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "d450a931d7a085523b60f0f7c98487333a8ce5fa"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:810d960260b42c751f5254f6dbff5e6c79c8047b90a9bf4a06bba479b99aff1d"

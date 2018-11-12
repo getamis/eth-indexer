@@ -40,6 +40,7 @@ func init() {
 
 // Registry is a metrics gather
 type Registry interface {
+	NewHttpServerMetrics(opts ...Option) HttpServerMetrics
 	NewServerMetrics(opts ...Option) ServerMetrics
 	NewCounter(key string, opts ...Option) Counter
 	NewGauge(key string, opts ...Option) Gauge
@@ -49,6 +50,10 @@ type Registry interface {
 
 	// ServeHTTP is used to display all metric values through http request
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
+}
+
+func NewHttpServerMetrics(opts ...Option) HttpServerMetrics {
+	return DefaultRegistry.NewHttpServerMetrics(opts...)
 }
 
 func NewServerMetrics(opts ...Option) ServerMetrics {

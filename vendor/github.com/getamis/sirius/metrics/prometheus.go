@@ -64,6 +64,24 @@ func (p *PrometheusRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.httpHandler.ServeHTTP(w, r)
 }
 
+func (p *PrometheusRegistry) NewHttpServerMetrics(opts ...Option) HttpServerMetrics {
+	options := NewOptions(p.namespace, "", p.labels)
+	for _, fn := range opts {
+		fn(options)
+	}
+	httpMetrics := NewHttpMetrics(ToGRPCPromCounterOption(options))
+	httpMetrics.EnableHandlingTimeHistogram(ToGRPCPromHistogramOption(options))
+	err := p.registry.Register(httpMetrics)
+	if err != nil {
+		reg, ok := err.(prom.AlreadyRegisteredError)
+		if ok {
+			return reg.ExistingCollector.(*HttpMetrics)
+		}
+		log.Warn("Failed to register a http server metrics", "err", err)
+	}
+	return httpMetrics
+}
+
 func (p *PrometheusRegistry) NewServerMetrics(opts ...Option) ServerMetrics {
 	options := NewOptions(p.namespace, "", p.labels)
 	for _, fn := range opts {

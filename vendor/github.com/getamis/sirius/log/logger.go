@@ -27,6 +27,7 @@ const timeKey = "t"
 const lvlKey = "lvl"
 const msgKey = "msg"
 const errorKey = "LOG15_ERROR"
+const skipLevel = 2
 
 type Lvl int
 
@@ -127,6 +128,9 @@ type Logger interface {
 	// SetHandler updates the logger to write records to the specified handler.
 	SetHandler(h Handler)
 
+	// SetSkipLevel sets the skip level of call stack
+	SetSkipLevel(skip int)
+
 	// Log a message at the given level with context key/value pairs
 	Trace(msg string, ctx ...interface{})
 	Debug(msg string, ctx ...interface{})
@@ -155,8 +159,9 @@ func (h *swapHandler) Get() Handler {
 }
 
 type logger struct {
-	ctx []interface{}
-	h   *swapHandler
+	ctx       []interface{}
+	skipLevel int
+	h         *swapHandler
 }
 
 func (l *logger) write(msg string, lvl Lvl, ctx []interface{}) {
@@ -165,7 +170,7 @@ func (l *logger) write(msg string, lvl Lvl, ctx []interface{}) {
 		Lvl:  lvl,
 		Msg:  msg,
 		Ctx:  newContext(l.ctx, ctx),
-		Call: stack.Caller(2),
+		Call: stack.Caller(l.skipLevel),
 		KeyNames: RecordKeyNames{
 			Time: timeKey,
 			Msg:  msgKey,
@@ -175,7 +180,7 @@ func (l *logger) write(msg string, lvl Lvl, ctx []interface{}) {
 }
 
 func (l *logger) New(ctx ...interface{}) Logger {
-	child := &logger{newContext(l.ctx, ctx), new(swapHandler)}
+	child := &logger{newContext(l.ctx, ctx), skipLevel, new(swapHandler)}
 	child.SetHandler(l.h)
 	return child
 }
@@ -190,6 +195,10 @@ func newContext(prefix []interface{}, suffix []interface{}) []interface{} {
 
 func (l *logger) Trace(msg string, ctx ...interface{}) {
 	l.write(msg, LvlTrace, ctx)
+}
+
+func (l *logger) SetSkipLevel(skip int) {
+	l.skipLevel = skip
 }
 
 func (l *logger) Debug(msg string, ctx ...interface{}) {
