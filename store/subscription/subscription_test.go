@@ -39,10 +39,14 @@ var _ = Describe("Database Test", func() {
 	)
 	BeforeSuite(func() {
 		var err error
-		mysql, err = test.NewMySQLContainer("quay.io/amis/eth-indexer-db-migration")
+		mysql, err = test.SetupMySQL()
 		Expect(mysql).ShouldNot(BeNil())
 		Expect(err).Should(Succeed())
-		Expect(mysql.Start()).Should(Succeed())
+
+		err = test.RunMigrationContainer(mysql, test.MigrationOptions{
+			ImageRepository: "quay.io/amis/eth-indexer-db-migration",
+		})
+		Expect(err).Should(Succeed())
 
 		db, err = sqldb.SimpleConnect("mysql", mysql.URL)
 		Expect(err).Should(Succeed())
