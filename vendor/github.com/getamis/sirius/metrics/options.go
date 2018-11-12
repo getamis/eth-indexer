@@ -75,3 +75,12 @@ func ToGRPCPromHistogramOption(opts *Options) grpcProm.HistogramOption {
 		promOpts.ConstLabels = prom.Labels(opts.Labels)
 	}
 }
+
+type counterOptions []grpcProm.CounterOption
+
+func (co counterOptions) apply(o prom.CounterOpts) prom.CounterOpts {
+	for _, f := range co {
+		f(&o)
+	}
+	return o
+}

@@ -31,7 +31,7 @@ func init() {
 }
 
 func newLogger() *logger {
-	l := &logger{[]interface{}{}, new(swapHandler)}
+	l := &logger{[]interface{}{}, skipLevel, new(swapHandler)}
 	return l
 }
 

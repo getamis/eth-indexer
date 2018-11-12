@@ -15,9 +15,11 @@
 package mysql
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 
+	"github.com/getamis/sirius/crypto/rand"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -31,6 +33,8 @@ type options struct {
 	Password             string
 	DatabaseName         string
 	TableName            string
+	Location             string
+	TLSConfigName        string
 	AllowNativePasswords bool
 }
 
@@ -59,6 +63,20 @@ func Database(name string) Option {
 	}
 }
 
+func Location(location string) Option {
+	return func(o *options) {
+		o.Location = location
+	}
+}
+
+func EnableTLS(config *tls.Config) Option {
+	TLSConfigName := rand.New().KeyEncoded()
+	mysql.RegisterTLSConfig(TLSConfigName, config)
+	return func(o *options) {
+		o.TLSConfigName = TLSConfigName
+	}
+}
+
 func AllowNativePasswords(allow bool) Option {
 	return func(o *options) {
 		o.AllowNativePasswords = allow
@@ -66,15 +84,25 @@ func AllowNativePasswords(allow bool) Option {
 }
 
 func (o *options) String() string {
+	loc := o.Location
+	if loc == "" {
+		loc = "Local"
+	}
+	tls := o.TLSConfigName
+	if tls == "" {
+		tls = "false"
+	}
 	return fmt.Sprintf(
-		"%s:%s@%s(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local&allowNativePasswords=%v",
+		"%s:%s@%s(%s:%s)/%s?charset=utf8&parseTime=True&loc=%s&allowNativePasswords=%v&tls=%v",
 		o.UserName,
 		o.Password,
 		o.Protocol,
 		o.Address,
 		o.Port,
 		o.DatabaseName,
-		o.AllowNativePasswords)
+		loc,
+		o.AllowNativePasswords,
+		tls)
 }
 
 func DSNToOptions(dsn string) (Option, Option, Option) {

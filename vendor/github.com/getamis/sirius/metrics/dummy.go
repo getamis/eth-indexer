@@ -34,6 +34,10 @@ func (d *DummyRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Not support metrics.\n"))
 }
 
+func (d *DummyRegistry) NewHttpServerMetrics(opts ...Option) HttpServerMetrics {
+	return &dummyHttpMetrics{}
+}
+
 func (d *DummyRegistry) NewServerMetrics(opts ...Option) ServerMetrics {
 	return &dummyServerMetrics{}
 }
@@ -92,3 +96,10 @@ func (d *dummyTimer) Observe(time.Time) {}
 type dummyWorker struct{}
 
 func (d *dummyWorker) Observe(time.Time, error) {}
+
+type dummyHttpMetrics struct {
+}
+
+func (*dummyHttpMetrics) ServeHTTP(rw http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
+	next(rw, req)
+}
