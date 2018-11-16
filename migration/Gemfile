@@ -4,3 +4,4 @@ gem 'standalone_migrations', '~> 5.2.5'
 gem 'mysql2', '~> 0.5.1'
 gem "vault", "~> 0.1"
 gem 'loofah', '~> 2.2.3'
+gem "rack", ">= 2.0.6"
