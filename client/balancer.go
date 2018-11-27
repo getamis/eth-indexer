@@ -29,7 +29,7 @@ import (
 
 const (
 	// ChunkSize defines the chuck size to get balances from geth
-	ChunkSize = 200
+	ChunkSize = 1000
 )
 
 //go:generate mockery -name Balancer
