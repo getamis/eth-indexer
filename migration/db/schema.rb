@@ -10,14 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_07_30_070451) do
+ActiveRecord::Schema.define(version: 2018_12_18_053837) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
     t.bigint "block_number", null: false
     t.string "balance", limit: 32, null: false
+    t.bigint "group", default: 0
     t.index ["address", "block_number"], name: "index_accounts_on_address_and_block_number", unique: true
     t.index ["address"], name: "index_accounts_on_address"
+    t.index ["group", "block_number"], name: "index_accounts_on_group_and_block_number"
   end
 
   create_table "block_headers", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
