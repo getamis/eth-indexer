@@ -23,6 +23,9 @@ const (
 
 	// flag names for ethereum service
 	Eth = "eth"
+	// consul flag
+	ConsulURL        = "consul.url"
+	ConsulServiceEth = "consul.service.eth"
 
 	// flag names for database
 	DbHost          = "indexer.db.cred.host"

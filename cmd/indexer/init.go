@@ -17,14 +17,17 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/store/sqldb"
+	"github.com/getamis/hypereth/multiclient"
 	"github.com/getamis/sirius/database"
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/getamis/sirius/metrics"
@@ -32,8 +35,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func NewEthConn(url string) (client.EthClient, error) {
-	return client.NewClient(url)
+func NewEthConn(ethClientOpts []multiclient.Option) (client.EthClient, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	mc, err := multiclient.New(ctx, ethClientOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewClient(mc), nil
 }
 
 func NewDatabase() (*sqlx.DB, error) {

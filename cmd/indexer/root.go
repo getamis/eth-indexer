@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -27,11 +26,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/cmd/flags"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/service/indexer"
 	"github.com/getamis/eth-indexer/store"
+	"github.com/getamis/hypereth/multiclient"
 	"github.com/getamis/sirius/log"
 	"github.com/getamis/sirius/metrics"
 	"github.com/spf13/cobra"
@@ -81,6 +80,8 @@ var (
 	metricsEnabled bool
 	metricsHost    string
 	metricsPort    int
+
+	ethClientOpts []multiclient.Option
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -96,21 +97,10 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		// eth-client
-		if len(ethClients) == 0 {
-			log.Error("No ETH clients")
-			return errors.New("no ETH clients")
-		}
-		var clients []client.EthClient
-		for _, c := range ethClients {
-			ethClient, err := NewEthConn(c)
-			if err != nil {
-				log.Error("Failed to new a eth client", "err", err)
-				return err
-			}
-			defer ethClient.Close()
-
-			clients = append(clients, ethClient)
+		client, err := NewEthConn(ethClientOpts)
+		if err != nil {
+			log.Error("Failed to new multi clients", "err", err)
+			return err
 		}
 
 		if metricsEnabled {
@@ -148,7 +138,7 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexService := indexer.New(clients, store.NewManager(db, config))
+		indexService := indexer.New(client, store.NewManager(db, config, client))
 
 		if subscribeErc20token {
 			erc20Addresses := LoadTokensFromConfig()
@@ -196,6 +186,8 @@ func init() {
 
 	// eth-client flags
 	ServerCmd.Flags().StringSlice(flags.Eth, []string{""}, "The eth clients. Please separate each with comma in a string. Ex: \"ws://127.0.0.1:8585,ws://127.0.0.1:8586\"")
+	ServerCmd.Flags().String(flags.ConsulURL, "", "The url of consul server")
+	ServerCmd.Flags().String(flags.ConsulServiceEth, "geth", "The service id of ethereum server in consul")
 
 	// Database flags
 	ServerCmd.Flags().String(flags.DbDriver, "mysql", "The database driver")
@@ -247,8 +239,19 @@ func initViper() {
 }
 
 func assignVarFromViper() {
+	ethClientOpts = []multiclient.Option{}
 	// flags for eth
 	ethClients = viper.GetStringSlice(flags.Eth)
+	if len(ethClients) > 0 {
+		ethClientOpts = append(ethClientOpts, multiclient.EthURLs(ethClients))
+	}
+
+	// flags for consul
+	consulURL := viper.GetString(flags.ConsulURL)
+	consulServiceEth := viper.GetString(flags.ConsulServiceEth)
+	if consulURL != "" && consulServiceEth != "" {
+		ethClientOpts = append(ethClientOpts, multiclient.ConsulDiscovery(consulURL, consulServiceEth, "ws"))
+	}
 
 	// flags for database
 	dbDriver = viper.GetString(flags.DbDriver)
