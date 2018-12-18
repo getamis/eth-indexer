@@ -21,8 +21,6 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"strconv"
-	"sync"
 	"time"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
@@ -46,32 +44,23 @@ var (
 )
 
 // New news an indexer service
-func New(clients []client.EthClient, storeManager store.Manager) *indexer {
-	lens := len(clients)
-	var newBlockCounters []metrics.Counter
-	for i := 0; i < lens; i++ {
-		newBlockCounters = append(newBlockCounters, metrics.NewCounter("new_block", metrics.Labels(map[string]string{
-			"index": strconv.Itoa(i),
-		})))
-	}
+func New(client client.EthClient, storeManager store.Manager) *indexer {
 	return &indexer{
-		clients:      clients,
-		latestClient: clients[0],
-		manager:      storeManager,
+		client:  client,
+		manager: storeManager,
 
-		newBlockCounters:     newBlockCounters,
+		newBlockCounter:      metrics.NewCounter("new_block"),
 		insertBlockHistogram: metrics.DefaultRegistry.NewHistogram("insert_block"),
 	}
 }
 
 type indexer struct {
-	clients       []client.EthClient
-	latestClient  client.EthClient
+	client        client.EthClient
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int
 
-	newBlockCounters     []metrics.Counter
+	newBlockCounter      metrics.Counter
 	insertBlockHistogram metrics.Histogram
 }
 
@@ -98,7 +87,7 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 			return err
 		}
 
-		erc20, err := idx.latestClient.GetERC20(ctx, address)
+		erc20, err := idx.client.GetERC20(ctx, address)
 		if err != nil {
 			log.Error("Failed to get ERC20", "addr", addr, "err", err)
 			return err
@@ -115,91 +104,42 @@ func (idx *indexer) SubscribeErc20Tokens(ctx context.Context, addresses []string
 	return idx.manager.Init(ctx)
 }
 
-func (idx *indexer) subscribe(ctx context.Context, outChannel chan<- *Result, index int) error {
-	client := idx.clients[index]
-	newBlockCounter := idx.newBlockCounters[index]
-
-	ch := make(chan *types.Header)
-	childCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	sub, err := client.SubscribeNewHead(childCtx, ch)
-	if err != nil {
-		log.Warn("Failed to subscribe event for new header", "client", index, "err", err)
-		return err
-	}
-
-	for {
-		select {
-		case head := <-ch:
-			log.Trace("Got new header", "number", head.Number, "hash", head.Hash().Hex(), "index", index)
-			newBlockCounter.Inc()
-			outChannel <- &Result{
-				header:      head,
-				clientIndex: index,
-			}
-		case err := <-sub.Err():
-			log.Warn("Receive subscribe error", "client", index, "err", err)
-			return err
-		case <-childCtx.Done():
-			err := childCtx.Err()
-			log.Warn("Receive subscribe context error", "client", index, "err", err)
-			return err
-		}
-	}
-}
-
 func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 	err := idx.loadLocalState(ctx, fromBlock)
 	if err != nil {
 		return err
 	}
-	lens := len(idx.clients)
-	outChannel := make(chan *Result, 50*lens)
-	// Set wait group to cancel
-	var wg sync.WaitGroup
-	wg.Add(lens)
-	defer wg.Wait()
+	outChannel := make(chan *types.Header, 50)
 
 	listenCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// each ethClient will run in different go routines and push messages to channels
-	for i := range idx.clients {
-		go func(ctx context.Context, ch chan *Result, index int) {
-			defer wg.Done()
-			for {
-				idx.subscribe(ctx, ch, index)
-				// Check whether context is done
-				if ctx.Err() != nil {
-					log.Warn("Listen context error", "client", index, "err", ctx.Err())
-					return
-				}
-				time.Sleep(retrySubscribeTime)
-			}
-		}(listenCtx, outChannel, i)
+	sub, err := idx.client.SubscribeNewHead(listenCtx, outChannel)
+	if err != nil {
+		log.Warn("Failed to subscribe new head", "err", err)
+		return err
 	}
 	// single thread to process the messages from channel in sequential
 	for {
 		select {
-		case result := <-outChannel:
-			header := result.header
+		case header := <-outChannel:
 			if idx.currentHeader.Number >= header.Number.Int64() {
-				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex)
+				log.Trace("Ignore old header", "number", header.Number, "hash", header.Hash().Hex())
 				continue
 			}
 
+			idx.newBlockCounter.Inc()
 			start := time.Now()
-			// switch the current ethClient to the source
-			idx.latestClient = idx.clients[result.clientIndex]
 			err := idx.sync(listenCtx, header)
 			if err != nil {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
-				return err
+				continue
 			}
 			duration := time.Since(start)
 			idx.insertBlockHistogram.Observe(duration.Seconds())
-			log.Trace("Handled new header", "number", header.Number, "hash", header.Hash().Hex(), "index", result.clientIndex, "duration", duration)
+			log.Trace("Handled new header", "number", header.Number, "hash", header.Hash().Hex(), "duration", duration)
+		case err := <-sub.Err():
+			return err
 		case <-listenCtx.Done():
 			return listenCtx.Err()
 		}
@@ -214,7 +154,7 @@ func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
 	if err != nil {
 		if common.NotFoundError(err) {
 			// Insert from block into DB
-			block, err := idx.latestClient.BlockByNumber(ctx, big.NewInt(from))
+			block, err := idx.client.BlockByNumber(ctx, big.NewInt(from))
 			if err != nil {
 				log.Error("Failed to get block from ethereum", "number", from, "err", err)
 				return err
@@ -298,7 +238,7 @@ func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err er
 		// If not found, try to get it from ethereum
 		if common.NotFoundError(err) {
 			log.Warn("Failed to get TD from db, try to get it from ethereum", "hash", ethCommon.Bytes2Hex(hash), "err", err)
-			td, err = idx.latestClient.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
+			td, err = idx.client.GetTotalDifficulty(ctx, ethCommon.BytesToHash(hash))
 			if err == nil {
 				return td, nil
 			}
@@ -336,7 +276,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 		receipts = append(receipts, receipt)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, idx.latestClient, newBlocks, receipts, events, reorgEvent)
+	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, reorgEvent)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -354,7 +294,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 		return nil, nil, nil
 	}
 
-	block, err := idx.latestClient.BlockByHash(ctx, header.Hash())
+	block, err := idx.client.BlockByHash(ctx, header.Hash())
 	if err != nil {
 		logger.Error("Failed to get block from ethereum", "err", err)
 		return nil, nil, err
@@ -369,7 +309,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 	}
 
 	// Find targetTD to check whether we need to handle it
-	targetTD, err := idx.latestClient.GetTotalDifficulty(ctx, header.Hash())
+	targetTD, err := idx.client.GetTotalDifficulty(ctx, header.Hash())
 	if err != nil {
 		logger.Error("Failed to get target TD", "err", err)
 		return nil, nil, err
@@ -415,7 +355,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 		}
 
 		// Get old blocks from ethereum
-		block, err = idx.latestClient.BlockByHash(ctx, block.ParentHash())
+		block, err = idx.client.BlockByHash(ctx, block.ParentHash())
 		if err != nil || block == nil {
 			logger.Error("Reorg tracing: Failed to get block from ethereum", "hash", block.ParentHash().Hex(), "err", err)
 			return nil, nil, err
@@ -448,14 +388,14 @@ func (idx *indexer) getBlockData(ctx context.Context, block *types.Block) ([]*ty
 	}
 
 	// Get receipts
-	receipts, err := idx.latestClient.GetBlockReceipts(ctx, block.Hash())
+	receipts, err := idx.client.GetBlockReceipts(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get receipts from ethereum", "err", err)
 		return nil, nil, err
 	}
 
 	// Get Eth transfer events
-	events, err := idx.latestClient.GetTransferLogs(ctx, block.Hash())
+	events, err := idx.client.GetTransferLogs(ctx, block.Hash())
 	if err != nil {
 		logger.Error("Failed to get eth transfer events from ethereum", "err", err)
 		return nil, nil, err
