@@ -23,6 +23,7 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/getamis/eth-indexer/client"
+	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/account"
 	"github.com/getamis/eth-indexer/store/subscription"
@@ -104,8 +105,8 @@ func (m *manager) initNewERC20(ctx context.Context, balancer client.Balancer, ac
 			for addr, balance := range addrs {
 				sub, ok := subMap[addr]
 				if !ok {
-					logger.Warn("Missing address from all subscriptions", "addr", addr.Hex())
-					continue
+					logger.Error("Missing address from all subscriptions", "addr", addr.Hex())
+					return nil, common.ErrMissingSubscriptions
 				}
 
 				// Insert balances
@@ -114,6 +115,7 @@ func (m *manager) initNewERC20(ctx context.Context, balancer client.Balancer, ac
 					BlockNumber:     blockNumber,
 					Address:         addr.Bytes(),
 					Balance:         balance.String(),
+					Group:           sub.Group,
 				}
 				err := accountStore.InsertAccount(ctx, b)
 				if err != nil {
