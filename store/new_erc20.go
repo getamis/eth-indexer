@@ -114,6 +114,7 @@ func (m *manager) initNewERC20(ctx context.Context, balancer client.Balancer, ac
 					BlockNumber:     blockNumber,
 					Address:         addr.Bytes(),
 					Balance:         balance.String(),
+					Group:           sub.Group,
 				}
 				err := accountStore.InsertAccount(ctx, b)
 				if err != nil {
