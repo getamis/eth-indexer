@@ -56,7 +56,7 @@ type Manager interface {
 	// FindTd returns the TD of the given block hash
 	FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error)
 	// UpdateBlocks updates all block data
-	UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
+	UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
 }
 
 type headerStore = block_header.Store
@@ -68,14 +68,16 @@ type manager struct {
 	accountStore
 
 	db          *sqlx.DB
+	balancer    client.Balancer
 	chainConfig *params.ChainConfig
 	tokenList   map[gethCommon.Address]*model.ERC20
 }
 
 // NewManager news a store manager to insert block, receipts and states.
-func NewManager(db *sqlx.DB, chainConfig *params.ChainConfig) Manager {
+func NewManager(db *sqlx.DB, chainConfig *params.ChainConfig, balancer client.Balancer) Manager {
 	return &manager{
 		db:           db,
+		balancer:     balancer,
 		headerStore:  block_header.NewWithDB(db, block_header.Cache()),
 		accountStore: account.NewWithDB(db),
 		chainConfig:  chainConfig,
@@ -99,7 +101,7 @@ func (m *manager) Init(ctx context.Context) error {
 	return nil
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
+func (m *manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
 	size := len(blocks)
 	if size != len(receipts) || size != len(events) {
 		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
@@ -141,7 +143,7 @@ func (m *manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, bl
 
 	// Start to insert blocks and states
 	for i := 0; i < size; i++ {
-		err = m.insertBlock(ctx, dbTx, balancer, blocks[i], receipts[i], events[i])
+		err = m.insertBlock(ctx, dbTx, m.balancer, blocks[i], receipts[i], events[i])
 		if err != nil {
 			return
 		}
