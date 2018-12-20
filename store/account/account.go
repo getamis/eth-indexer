@@ -59,7 +59,7 @@ const (
 	listERC20SQL                   = "SELECT * FROM `erc20`"
 	listOldERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` > 0"
 	listNewERC20SQL                = "SELECT * FROM `erc20` WHERE `block_number` = 0"
-	insertAccountSQL               = "INSERT INTO `%s` (`block_number`, `address`, `balance`) VALUES (%d, X'%s', '%s')"
+	insertAccountSQL               = "INSERT INTO `%s` (`block_number`, `address`, `balance`, `group`) VALUES (%d, X'%s', '%s', %d)"
 	findAccountSQL                 = "SELECT * FROM `%s` WHERE `address` = X'%s' ORDER BY `block_number` DESC LIMIT 1"
 	findAccountByNumberSQL         = "SELECT * FROM `%s` WHERE `address` = X'%s' AND `block_number` <= %d ORDER BY `block_number` DESC LIMIT 1"
 	deleteAccountsSQL              = "DELETE FROM `%s` WHERE `block_number` >= %d AND `block_number` <= %d"
@@ -168,7 +168,7 @@ func (t *store) BatchUpdateERC20BlockNumber(ctx context.Context, blockNumber int
 }
 
 func (t *store) InsertAccount(ctx context.Context, account *model.Account) error {
-	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertAccountSQL, account.TableName(), account.BlockNumber, Hex(account.Address), account.Balance))
+	_, err := t.db.ExecContext(ctx, fmt.Sprintf(insertAccountSQL, account.TableName(), account.BlockNumber, Hex(account.Address), account.Balance, account.Group))
 	return err
 }
 

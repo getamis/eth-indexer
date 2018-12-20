@@ -256,11 +256,18 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 			return err
 		}
 		for addr, balance := range addrs {
+			sub, ok := allSubs[addr]
+			if !ok {
+				s.logger.Error("Missing address from all subscriptions", "addr", addr.Hex())
+				return common.ErrMissingSubscriptions
+			}
+
 			b := &model.Account{
 				ContractAddress: contractAddr.Bytes(),
 				BlockNumber:     s.blockNumber,
 				Address:         addr.Bytes(),
 				Balance:         balance.String(),
+				Group:           sub.Group,
 			}
 			err := s.accountStore.InsertAccount(ctx, b)
 			if err != nil {
@@ -307,8 +314,8 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		for addr, d := range addrs {
 			sub, ok := allSubs[addr]
 			if !ok {
-				s.logger.Warn("Missing address from all subscriptions", "addr", addr.Hex())
-				continue
+				s.logger.Error("Missing address from all subscriptions", "addr", addr.Hex())
+				return common.ErrMissingSubscriptions
 			}
 
 			// Init total balance for the group

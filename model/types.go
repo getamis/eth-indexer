@@ -178,6 +178,7 @@ type Account struct {
 	BlockNumber     int64  `db:"block_number"`
 	Address         []byte `db:"address"`
 	Balance         string `db:"balance"`
+	Group           int64  `db:"group"`
 }
 
 // TableName returns the table name of this model
