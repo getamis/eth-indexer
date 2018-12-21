@@ -239,6 +239,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:43b3878ea9389a510c4b61a96a73d8abc648971023f087a4003023d5a5c3eb3f"
+  name = "github.com/getamis/hypereth"
+  packages = ["multiclient"]
+  pruneopts = "NUT"
+  revision = "26d0baa43a4c6650c13d3342149299e5808a56f7"
+  version = "v1.1.2"
+
+[[projects]]
   branch = "master"
   digest = "1:48ce0d705a1c91c85ccdaf41c0c4320f63c6fa38a2b657d35eb0b1388148394a"
   name = "github.com/getamis/sirius"
@@ -306,6 +314,14 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "93bf4626fba73b751b0f3cdf2649be4ce0c420cd"
+
+[[projects]]
+  digest = "1:a6870429d5083ea442fc6df86fa846dbe19f6f2a27607213594dd86debb10a52"
+  name = "github.com/hashicorp/consul"
+  packages = ["api"]
+  pruneopts = "NUT"
+  revision = "0bddfa23a2ebe3c0773d917fc104f53d74f7a5ec"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:f0d9d74edbd40fdeada436d5ac9cb5197407899af3fef85ff0137077ffe8ae19"
@@ -384,6 +400,14 @@
   ]
   pruneopts = "NUT"
   revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
+
+[[projects]]
+  digest = "1:0dd7b7b01769f9df356dc99f9e4144bdbabf6c79041ea7c0892379c5737f3c44"
+  name = "github.com/hashicorp/serf"
+  packages = ["coordinate"]
+  pruneopts = "NUT"
+  revision = "d6574a5bb1226678d7010325fb6c985db20ee458"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:dbef1dda9aa352f3e62bcaa87be4e33d5e1736416aec983a7868d219249e919d"
@@ -942,10 +966,10 @@
     "github.com/ethereum/go-ethereum/consensus/ethash",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
-    "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/params",
     "github.com/ethereum/go-ethereum/rpc",
+    "github.com/getamis/hypereth/multiclient",
     "github.com/getamis/sirius/database",
     "github.com/getamis/sirius/database/mysql",
     "github.com/getamis/sirius/log",
