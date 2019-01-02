@@ -27,7 +27,7 @@
 [[override]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "indexer-1.8.17"
+  branch = "indexer-1.8.20"
 
 [[constraint]]
   name = "github.com/getamis/sirius"
