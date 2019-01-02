@@ -515,7 +515,8 @@ func (mc *Client) CallContext(ctx context.Context, isPostToAll bool, result inte
 	var err error
 	if !isPostToAll {
 		fns := make([]getFn, len(clients))
-		for i, c := range clients {
+		for i := range clients {
+			c := clients[i]
 			fns[i] = func(ctx context.Context) (interface{}, error) {
 				err := c.CallContext(ctx, result, method, args...)
 				return nil, err
@@ -524,7 +525,8 @@ func (mc *Client) CallContext(ctx context.Context, isPostToAll bool, result inte
 		_, err = getFromAny(ctx, fns)
 	} else {
 		fns := make([]postFn, len(clients))
-		for i, c := range clients {
+		for i := range clients {
+			c := clients[i]
 			fns[i] = func(ctx context.Context) error {
 				return c.CallContext(ctx, result, method, args...)
 			}
@@ -560,7 +562,8 @@ func (mc *Client) BatchCallContext(ctx context.Context, isPostToAll bool, b []rp
 	}
 	if !isPostToAll {
 		fns := make([]getFn, len(clients))
-		for i, c := range clients {
+		for i := range clients {
+			c := clients[i]
 			fns[i] = func(ctx context.Context) (interface{}, error) {
 				err := c.BatchCallContext(ctx, b)
 				return nil, err
@@ -569,7 +572,8 @@ func (mc *Client) BatchCallContext(ctx context.Context, isPostToAll bool, b []rp
 		_, err = getFromAny(ctx, fns)
 	} else {
 		fns := make([]postFn, len(clients))
-		for i, c := range clients {
+		for i := range clients {
+			c := clients[i]
 			fns[i] = func(ctx context.Context) error {
 				return c.BatchCallContext(ctx, b)
 			}
@@ -612,25 +616,25 @@ func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *t
 	for {
 		rc := mc.rpcClientMap.Get(url)
 		if rc == nil {
+			log.Trace("EthClient has been removed", "url", url)
 			return nil
 		}
-
-		// retry subscribe after retryPeriod
-		defer time.Sleep(retryPeriod)
 
 		c := ethclient.NewClient(rc)
 		sub, err := c.SubscribeNewHead(ctx, ch)
 		if err != nil {
 			log.Warn("Failed to subscribe new head", "url", url, "err", err)
-			continue
+		} else {
+			select {
+			case err := <-sub.Err():
+				log.Warn("Failed during subscription", "url", url, "err", err)
+			case <-ctx.Done():
+				return nil
+			}
 		}
-		select {
-		case err := <-sub.Err():
-			log.Warn("Failed during subscription", "url", url, "err", err)
-			continue
-		case <-ctx.Done():
-			return nil
-		}
+		// retry subscribe after retryPeriod
+		time.Sleep(retryPeriod)
+		log.Trace("Retry to subscribe new head", "url", url)
 	}
 }
 
