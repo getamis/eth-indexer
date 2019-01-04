@@ -224,6 +224,9 @@ func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseR
 	if params.MainnetChainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
 		minerBaseReward = ethash.ByzantiumBlockReward
 	}
+	if params.MainnetChainConfig.ConstantinopleBlock.Cmp(header.Number) <= 0 {
+		minerBaseReward = ethash.ConstantinopleBlockReward
+	}
 
 	// Accumulate the rewards for the miner and any included uncles
 	r := new(big.Int)
