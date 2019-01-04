@@ -26,10 +26,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/getamis/eth-indexer/contracts"
 	"github.com/getamis/eth-indexer/model"
-	"github.com/getamis/hypereth/multiclient"
 	"github.com/getamis/sirius/log"
 )
 
@@ -38,7 +38,6 @@ var (
 )
 
 //go:generate mockery -name EthClient
-
 type EthClient interface {
 	Balancer
 
@@ -47,7 +46,6 @@ type EthClient interface {
 	TransactionByHash(ctx context.Context, hash common.Hash) (tx *types.Transaction, isPending bool, err error)
 	UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error)
 	UnclesByBlockHash(ctx context.Context, blockHash common.Hash) ([]*types.Header, error)
-	SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error)
 	GetERC20(ctx context.Context, addr common.Address) (*model.ERC20, error)
 	GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error)
 	GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
@@ -59,19 +57,21 @@ type EthClient interface {
 }
 
 type client struct {
-	*multiclient.Client
+	*ethclient.Client
+	rpcClient *rpc.Client
 }
 
-func NewClient(mc *multiclient.Client) EthClient {
+func NewClient(c *rpc.Client) EthClient {
 	client := &client{
-		Client: mc,
+		Client:    ethclient.NewClient(c),
+		rpcClient: c,
 	}
 	return newCacheMiddleware(client)
 }
 
 func (c *client) UncleByBlockHashAndPosition(ctx context.Context, hash common.Hash, position uint) (*types.Header, error) {
 	var result *types.Header
-	err := c.Client.CallContext(ctx, false, &result, "eth_getUncleByBlockHashAndIndex", hash, hexutil.Uint(position))
+	err := c.rpcClient.CallContext(ctx, &result, "eth_getUncleByBlockHashAndIndex", hash, hexutil.Uint(position))
 	if err == nil && result == nil {
 		err = ethereum.NotFound
 	}
@@ -95,7 +95,7 @@ func (c *client) UnclesByBlockHash(ctx context.Context, blockHash common.Hash) (
 
 func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big.Int, error) {
 	var td *big.Int
-	err := c.Client.CallContext(ctx, false, &td, "debug_getTotalDifficulty", hash.Hex())
+	err := c.rpcClient.CallContext(ctx, &td, "debug_getTotalDifficulty", hash.Hex())
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (c *client) GetTotalDifficulty(ctx context.Context, hash common.Hash) (*big
 
 func (c *client) GetBlockReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
 	var r types.Receipts
-	err := c.Client.CallContext(ctx, false, &r, "debug_getBlockReceipts", hash.Hex())
+	err := c.rpcClient.CallContext(ctx, &r, "debug_getBlockReceipts", hash.Hex())
 	return r, err
 }
 
@@ -148,7 +148,7 @@ func (c *client) GetERC20(ctx context.Context, addr common.Address) (*model.ERC2
 
 func (c *client) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*types.TransferLog, error) {
 	r := []*types.TransferLog{}
-	err := c.Client.CallContext(ctx, false, &r, "debug_getTransferLogs", hash.Hex())
+	err := c.rpcClient.CallContext(ctx, &r, "debug_getTransferLogs", hash.Hex())
 	return r, err
 }
 
@@ -171,7 +171,7 @@ func (c *client) BatchBalanceAt(ctx context.Context, accounts []common.Address, 
 	}
 
 	// Batch calls
-	err := c.Client.BatchCallContext(ctx, false, reqs)
+	err := c.rpcClient.BatchCallContext(ctx, reqs)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (c *client) BatchCallContract(ctx context.Context, msgs []*ethereum.CallMsg
 	}
 
 	// Batch calls
-	err := c.Client.BatchCallContext(ctx, false, reqs)
+	err := c.rpcClient.BatchCallContext(ctx, reqs)
 	if err != nil {
 		return nil, err
 	}
