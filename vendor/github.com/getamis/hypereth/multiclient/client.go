@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -43,7 +44,8 @@ var (
 )
 
 type Client struct {
-	rpcClientMap *Map
+	rpcClientMap       *Map
+	subscribeNewHeadWg sync.WaitGroup
 }
 
 func New(ctx context.Context, opts ...Option) (*Client, error) {
@@ -108,6 +110,10 @@ func (mc *Client) EthClients() []*ethclient.Client {
 		ethClients[i] = ethclient.NewClient(c)
 	}
 	return ethClients
+}
+
+func (mc *Client) RPCClients() []*rpc.Client {
+	return mc.rpcClientMap.List()
 }
 
 // Blockchain Access
@@ -507,6 +513,7 @@ func (mc *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 //
 // `isPostToAll` is true means waiting until received all responsese of JSON-RPC calls and return error if failed to perform JSON-RPC call to all eth client.
 // Otherwise, just waiting for the first successful response and return error if failed to perform JSON-RPC call to all eth client.
+// FIXME: The `result` may be overrode to wrong value because we share a `result` in all goroutines.
 func (mc *Client) CallContext(ctx context.Context, isPostToAll bool, result interface{}, method string, args ...interface{}) error {
 	clients := mc.rpcClientMap.List()
 	if len(clients) == 0 {
@@ -554,6 +561,7 @@ func (mc *Client) CallContext(ctx context.Context, isPostToAll bool, result inte
 //
 // `isPostToAll` is true means waiting until received all responsese of JSON-RPC calls and return error if failed to perform JSON-RPC call to all eth client.
 // Otherwise, just waiting for the first successful response and return error if failed to perform JSON-RPC call to all eth client.
+// FIXME: The result may be overrode to wrong value because we share a `result` in all goroutines.
 func (mc *Client) BatchCallContext(ctx context.Context, isPostToAll bool, b []rpc.BatchElem) error {
 	var err error
 	clients := mc.rpcClientMap.List()
@@ -589,10 +597,14 @@ func (mc *Client) BatchCallContext(ctx context.Context, isPostToAll bool, b []rp
 }
 
 // Subscribe API
+type Header struct {
+	*types.Header
+	*rpc.Client
+}
 
 // SubscribeNewHead subscribes to notifications about the current blockchain head
 // on the given channel.
-func (mc *Client) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
+func (mc *Client) SubscribeNewHead(ctx context.Context, ch chan<- *Header) (ethereum.Subscription, error) {
 	clientsMap := mc.rpcClientMap.Map()
 	lens := len(clientsMap)
 	if lens == 0 {
@@ -608,11 +620,15 @@ func (mc *Client) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header)
 	return event.NewSubscription(func(unsub <-chan struct{}) error {
 		<-unsub
 		cancel()
+		mc.subscribeNewHeadWg.Wait()
 		return nil
 	}), nil
 }
 
-func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *types.Header) error {
+func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *Header) error {
+	mc.subscribeNewHeadWg.Add(1)
+	defer mc.subscribeNewHeadWg.Done()
+
 	for {
 		rc := mc.rpcClientMap.Get(url)
 		if rc == nil {
@@ -620,16 +636,26 @@ func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *t
 			return nil
 		}
 
+		headerCh := make(chan *types.Header)
 		c := ethclient.NewClient(rc)
-		sub, err := c.SubscribeNewHead(ctx, ch)
+		sub, err := c.SubscribeNewHead(ctx, headerCh)
 		if err != nil {
 			log.Warn("Failed to subscribe new head", "url", url, "err", err)
 		} else {
-			select {
-			case err := <-sub.Err():
-				log.Warn("Failed during subscription", "url", url, "err", err)
-			case <-ctx.Done():
-				return nil
+		WAIT_NEW_HEADER:
+			for {
+				select {
+				case header := <-headerCh:
+					ch <- &Header{
+						Client: rc,
+						Header: header,
+					}
+				case err := <-sub.Err():
+					log.Warn("Failed during subscription", "url", url, "err", err)
+					break WAIT_NEW_HEADER
+				case <-ctx.Done():
+					return nil
+				}
 			}
 		}
 		// retry subscribe after retryPeriod
