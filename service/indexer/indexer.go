@@ -25,10 +25,12 @@ import (
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/getamis/eth-indexer/client"
 	"github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store"
+	"github.com/getamis/hypereth/multiclient"
 	"github.com/getamis/sirius/log"
 	"github.com/getamis/sirius/metrics"
 )
@@ -44,18 +46,27 @@ var (
 )
 
 // New news an indexer service
-func New(client client.EthClient, storeManager store.Manager) *indexer {
-	return &indexer{
-		client:  client,
-		manager: storeManager,
+func New(subscriber client.Subscriber, storeManager store.Manager) (*indexer, error) {
+	clients := subscriber.RPCClients()
+	if len(clients) == 0 {
+		return nil, multiclient.ErrNoEthClient
+	}
+	idx := &indexer{
+		subscriber:    subscriber,
+		manager:       storeManager,
+		newClientFunc: client.NewClient,
 
 		newBlockCounter:      metrics.NewCounter("new_block"),
 		insertBlockHistogram: metrics.DefaultRegistry.NewHistogram("insert_block"),
 	}
+	idx.client = idx.newClientFunc(clients[0])
+	return idx, nil
 }
 
 type indexer struct {
+	subscriber    client.Subscriber
 	client        client.EthClient
+	newClientFunc func(c *rpc.Client) client.EthClient
 	manager       store.Manager
 	currentHeader *model.Header
 	currentTD     *big.Int
@@ -109,12 +120,12 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 	if err != nil {
 		return err
 	}
-	outChannel := make(chan *types.Header, 50)
+	outChannel := make(chan *multiclient.Header, 50)
 
 	listenCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	sub, err := idx.client.SubscribeNewHead(listenCtx, outChannel)
+	sub, err := idx.subscriber.SubscribeNewHead(listenCtx, outChannel)
 	if err != nil {
 		log.Warn("Failed to subscribe new head", "err", err)
 		return err
@@ -130,7 +141,8 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 
 			idx.newBlockCounter.Inc()
 			start := time.Now()
-			err := idx.sync(listenCtx, header)
+			idx.client = idx.newClientFunc(header.Client)
+			err := idx.sync(listenCtx, header.Header)
 			if err != nil {
 				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
 				continue
@@ -276,7 +288,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 		receipts = append(receipts, receipt)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, newBlocks, receipts, events, reorgEvent)
+	err := idx.manager.UpdateBlocks(ctx, idx.client, newBlocks, receipts, events, reorgEvent)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err

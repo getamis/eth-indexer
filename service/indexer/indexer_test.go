@@ -27,10 +27,14 @@ import (
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/getamis/eth-indexer/client"
 	clientMocks "github.com/getamis/eth-indexer/client/mocks"
 	idxCommon "github.com/getamis/eth-indexer/common"
 	"github.com/getamis/eth-indexer/model"
 	storeMocks "github.com/getamis/eth-indexer/store/mocks"
+	"github.com/getamis/hypereth/multiclient"
+	"github.com/getamis/sirius/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -52,6 +56,7 @@ var _ = Describe("Indexer Test", func() {
 	var (
 		mockSub          *testSub
 		mockEthClient    *clientMocks.EthClient
+		mockSubscriber   *clientMocks.Subscriber
 		mockStoreManager *storeMocks.Manager
 		idx              *indexer
 		nilTransferLogs  []*types.TransferLog
@@ -59,8 +64,8 @@ var _ = Describe("Indexer Test", func() {
 		ctx              = context.Background()
 	)
 
-	ch := make(chan<- *types.Header)
-	subFunc := func(ctx context.Context, c chan<- *types.Header) ethereum.Subscription {
+	ch := make(chan<- *multiclient.Header)
+	subFunc := func(ctx context.Context, c chan<- *multiclient.Header) ethereum.Subscription {
 		ch = c
 		return mockSub
 	}
@@ -69,10 +74,21 @@ var _ = Describe("Indexer Test", func() {
 		mockSub = &testSub{make(chan error)}
 		mockStoreManager = new(storeMocks.Manager)
 		mockEthClient = new(clientMocks.EthClient)
-		idx = New(mockEthClient, mockStoreManager)
+		mockSubscriber = new(clientMocks.Subscriber)
+		idx = &indexer{
+			subscriber: mockSubscriber,
+			client:     mockEthClient,
+			manager:    mockStoreManager,
+			newClientFunc: func(c *rpc.Client) client.EthClient {
+				return mockEthClient
+			},
+			newBlockCounter:      metrics.NewCounter("new_block"),
+			insertBlockHistogram: metrics.DefaultRegistry.NewHistogram("insert_block"),
+		}
 	})
 
 	AfterEach(func() {
+		mockSubscriber.AssertExpectations(GinkgoT())
 		mockStoreManager.AssertExpectations(GinkgoT())
 		mockEthClient.AssertExpectations(GinkgoT())
 	})
@@ -237,16 +253,20 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
 
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
-					ch <- blocks[18].Header()
-					ch <- blocks[19].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[18].Header(),
+					}
+					ch <- &multiclient.Header{
+						Header: blocks[19].Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -300,7 +320,7 @@ var _ = Describe("Indexer Test", func() {
 				// Check if from block exists
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(15)).Return(blocks[15], nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -309,13 +329,15 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[16:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[16:20], rs, ts, nilReorg).Return(nil).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
-					ch <- blocks[19].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[19].Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -368,7 +390,7 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(blocks[0], nil).Once()
 				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(blocks[0], big.NewInt(1))).Return(nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -377,13 +399,15 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[1:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[1:20], rs, ts, nilReorg).Return(nil).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
-					ch <- blocks[19].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[19].Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -421,14 +445,19 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("FindTd", mock.Anything, blocks[15].Hash().Bytes()).Return(&model.TotalDifficulty{
 					15, blocks[15].Hash().Bytes(), strconv.Itoa(int(15))}, nil).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
 					// Ignore old block
-					ch <- blocks[10].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[10].Header(),
+					}
 					// Ignore old block
-					ch <- blocks[14].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[14].Header(),
+					}
+
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -485,14 +514,18 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, blocks[11:16], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[11:16], rs, ts, nilReorg).Return(nil).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
-					ch <- blocks[15].Header()
-					ch <- blocks[13].Header()
+					ch <- &multiclient.Header{
+						Header: blocks[15].Header(),
+					}
+					ch <- &multiclient.Header{
+						Header: blocks[13].Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -585,12 +618,14 @@ var _ = Describe("Indexer Test", func() {
 				// cause error here
 				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(unknownErr).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
 					// new header: 11
-					ch <- block.Header()
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -637,12 +672,14 @@ var _ = Describe("Indexer Test", func() {
 				// cause error here
 				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(unknownErr).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
 					// new header: 11
-					ch <- block.Header()
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -692,14 +729,17 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("UpdateBlocks", mock.Anything, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(unknownErr).Once()
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(unknownErr).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
 					// New header: block 11
-					ch <- block.Header()
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
+
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -750,12 +790,14 @@ var _ = Describe("Indexer Test", func() {
 				// cause error here
 				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(nil, unknownErr).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
 					// new header 11
-					ch <- block.Header()
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -789,11 +831,13 @@ var _ = Describe("Indexer Test", func() {
 				// cause error here
 				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(nil, unknownErr).Once()
 
-				mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 				go func() {
 					time.Sleep(time.Second)
-					ch <- block.Header()
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
 					time.Sleep(time.Second)
 					cancel()
 				}()
@@ -890,18 +934,20 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+			mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       15,
 				ToHash:   blocks[15].Hash().Bytes(),
 			}).Return(nil).Once()
 
-			mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+			mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 			go func() {
 				time.Sleep(time.Second)
-				ch <- newBlocks[18].Header()
+				ch <- &multiclient.Header{
+					Header: newBlocks[18].Header(),
+				}
 				time.Sleep(time.Second)
 				cancel()
 			}()
@@ -988,20 +1034,26 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+			mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       17,
 				ToHash:   blocks[17].Hash().Bytes(),
 			}).Return(nil).Once()
 
-			mockEthClient.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+			mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
 			go func() {
 				time.Sleep(time.Second)
-				ch <- newBlocks[16].Header()
-				ch <- newBlocks[17].Header()
-				ch <- newBlocks[18].Header()
+				ch <- &multiclient.Header{
+					Header: newBlocks[16].Header(),
+				}
+				ch <- &multiclient.Header{
+					Header: newBlocks[17].Header(),
+				}
+				ch <- &multiclient.Header{
+					Header: newBlocks[18].Header(),
+				}
 				time.Sleep(time.Second)
 				cancel()
 			}()

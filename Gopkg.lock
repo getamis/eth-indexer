@@ -302,12 +302,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:b2a426ad39a171b7960619234b71cef6e094e679cadcb135efb9f43cf39efedb"
+  digest = "1:cfe127d65915c6e726e46561865f22ef5f93280b07e44f36cce340c28e715d19"
   name = "github.com/getamis/hypereth"
   packages = ["multiclient"]
   pruneopts = "NUT"
-  revision = "6706d8cf009701df5d029e91ff2c708fc50a35ee"
-  version = "v1.1.6"
+  revision = "d0b1cd811de5a0ec1aaa9b374d62af065a701b68"
+  version = "v1.1.7"
 
 [[projects]]
   branch = "master"
@@ -1389,6 +1389,7 @@
     "github.com/ethereum/go-ethereum/consensus/ethash",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/crypto",
+    "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/params",
     "github.com/ethereum/go-ethereum/rpc",

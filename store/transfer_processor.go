@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -40,6 +41,9 @@ var (
 	// metrics
 	newSubscriptionGauge            = metrics.NewGauge("new_subscription")
 	changedAccountPerBlockAcctGauge = metrics.NewGauge("changed_account_per_block")
+
+	// ErrInconsistentReceipt is returned if the transacion cannot map to a receipt
+	ErrInconsistentReceipt = errors.New("inconsistent receipt")
 )
 
 type transferProcessor struct {
@@ -225,6 +229,12 @@ func (s *transferProcessor) process(ctx context.Context, events []*model.Transfe
 		}
 		// Assume the tx and receipt are in the same order
 		r := s.receipts[i]
+		txHash := gethCommon.BytesToHash(tx.Hash)
+		if r.TxHash != txHash {
+			log.Error("Inconsistent transaction and receipt", "receipt", r.TxHash.Hex(), "tx", txHash.Hex())
+			return ErrInconsistentReceipt
+		}
+
 		price := big.NewInt(tx.GasPrice)
 		fee := new(big.Int).Mul(price, big.NewInt(int64(r.GasUsed)))
 		if feeDiff[from] == nil {

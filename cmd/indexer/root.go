@@ -138,7 +138,11 @@ var ServerCmd = &cobra.Command{
 			cancel()
 		}()
 
-		indexService := indexer.New(client, store.NewManager(db, config, client))
+		indexService, err := indexer.New(client, store.NewManager(db, config))
+		if err != nil {
+			log.Error("Failed to init indexer", "err", err)
+			return err
+		}
 
 		if subscribeErc20token {
 			erc20Addresses := LoadTokensFromConfig()
