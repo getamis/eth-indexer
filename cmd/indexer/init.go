@@ -35,14 +35,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func NewEthConn(ethClientOpts []multiclient.Option) (client.EthClient, error) {
+func NewEthConn(ethClientOpts []multiclient.Option) (client.Subscriber, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	mc, err := multiclient.New(ctx, ethClientOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return client.NewClient(mc), nil
+	return mc, nil
 }
 
 func NewDatabase() (*sqlx.DB, error) {
