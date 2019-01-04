@@ -309,7 +309,7 @@ var _ = Describe("Subscription Test", func() {
 			{},
 		}
 
-		manager = NewManager(db, params.MainnetChainConfig, mockBalancer)
+		manager = NewManager(db, params.MainnetChainConfig)
 
 		err = manager.InsertERC20(ctx, erc20)
 		Expect(err).Should(BeNil())
@@ -364,7 +364,7 @@ var _ = Describe("Subscription Test", func() {
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(438)
 		}).Return(nil).Once()
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
+		err = manager.UpdateBlocks(ctx, mockBalancer, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 
 		// Verify total balances
@@ -540,7 +540,7 @@ var _ = Describe("Subscription Test", func() {
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[0].Address)] = big.NewInt(1000)
 		}).Return(nil).Once()
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, &model.Reorg{
+		err = manager.UpdateBlocks(ctx, mockBalancer, blocks, receipts, events, &model.Reorg{
 			From:     blocks[0].Number().Int64(),
 			To:       blocks[len(blocks)-1].Number().Int64(),
 			FromHash: blocks[0].Hash().Bytes(),
@@ -726,7 +726,7 @@ var _ = Describe("Subscription Test", func() {
 			{},
 		}
 
-		manager = NewManager(db, params.MainnetChainConfig, mockBalancer)
+		manager = NewManager(db, params.MainnetChainConfig)
 
 		err = manager.InsertERC20(ctx, erc20)
 		Expect(err).Should(BeNil())
@@ -751,7 +751,7 @@ var _ = Describe("Subscription Test", func() {
 			result[model.ETHAddress][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(300)
 		}).Return(nil).Once()
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
+		err = manager.UpdateBlocks(ctx, mockBalancer, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 
 		// Verify total balances

@@ -188,7 +188,7 @@ var _ = Describe("Manager Test", func() {
 		}
 
 		var err error
-		manager = NewManager(db, params.MainnetChainConfig, nil)
+		manager = NewManager(db, params.MainnetChainConfig)
 		err = manager.Init(ctx)
 		Expect(err).Should(BeNil())
 
@@ -199,7 +199,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
+		err = manager.UpdateBlocks(ctx, nil, blocks, receipts, events, nil)
 		Expect(err).Should(BeNil())
 	})
 
@@ -257,7 +257,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(ctx, newBlocks, newReceipts, events, nil)
+			err := manager.UpdateBlocks(ctx, nil, newBlocks, newReceipts, events, nil)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -291,7 +291,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(ctx, newBlocks, newReceipts, events, &model.Reorg{
+			err := manager.UpdateBlocks(ctx, nil, newBlocks, newReceipts, events, &model.Reorg{
 				From:     blocks[0].Number().Int64(),
 				To:       blocks[len(blocks)-1].Number().Int64(),
 				FromHash: blocks[0].Hash().Bytes(),
@@ -321,7 +321,7 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(ctx, blocks, receipts, events, nil)
+			err := manager.UpdateBlocks(ctx, nil, blocks, receipts, events, nil)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
 		})
 	})

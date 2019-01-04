@@ -2,6 +2,7 @@
 
 package mocks
 
+import client "github.com/getamis/eth-indexer/client"
 import common "github.com/ethereum/go-ethereum/common"
 import context "context"
 import mock "github.com/stretchr/testify/mock"
@@ -148,13 +149,13 @@ func (_m *Manager) InsertTd(ctx context.Context, data *model.TotalDifficulty) er
 	return r0
 }
 
-// UpdateBlocks provides a mock function with given fields: ctx, blocks, receipts, events, reorgEvent
-func (_m *Manager) UpdateBlocks(ctx context.Context, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error {
-	ret := _m.Called(ctx, blocks, receipts, events, reorgEvent)
+// UpdateBlocks provides a mock function with given fields: ctx, balancer, blocks, receipts, events, reorgEvent
+func (_m *Manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error {
+	ret := _m.Called(ctx, balancer, blocks, receipts, events, reorgEvent)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*types.Block, [][]*types.Receipt, [][]*types.TransferLog, *model.Reorg) error); ok {
-		r0 = rf(ctx, blocks, receipts, events, reorgEvent)
+	if rf, ok := ret.Get(0).(func(context.Context, client.Balancer, []*types.Block, [][]*types.Receipt, [][]*types.TransferLog, *model.Reorg) error); ok {
+		r0 = rf(ctx, balancer, blocks, receipts, events, reorgEvent)
 	} else {
 		r0 = ret.Error(0)
 	}
