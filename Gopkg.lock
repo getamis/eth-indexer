@@ -247,8 +247,8 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  branch = "indexer-1.8.19"
-  digest = "1:4d9e30e2de50cf1cf332e1d6f4231806f42ec686575f3bc81a1f6d27e10b213a"
+  branch = "indexer-1.8.21"
+  digest = "1:ea23de99d373c0998c535bdaaa630f372d73dc88987a92002aa2530500b6bdbc"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -269,7 +269,6 @@
     "core/types",
     "crypto",
     "crypto/secp256k1",
-    "crypto/sha3",
     "ethclient",
     "ethdb",
     "event",
@@ -282,7 +281,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "8f893d7f54a217209395a7c23bff941376d5345f"
+  revision = "3d23e927159e44061eea4be2d3f211e6c8ef1b29"
   source = "github.com/getamis/go-ethereum"
 
 [[projects]]
@@ -989,11 +988,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:48e235389d8de8623da98cb952a0ec7ac1b6f6663fd2df304156bfe02df009a4"
+  digest = "1:475620c385b39831733ee37f312fc89911696f1b98e1f51647796fcca567546a"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
     "scrypt",
+    "sha3",
     "ssh/terminal",
   ]
   pruneopts = "NUT"
