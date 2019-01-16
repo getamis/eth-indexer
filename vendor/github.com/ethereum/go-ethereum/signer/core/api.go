@@ -82,7 +82,7 @@ type SignerUI interface {
 	// OnSignerStartup is invoked when the signer boots, and tells the UI info about external API location and version
 	// information
 	OnSignerStartup(info StartupInfo)
-	// OnInputRequired is invoked when clef requires user input, for example master password or
+	// OnInputRequried is invoked when clef requires user input, for example master password or
 	// pin-code for unlocking hardware wallets
 	OnInputRequired(info UserInputRequest) (UserInputResponse, error)
 }

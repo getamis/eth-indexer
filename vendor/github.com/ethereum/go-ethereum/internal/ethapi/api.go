@@ -695,25 +695,24 @@ type CallArgs struct {
 	Data     hexutil.Bytes   `json:"data"`
 }
 
-func (s *PublicBlockChainAPI) doCallByHash(ctx context.Context, args CallArgs, blockHash common.Hash, timeout time.Duration) ([]byte, uint64, bool, error) {
+func (s *PublicBlockChainAPI) doCallByHash(ctx context.Context, args CallArgs, blockHash common.Hash, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
 	state, header, err := s.b.StateAndHeaderByHash(ctx, blockHash)
 	if state == nil || err != nil {
 		return nil, 0, false, err
 	}
-	return s.call(ctx, args, state, header, timeout)
+	return s.call(ctx, args, state, header, vmCfg, timeout)
 }
 
-func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber, timeout time.Duration) ([]byte, uint64, bool, error) {
-	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
+func (s *PublicBlockChainAPI) doCall(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, 0, false, err
 	}
 
-	return s.call(ctx, args, state, header, timeout)
+	return s.call(ctx, args, state, header, vmCfg, timeout)
 }
 
-func (s *PublicBlockChainAPI) call(ctx context.Context, args CallArgs, state *state.StateDB, header *types.Header, timeout time.Duration) ([]byte, uint64, bool, error) {
+func (s *PublicBlockChainAPI) call(ctx context.Context, args CallArgs, state *state.StateDB, header *types.Header, vmCfg vm.Config, timeout time.Duration) ([]byte, uint64, bool, error) {
 	defer func(start time.Time) { log.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 
 	// Set sender address or use a default if none specified
@@ -750,7 +749,7 @@ func (s *PublicBlockChainAPI) call(ctx context.Context, args CallArgs, state *st
 	defer cancel()
 
 	// Get a new instance of the EVM.
-	evm, vmError, err := s.b.GetEVM(ctx, msg, state, header)
+	evm, vmError, err := s.b.GetEVM(ctx, msg, state, header, vmCfg)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -774,14 +773,14 @@ func (s *PublicBlockChainAPI) call(ctx context.Context, args CallArgs, state *st
 // Call executes the given transaction on the state for the given block number.
 // It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
 func (s *PublicBlockChainAPI) Call(ctx context.Context, args CallArgs, blockNr rpc.BlockNumber) (hexutil.Bytes, error) {
-	result, _, _, err := s.doCall(ctx, args, blockNr, 5*time.Second)
+	result, _, _, err := s.doCall(ctx, args, blockNr, vm.Config{}, 5*time.Second)
 	return (hexutil.Bytes)(result), err
 }
 
 // CallByHash executes the given transaction on the state for the given block hash.
 // It doesn't make and changes in the state/blockchain and is useful to execute and retrieve values.
 func (s *PublicBlockChainAPI) CallByHash(ctx context.Context, args CallArgs, blockHash common.Hash) (hexutil.Bytes, error) {
-	result, _, _, err := s.doCallByHash(ctx, args, blockHash, 5*time.Second)
+	result, _, _, err := s.doCallByHash(ctx, args, blockHash, vm.Config{}, 5*time.Second)
 	return (hexutil.Bytes)(result), err
 }
 
@@ -810,7 +809,7 @@ func (s *PublicBlockChainAPI) EstimateGas(ctx context.Context, args CallArgs) (h
 	executable := func(gas uint64) bool {
 		args.Gas = hexutil.Uint64(gas)
 
-		_, _, failed, err := s.doCall(ctx, args, rpc.PendingBlockNumber, 0)
+		_, _, failed, err := s.doCall(ctx, args, rpc.PendingBlockNumber, vm.Config{}, 0)
 		if err != nil || failed {
 			return false
 		}

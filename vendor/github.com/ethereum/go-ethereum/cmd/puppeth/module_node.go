@@ -55,7 +55,6 @@ services:
   {{.Type}}:
     build: .
     image: {{.Network}}/{{.Type}}
-    container_name: {{.Network}}_{{.Type}}_1
     ports:
       - "{{.Port}}:{{.Port}}"
       - "{{.Port}}:{{.Port}}/udp"

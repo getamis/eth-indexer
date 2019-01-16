@@ -247,8 +247,8 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  branch = "indexer-1.8.20"
-  digest = "1:d58ef2ae05378f4af7fabf781a0008c3d603047e30de30b29d696936814dc059"
+  branch = "indexer-1.8.19"
+  digest = "1:4d9e30e2de50cf1cf332e1d6f4231806f42ec686575f3bc81a1f6d27e10b213a"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -282,7 +282,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "91410bd7b4874579d3bb91200c50c7d69d75753d"
+  revision = "8f893d7f54a217209395a7c23bff941376d5345f"
   source = "github.com/getamis/go-ethereum"
 
 [[projects]]
@@ -989,7 +989,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:69b3fcb7a41b18436a85471cbdcfc70ad10ba3206f8c87563e1c773610e1bcad"
+  digest = "1:48e235389d8de8623da98cb952a0ec7ac1b6f6663fd2df304156bfe02df009a4"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
@@ -997,7 +997,7 @@
     "ssh/terminal",
   ]
   pruneopts = "NUT"
-  revision = "ab813273cd59e1333f7ae7bff5d027d4aadf528c"
+  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
 
 [[projects]]
   branch = "master"
