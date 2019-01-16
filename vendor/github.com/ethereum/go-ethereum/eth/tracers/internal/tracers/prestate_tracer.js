@@ -40,7 +40,10 @@
 		var idx = toHex(key);
 
 		if (this.prestate[acc].storage[idx] === undefined) {
-			this.prestate[acc].storage[idx] = toHex(db.getState(addr, key));
+			var val = toHex(db.getState(addr, key));
+			if (val != "0x0000000000000000000000000000000000000000000000000000000000000000") {
+				this.prestate[acc].storage[idx] = toHex(db.getState(addr, key));
+			}
 		}
 	},
 
