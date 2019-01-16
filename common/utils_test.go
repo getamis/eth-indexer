@@ -28,9 +28,8 @@ import (
 )
 
 func TestAccumulateRewards(t *testing.T) {
-	t.Skip("skip this test because of constantinople postpone")
 	byzantiumBlock := big.NewInt(5862127)
-	constantinopleBlock := big.NewInt(7162127)
+	// constantinopleBlock := big.NewInt(7162127)
 	tests := []struct {
 		description          string
 		uncleHeaders         []*types.Header
@@ -64,30 +63,30 @@ func TestAccumulateRewards(t *testing.T) {
 			unclesReward:         []*big.Int{big.NewInt(2625000000000000000), big.NewInt(2250000000000000000)},
 		},
 
-		{
-			description:          "no uncles on constantinople",
-			uncleHeaders:         []*types.Header{},
-			blockNum:             constantinopleBlock,
-			uncleInclusionReward: big.NewInt(0),
-			minerBaseReward:      ethash.ConstantinopleBlockReward,
-			unclesReward:         []*big.Int{},
-		},
-		{
-			description:          "two uncles in same block number on constantinople",
-			uncleHeaders:         []*types.Header{{Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle2")}},
-			blockNum:             constantinopleBlock,
-			uncleInclusionReward: big.NewInt(125000000000000000),
-			minerBaseReward:      ethash.ConstantinopleBlockReward,
-			unclesReward:         []*big.Int{big.NewInt(1750000000000000000), big.NewInt(1750000000000000000)},
-		},
-		{
-			description:          "two uncles in different block number on constantinople",
-			uncleHeaders:         []*types.Header{{Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(constantinopleBlock.Int64() - 2), Coinbase: common.HexToAddress("uncle2")}},
-			blockNum:             constantinopleBlock,
-			uncleInclusionReward: big.NewInt(125000000000000000),
-			minerBaseReward:      ethash.ConstantinopleBlockReward,
-			unclesReward:         []*big.Int{big.NewInt(1750000000000000000), big.NewInt(1500000000000000000)},
-		},
+		// {
+		// 	description:          "no uncles on constantinople",
+		// 	uncleHeaders:         []*types.Header{},
+		// 	blockNum:             constantinopleBlock,
+		// 	uncleInclusionReward: big.NewInt(0),
+		// 	minerBaseReward:      ethash.ConstantinopleBlockReward,
+		// 	unclesReward:         []*big.Int{},
+		// },
+		// {
+		// 	description:          "two uncles in same block number on constantinople",
+		// 	uncleHeaders:         []*types.Header{{Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle2")}},
+		// 	blockNum:             constantinopleBlock,
+		// 	uncleInclusionReward: big.NewInt(125000000000000000),
+		// 	minerBaseReward:      ethash.ConstantinopleBlockReward,
+		// 	unclesReward:         []*big.Int{big.NewInt(1750000000000000000), big.NewInt(1750000000000000000)},
+		// },
+		// {
+		// 	description:          "two uncles in different block number on constantinople",
+		// 	uncleHeaders:         []*types.Header{{Number: big.NewInt(constantinopleBlock.Int64() - 1), Coinbase: common.HexToAddress("uncle1")}, {Number: big.NewInt(constantinopleBlock.Int64() - 2), Coinbase: common.HexToAddress("uncle2")}},
+		// 	blockNum:             constantinopleBlock,
+		// 	uncleInclusionReward: big.NewInt(125000000000000000),
+		// 	minerBaseReward:      ethash.ConstantinopleBlockReward,
+		// 	unclesReward:         []*big.Int{big.NewInt(1750000000000000000), big.NewInt(1500000000000000000)},
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
