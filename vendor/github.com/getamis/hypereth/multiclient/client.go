@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cskr/pubsub"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -34,73 +35,86 @@ import (
 
 const (
 	dialTimeout = 5 * time.Second
+	retryPeriod = 10 * time.Second
+
+	// newAvailableClientTopic represents an topic name for an eth-client is created.
+	newAvailableClientTopic = "newAvailableClient"
+	// pubSubCapacity represents the channel size to received pubSub event.
+	pubSubCapacity = 10
 )
 
 var (
 	ErrInvalidTypeCast = errors.New("invalid type cast")
 	ErrNoEthClient     = errors.New("no eth client")
-
-	retryPeriod = 10 * time.Second
 )
 
 type Client struct {
-	rpcClientMap       *Map
-	subscribeNewHeadWg sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
+	rpcClientMap *Map
+	newClientCh  chan string
+	pubSub       *pubsub.PubSub
+	retrydialWg  sync.WaitGroup
 }
 
 func New(ctx context.Context, opts ...Option) (*Client, error) {
+	newClientCh := make(chan string)
+	// create client own context to control the internal go routines
+	myCtx, myCancel := context.WithCancel(context.Background())
 	mc := &Client{
-		rpcClientMap: NewMap(),
+		ctx:          myCtx,
+		cancel:       myCancel,
+		rpcClientMap: NewMap(newClientCh),
+		newClientCh:  newClientCh,
+		pubSub:       pubsub.New(pubSubCapacity),
 	}
+
+	var newErr error
+	defer func() {
+		if newErr != nil {
+			// cancel go routines
+			mc.Close()
+		}
+	}()
+
 	for _, opt := range opts {
-		if err := opt(mc); err != nil {
-			return nil, err
+		if newErr = opt(mc); newErr != nil {
+			return nil, newErr
 		}
 	}
 
-	urls := mc.rpcClientMap.Keys()
-	lens := len(urls)
-	if lens == 0 {
-		return nil, ErrNoEthClient
+	// Dial each eth client
+	mc.DialClients(ctx)
+
+	// Return error if have no available eth client.
+	if len(mc.rpcClientMap.List()) == 0 {
+		log.Warn("There is no available eth client while creating multiclient")
 	}
 
-	log.Debug("Create multiclient", "urls", lens)
-	errCh := make(chan error, lens)
-	for _, rawURL := range urls {
-		go func(ctx context.Context, rawURL string) {
-			ctx, cancel := context.WithTimeout(ctx, dialTimeout)
-			defer cancel()
-			c, err := rpc.DialContext(ctx, rawURL)
-			if err == nil {
-				log.Info("Connect to ethclient successfully", "url", rawURL)
-				mc.rpcClientMap.Set(rawURL, c)
-			} else {
-				log.Error("Failed to dial eth client", "rawURL", rawURL, "err", err)
-			}
-			errCh <- err
-		}(ctx, rawURL)
-	}
+	mc.retrydialWg.Add(1)
+	go mc.retrydial()
 
-	var dialErr error
-	for i := 0; i < lens; i++ {
-		err := <-errCh
-		if err != nil {
-			dialErr = err
-		}
-	}
-	if dialErr != nil {
-		mc.Close()
-		return nil, dialErr
-	}
 	return mc, nil
 }
 
 // Close closes an existing RPC connection.
 func (mc *Client) Close() {
+	// stop go routines
+	mc.cancel()
+	mc.retrydialWg.Wait()
+	mc.pubSub.Shutdown()
 	clients := mc.rpcClientMap.List()
 	for _, c := range clients {
 		c.Close()
 	}
+}
+
+func (mc *Client) Context() context.Context {
+	return mc.ctx
+}
+
+func (mc *Client) ClientMap() *Map {
+	return mc.rpcClientMap
 }
 
 func (mc *Client) EthClients() []*ethclient.Client {
@@ -611,23 +625,40 @@ func (mc *Client) SubscribeNewHead(ctx context.Context, ch chan<- *Header) (ethe
 		return nil, ErrNoEthClient
 	}
 
+	var subscribeNewHeadWg sync.WaitGroup
+
 	cctx, cancel := context.WithCancel(ctx)
 	for url := range clientsMap {
-		go mc.subscribeNewHead(cctx, url, ch)
+		subscribeNewHeadWg.Add(1)
+		go mc.subscribeNewHead(cctx, &subscribeNewHeadWg, url, ch)
 	}
 
-	// TODO: handle new clients comes
+	newClientCh := mc.pubSub.Sub(newAvailableClientTopic)
+	// handle  new clients comes
+	go func() {
+		defer mc.pubSub.Unsub(newClientCh, newAvailableClientTopic)
+		for {
+			select {
+			case newC := <-newClientCh:
+				url := newC.(string)
+				subscribeNewHeadWg.Add(1)
+				go mc.subscribeNewHead(cctx, &subscribeNewHeadWg, url, ch)
+			case <-cctx.Done():
+				return
+			}
+		}
+	}()
+
 	return event.NewSubscription(func(unsub <-chan struct{}) error {
 		<-unsub
 		cancel()
-		mc.subscribeNewHeadWg.Wait()
+		subscribeNewHeadWg.Wait()
 		return nil
 	}), nil
 }
 
-func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *Header) error {
-	mc.subscribeNewHeadWg.Add(1)
-	defer mc.subscribeNewHeadWg.Done()
+func (mc *Client) subscribeNewHead(ctx context.Context, wg *sync.WaitGroup, url string, ch chan<- *Header) error {
+	defer wg.Done()
 
 	for {
 		rc := mc.rpcClientMap.Get(url)
@@ -646,9 +677,14 @@ func (mc *Client) subscribeNewHead(ctx context.Context, url string, ch chan<- *H
 			for {
 				select {
 				case header := <-headerCh:
-					ch <- &Header{
+					h := &Header{
 						Client: rc,
 						Header: header,
+					}
+					select {
+					case ch <- h:
+					case <-ctx.Done():
+						return nil
 					}
 				case err := <-sub.Err():
 					log.Warn("Failed during subscription", "url", url, "err", err)
@@ -725,4 +761,54 @@ func postToAll(ctx context.Context, fns []postFn) error {
 		return nil
 	}
 	return lastError
+}
+
+type dialedClient struct {
+	url    string
+	client *rpc.Client
+}
+
+func (mc *Client) DialClients(ctx context.Context) {
+	urls := mc.rpcClientMap.NilClients()
+	dialCh := make(chan *dialedClient, len(urls))
+	for _, rawURL := range urls {
+		go func(rawURL string) {
+			dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
+			defer cancel()
+			c, err := rpc.DialContext(dialCtx, rawURL)
+			if err == nil {
+				log.Info("Connect to eth client successfully", "url", rawURL)
+			} else {
+				log.Warn("Failed to dial eth client", "url", rawURL, "err", err)
+			}
+			dialCh <- &dialedClient{url: rawURL, client: c}
+		}(rawURL)
+	}
+
+	for i := 0; i < len(urls); i++ {
+		dialed := <-dialCh
+		if dialed.client != nil {
+			mc.rpcClientMap.Replace(dialed.url, dialed.client)
+			mc.pubSub.Pub(dialed.url, newAvailableClientTopic)
+		}
+	}
+}
+
+func (mc *Client) retrydial() {
+	defer mc.retrydialWg.Done()
+
+	ticker := time.NewTicker(retryPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-mc.newClientCh:
+			mc.DialClients(mc.ctx)
+		case <-ticker.C:
+			mc.DialClients(mc.ctx)
+		case <-mc.ctx.Done():
+			// mc is closed, stop retry
+			return
+		}
+	}
 }

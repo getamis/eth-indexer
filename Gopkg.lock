@@ -157,6 +157,14 @@
   revision = "d3c23511c1bf5851696cba83143d9cbcd666869b"
 
 [[projects]]
+  digest = "1:e86afb66b3ce9d2589581de8c6c5a013c6ab999c5f5a5bfa9be8fb562d0c74cd"
+  name = "github.com/cskr/pubsub"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "a1dc30a0b38055a251f1f04ceb4cc1c7207b0540"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -301,12 +309,12 @@
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:cfe127d65915c6e726e46561865f22ef5f93280b07e44f36cce340c28e715d19"
+  digest = "1:60eadc7e051038d1f671b82ba7a24ba4ec3893c65733d0551265eac1a003540f"
   name = "github.com/getamis/hypereth"
   packages = ["multiclient"]
   pruneopts = "NUT"
-  revision = "d0b1cd811de5a0ec1aaa9b374d62af065a701b68"
-  version = "v1.1.7"
+  revision = "84174ef480895a7519362c7896d075302881e2fc"
+  version = "v1.1.11"
 
 [[projects]]
   branch = "master"
@@ -987,7 +995,6 @@
   version = "v0.18.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:475620c385b39831733ee37f312fc89911696f1b98e1f51647796fcca567546a"
   name = "golang.org/x/crypto"
   packages = [
@@ -1248,12 +1255,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:560db247b22b0b0f3fd4043ae8dcdae224ca60394b8cba52a84c437b5f238a31"
+  digest = "1:e9631c9167a333491258f205febd48f855777c137b4a1bad0504b44144213586"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
     "pkg/apis/meta/v1beta1",
@@ -1271,7 +1279,9 @@
     "pkg/runtime/serializer/versioning",
     "pkg/selection",
     "pkg/types",
+    "pkg/util/cache",
     "pkg/util/clock",
+    "pkg/util/diff",
     "pkg/util/errors",
     "pkg/util/framer",
     "pkg/util/intstr",
@@ -1282,6 +1292,7 @@
     "pkg/util/sets",
     "pkg/util/validation",
     "pkg/util/validation/field",
+    "pkg/util/wait",
     "pkg/util/yaml",
     "pkg/version",
     "pkg/watch",
@@ -1291,7 +1302,7 @@
   revision = "9c4c366543346abeca2a5cd2c40cf1a30d19a2ec"
 
 [[projects]]
-  digest = "1:49240077a4528648391e28b3034664702468f2d2ea870fb69d2295343238b83d"
+  digest = "1:65452de3bef7bd2ef94fbab89fc9e30c74376205d5f91ebed90ce5cacef732f3"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1343,19 +1354,23 @@
     "rest/watch",
     "third_party/forked/golang/template",
     "tools/auth",
+    "tools/cache",
     "tools/clientcmd",
     "tools/clientcmd/api",
     "tools/clientcmd/api/latest",
     "tools/clientcmd/api/v1",
     "tools/metrics",
+    "tools/pager",
     "tools/reference",
     "transport",
+    "util/buffer",
     "util/cert",
     "util/connrotation",
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
     "util/jsonpath",
+    "util/retry",
   ]
   pruneopts = "NUT"
   revision = "e64494209f554a6723674bd494d69445fb76a1d4"
