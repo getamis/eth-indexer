@@ -28,10 +28,6 @@ import (
 	. "github.com/getamis/eth-indexer/store/sqldb"
 )
 
-const (
-	ErrCodeDuplicateKey uint16 = 1062
-)
-
 //go:generate mockery -name Store
 type Store interface {
 	BatchInsert(ctx context.Context, subs []*model.Subscription) ([]common.Address, error)
