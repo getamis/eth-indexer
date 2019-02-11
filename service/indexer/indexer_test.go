@@ -35,6 +35,7 @@ import (
 	storeMocks "github.com/getamis/eth-indexer/store/mocks"
 	"github.com/getamis/hypereth/multiclient"
 	"github.com/getamis/sirius/metrics"
+	"github.com/go-sql-driver/mysql"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -62,6 +63,9 @@ var _ = Describe("Indexer Test", func() {
 		nilTransferLogs  []*types.TransferLog
 		nilReorg         *model.Reorg
 		ctx              = context.Background()
+		duplicateErr     = &mysql.MySQLError{
+			Number: idxCommon.ErrCodeDuplicateKey,
+		}
 	)
 
 	ch := make(chan<- *multiclient.Header)
@@ -686,6 +690,80 @@ var _ = Describe("Indexer Test", func() {
 
 				err := idx.Listen(ctx, 0)
 				Expect(err).Should(Equal(context.Canceled))
+			})
+
+			It("failed to insert block to database because of duplicate key error", func() {
+				// Given init state has the block 10.
+				// Received new header 11 but failed to update the block 11.
+
+				ctx, cancel := context.WithCancel(ctx)
+				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
+				receipt := types.NewReceipt([]byte{}, false, 0)
+
+				// the existed block 10 in database
+				block := types.NewBlock(
+					&types.Header{
+						Number: big.NewInt(10),
+						Root:   common.HexToHash("1234567890" + strconv.Itoa(int(10))),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+
+				// func getLocalState()
+				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(&model.Header{
+					Number: 10,
+					Hash:   block.Hash().Bytes(),
+				}, nil).Once()
+				mockStoreManager.On("FindTd", mock.Anything, block.Hash().Bytes()).Return(&model.TotalDifficulty{
+					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
+
+				block = types.NewBlock(
+					&types.Header{
+						Number:     big.NewInt(11),
+						ParentHash: block.Hash(),
+						Difficulty: big.NewInt(1),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+
+				// insert the new block 11
+				// func addBlockMaybeReorg()
+				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
+				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(types.Receipts{receipt}, nil).Once()
+				parent := block.ParentHash().Bytes()
+				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
+					10, parent, strconv.Itoa(10)}, nil).Once()
+				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(nil).Once()
+				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
+
+				// cause error here
+				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(duplicateErr).Once()
+
+				// load states again
+				newHeader := &model.Header{
+					Number: 999,
+					Hash:   block.Hash().Bytes(),
+				}
+				newTD := int64(1000)
+				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(newHeader, nil).Once()
+				mockStoreManager.On("FindTd", mock.Anything, block.Hash().Bytes()).Return(&model.TotalDifficulty{
+					newTD, block.Hash().Bytes(), strconv.Itoa(int(newTD))}, nil).Once()
+
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+
+				go func() {
+					time.Sleep(time.Second)
+					// New header: block 11
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
+
+					time.Sleep(time.Second)
+					cancel()
+				}()
+
+				err := idx.Listen(ctx, 0)
+				Expect(err).Should(Equal(context.Canceled))
+
+				// current states should be updated
+				Expect(idx.currentTD).Should(Equal(big.NewInt(newTD)))
+				Expect(idx.currentHeader).Should(Equal(newHeader))
 			})
 
 			It("failed to insert block to database via UpdateBlocks()", func() {

@@ -144,7 +144,17 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 			idx.client = idx.newClientFunc(header.Client)
 			err := idx.sync(listenCtx, header.Header)
 			if err != nil {
-				log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
+				// Other indexer exists because it's a duplicate error. Reload latest states again.
+				if common.DuplicateError(err) {
+					log.Info("Duplicate blocks exist", "number", header.Number, "err", err)
+					loadErr := idx.loadLocalState(ctx, fromBlock)
+					if loadErr != nil {
+						log.Error("Failed to load local states", "err", err)
+						return loadErr
+					}
+				} else {
+					log.Error("Failed to sync from ethereum", "number", header.Number, "err", err)
+				}
 				continue
 			}
 			duration := time.Since(start)
