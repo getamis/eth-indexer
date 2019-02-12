@@ -103,8 +103,12 @@ var _ = Describe("Block Header Database Test", func() {
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 
-		store.Insert(ctx, data1)
-		store.Insert(ctx, data2)
+		Expect(store.Insert(ctx, data1)).Should(BeNil())
+		Expect(store.Insert(ctx, data2)).Should(BeNil())
+
+		count, err := store.CountBlocks(ctx)
+		Expect(err).Should(BeNil())
+		Expect(count).Should(BeNumerically("==", 2))
 
 		result, err := store.FindBlockByHash(ctx, data1.Hash)
 		Expect(err).Should(Succeed())
@@ -131,8 +135,12 @@ var _ = Describe("Block Header Database Test", func() {
 		data1 := makeHeader(1000300, "0x58bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 		data2 := makeHeader(1000301, "0x68bb59babd8fd8299b22acb997832a75d7b6b666579f80cc281764342f2b373b")
 
-		store.Insert(ctx, data1)
-		store.Insert(ctx, data2)
+		Expect(store.Insert(ctx, data1)).Should(BeNil())
+		Expect(store.Insert(ctx, data2)).Should(BeNil())
+
+		count, err := store.CountBlocks(ctx)
+		Expect(err).Should(BeNil())
+		Expect(count).Should(BeNumerically("==", 2))
 
 		result, err := store.FindBlockByNumber(ctx, data1.Number)
 		Expect(err).Should(Succeed())
@@ -170,8 +178,16 @@ var _ = Describe("Block Header Database Test", func() {
 			Expect(err).Should(Succeed())
 		}
 
-		err := store.Delete(ctx, 1000301, 1000302)
+		count, err := store.CountBlocks(ctx)
+		Expect(err).Should(BeNil())
+		Expect(count).Should(BeNumerically("==", len(data)))
+
+		err = store.Delete(ctx, 1000301, 1000302)
 		Expect(err).Should(Succeed())
+
+		count, err = store.CountBlocks(ctx)
+		Expect(err).Should(BeNil())
+		Expect(count).Should(BeNumerically("==", 2))
 
 		result, err := store.FindBlockByNumber(ctx, data1.Number)
 		Expect(err).Should(Succeed())
