@@ -219,6 +219,29 @@ func (_m *EthClient) GetTransferLogs(ctx context.Context, hash common.Hash) ([]*
 	return r0, r1
 }
 
+// HeaderByNumber provides a mock function with given fields: ctx, number
+func (_m *EthClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
+	ret := _m.Called(ctx, number)
+
+	var r0 *types.Header
+	if rf, ok := ret.Get(0).(func(context.Context, *big.Int) *types.Header); ok {
+		r0 = rf(ctx, number)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Header)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *big.Int) error); ok {
+		r1 = rf(ctx, number)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // TransactionByHash provides a mock function with given fields: ctx, hash
 func (_m *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, bool, error) {
 	ret := _m.Called(ctx, hash)
