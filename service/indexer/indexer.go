@@ -35,6 +35,10 @@ import (
 	"github.com/getamis/sirius/metrics"
 )
 
+const (
+	maxBlocksToInsert = 50
+)
+
 var (
 	//ErrInvalidAddress returns if invalid ERC20 address is detected
 	ErrInvalidAddress = errors.New("invalid address")
@@ -144,9 +148,9 @@ func (idx *indexer) Listen(ctx context.Context, fromBlock int64) error {
 			idx.client = idx.newClientFunc(header.Client)
 			err := idx.sync(listenCtx, header.Header)
 			if err != nil {
-				// Other indexer exists because it's a duplicate error. Reload latest states again.
-				if common.DuplicateError(err) {
-					log.Info("Duplicate blocks exist", "number", header.Number, "err", err)
+				// Other indexer exists because the blockchain data is updated by others.
+				if common.DuplicateError(err) || err == store.ErrModifiedData {
+					log.Info("Blocks are modified by others", "number", header.Number, "err", err)
 					loadErr := idx.loadLocalState(ctx, fromBlock)
 					if loadErr != nil {
 						log.Error("Failed to load local states", "err", err)
@@ -182,7 +186,7 @@ func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
 				return err
 			}
 
-			block, td, err := idx.insertBlocks(ctx, []*types.Block{block}, nil)
+			block, td, err := idx.insertBlocks(ctx, []*types.Block{block})
 			if err != nil {
 				log.Error("Failed to insert from block from ethereum", "number", from, "err", err)
 				return err
@@ -211,16 +215,32 @@ func (idx *indexer) loadLocalState(ctx context.Context, from int64) error {
 	return nil
 }
 
-func (idx *indexer) sync(ctx context.Context, header *types.Header) error {
-	// Update existing blocks and TD from ethereum to db
-	block, td, err := idx.addBlockMaybeReorg(ctx, header)
-	if err != nil {
-		return err
-	}
-	// If the block is inserted, update current td and header
-	if block != nil {
-		idx.currentHeader = common.Header(block)
-		idx.currentTD = td
+func (idx *indexer) sync(ctx context.Context, targetHeader *types.Header) error {
+	targetBlockNumber := targetHeader.Number.Int64()
+	for idx.currentHeader.Number < targetBlockNumber {
+		nextHeader := targetHeader
+		// If there are too many blocks, we sync them partially
+		if targetBlockNumber-idx.currentHeader.Number > maxBlocksToInsert {
+			nextBlockNumber := idx.currentHeader.Number + maxBlocksToInsert
+			header, err := idx.client.HeaderByNumber(ctx, big.NewInt(nextBlockNumber))
+			if err != nil {
+				log.Error("Failed to get block from ethereum", "number", nextBlockNumber, "err", err)
+				return err
+			}
+			log.Debug("Set next header to sync", "number", nextBlockNumber)
+			nextHeader = header
+		}
+
+		// Update existing blocks and TD from ethereum to db
+		block, td, err := idx.addBlockMaybeReorg(ctx, nextHeader)
+		if err != nil {
+			return err
+		}
+		// If the block is inserted, update current td and header
+		if block != nil {
+			idx.currentHeader = common.Header(block)
+			idx.currentTD = td
+		}
 	}
 	return nil
 }
@@ -272,7 +292,7 @@ func (idx *indexer) getTd(ctx context.Context, hash []byte) (td *big.Int, err er
 	return common.ParseTd(ltd)
 }
 
-func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reorgEvent *model.Reorg) (*types.Block, *big.Int, error) {
+func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block) (*types.Block, *big.Int, error) {
 	var lastTd *big.Int
 	// Insert td
 	for i := len(blocks) - 1; i >= 0; i-- {
@@ -298,7 +318,7 @@ func (idx *indexer) insertBlocks(ctx context.Context, blocks []*types.Block, reo
 		receipts = append(receipts, receipt)
 		events = append(events, event)
 	}
-	err := idx.manager.UpdateBlocks(ctx, idx.client, newBlocks, receipts, events, reorgEvent)
+	err := idx.manager.InsertBlocks(ctx, idx.client, newBlocks, receipts, events)
 	if err != nil {
 		log.Error("Failed to update blocks", "err", err)
 		return nil, nil, err
@@ -327,7 +347,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 	var blocksToInsert []*types.Block
 	if idx.currentHeader.Number+1 == header.Number.Int64() && bytes.Equal(block.ParentHash().Bytes(), idx.currentHeader.Hash) {
 		blocksToInsert = append(blocksToInsert, block)
-		return idx.insertBlocks(ctx, blocksToInsert, nil)
+		return idx.insertBlocks(ctx, blocksToInsert)
 	}
 
 	// Find targetTD to check whether we need to handle it
@@ -354,7 +374,6 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 	for {
 		// Get old blocks from db only if the number is equal or smaller than the current block number
 		if idx.currentHeader.Number == block.Number().Int64()-1 && bytes.Equal(idx.currentHeader.Hash, block.ParentHash().Bytes()) {
-			logger.Info("Reorg tracing: Not a reorg event", "number", idx.currentHeader.Number)
 			reorgEvent = nil
 			break
 		} else if idx.currentHeader.Number > block.Number().Int64()-1 {
@@ -384,19 +403,40 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 		}
 		blocks = append(blocks, block)
 	}
-	logger.Trace("Reorg tracing: Stop", "at", block.Number(), "hash", block.Hash().Hex())
 	branchBlock := block
 	blocksToInsert = append(blocksToInsert, blocks...)
+	logger = logger.New("branchNumber", branchBlock.Number(), "branchHash", branchBlock.Hash().Hex())
 
 	// Now atomically update the reorg'ed blocks
-	logger.Trace("Reorg: Starting at", "branch", branchBlock.Number(), "hash", branchBlock.Hash().Hex())
-	block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert, reorgEvent)
+	if reorgEvent == nil {
+		logger.Info("Reorg tracing: Not a reorg event", "number", idx.currentHeader.Number)
+		block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert)
+		if err != nil {
+			logger.Error("Reorg tracing: Failed to insert blocks", "err", err)
+			return nil, nil, err
+		}
+		return block, targetTD, nil
+	}
+
+	logger = logger.New("reorgFrom", reorgEvent.From, "reorgFromHash", common.BytesTo0xHex(reorgEvent.FromHash), "reorgTo", reorgEvent.To, "reorgToHash", common.BytesTo0xHex(reorgEvent.ToHash))
+	logger.Info("Reorg tracing: A reorg event", "number", idx.currentHeader.Number)
+	// Return the parent of branch block and its TD as our current block and TD
+	parentBranchTD, err := idx.getTd(ctx, branchBlock.ParentHash().Bytes())
 	if err != nil {
-		logger.Error("Reorg: Failed to insert blocks", "err", err)
+		logger.Error("Reorg tracing: Failed to get parent td of branch block", "err", err)
 		return nil, nil, err
 	}
-	logger.Trace("Reorg: Done", "at", block.Number(), "inserted", len(blocksToInsert), "hash", block.Hash().Hex())
-	return block, targetTD, nil
+	parentBranchBlock, err := idx.client.BlockByHash(ctx, branchBlock.ParentHash())
+	if err != nil {
+		logger.Error("Reorg tracing: Failed to get parent block of branch block", "err", err)
+		return nil, nil, err
+	}
+	err = idx.manager.ReorgBlocks(ctx, reorgEvent)
+	if err != nil {
+		logger.Error("Reorg tracing: Failed to delete blocks", "err", err)
+		return nil, nil, err
+	}
+	return parentBranchBlock, parentBranchTD, nil
 }
 
 // getBlockData returns the receipts generated in the given block, and state diff since last block
