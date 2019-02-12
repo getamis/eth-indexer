@@ -17,7 +17,9 @@
 package store
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"math/big"
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -55,12 +57,23 @@ type Manager interface {
 	FindBlockByNumber(ctx context.Context, number int64) (*model.Header, error)
 	// FindTd returns the TD of the given block hash
 	FindTd(ctx context.Context, hash []byte) (*model.TotalDifficulty, error)
-	// UpdateBlocks updates all block data
-	UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error
+	// InsertBlocks updates all block data
+	InsertBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog) error
+	// ReorgBlocks inserts reorg event and deletes the forked block data.
+	// To improve the deletion performance, we delete block data by `deleteChunk` size.
+	// The chunk solution is referenced by http://mysql.rjweb.org/doc.php/deletebig.
+	ReorgBlocks(ctx context.Context, reorgEvent *model.Reorg) error
 }
 
 type headerStore = block_header.Store
 type accountStore = account.Store
+
+var (
+	// ErrModifiedData returns if the data is modified by others. Update your local states if we received the error.
+	ErrModifiedData = errors.New("modified data")
+	// deleteBlocksChunk defines the block size we delete at once
+	deleteBlocksChunk = int64(20)
+)
 
 type manager struct {
 	// Stores
@@ -99,17 +112,17 @@ func (m *manager) Init(ctx context.Context) error {
 	return nil
 }
 
-func (m *manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) (err error) {
-	size := len(blocks)
-	if size != len(receipts) || size != len(events) {
-		log.Error("Inconsistent states", "blocks", size, "receipts", len(receipts))
+func (m *manager) InsertBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog) (err error) {
+	blockSize := len(blocks)
+	if blockSize != len(receipts) || blockSize != len(events) {
+		log.Error("Inconsistent states", "blocks", blockSize, "receipts", len(receipts))
 		return common.ErrInconsistentStates
 	}
 
 	from := int64(blocks[0].NumberU64())
-	to := int64(blocks[size-1].NumberU64())
-	if (to - from + 1) != int64(size) {
-		log.Error("Inconsistent size and range", "size", size, "range", to-from+1)
+	to := int64(blocks[blockSize-1].NumberU64())
+	if (to - from + 1) != int64(blockSize) {
+		log.Error("Inconsistent size and range", "size", blockSize, "range", to-from+1)
 		return common.ErrInconsistentStates
 	}
 
@@ -125,28 +138,77 @@ func (m *manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, bl
 		err = dbTx.Commit()
 	}()
 
-	// In ModeReOrg, delete all blocks, recipients and states within this range before insertions
-	isReorg := reorgEvent != nil
-	if isReorg {
-		reorgStore := reorg.NewWithDB(dbTx)
-		err = reorgStore.Insert(ctx, reorgEvent)
-		if err != nil {
-			return err
-		}
-		err = m.delete(ctx, dbTx, from, to)
+	// Start to insert blocks and states
+	for i := 0; i < blockSize; i++ {
+		err = m.insertBlock(ctx, dbTx, balancer, blocks[i], receipts[i], events[i])
 		if err != nil {
 			return err
 		}
 	}
 
-	// Start to insert blocks and states
-	for i := 0; i < size; i++ {
-		err = m.insertBlock(ctx, dbTx, balancer, blocks[i], receipts[i], events[i])
+	headerStore := block_header.NewWithDB(dbTx, block_header.Cache())
+	// Ensure the parent block of block 0 exists
+	header, err := headerStore.FindBlockByNumber(ctx, from-1)
+	if err == nil {
+		if !bytes.Equal(header.Hash, blocks[0].ParentHash().Bytes()) {
+			log.Warn("Inconsistent parent header", "db", common.BytesTo0xHex(header.Hash), "expected", blocks[0].ParentHash().Hex())
+			return ErrModifiedData
+		}
+		return nil
+	}
+	// If not found, check if it is the first insertion.
+	if common.NotFoundError(err) {
+		blockCount, err := headerStore.CountBlocks(ctx)
 		if err != nil {
+			return err
+		}
+		if blockCount == uint64(blockSize) {
+			return nil
+		}
+		log.Warn("Parent header is not found")
+		return ErrModifiedData
+	}
+
+	return err
+}
+
+func (m *manager) ReorgBlocks(ctx context.Context, reorgEvent *model.Reorg) (err error) {
+	if reorgEvent == nil {
+		return nil
+	}
+
+	dbTx, err := m.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			dbTx.Rollback()
 			return
 		}
+		err = dbTx.Commit()
+	}()
+
+	reorgStore := reorg.NewWithDB(dbTx)
+	err = reorgStore.Insert(ctx, reorgEvent)
+	if err != nil {
+		return err
 	}
-	return
+
+	// Delete reorged blocks partially
+	end := reorgEvent.To
+	for begin := reorgEvent.To - deleteBlocksChunk + 1; end >= reorgEvent.From; begin -= deleteBlocksChunk {
+		if begin < reorgEvent.From {
+			begin = reorgEvent.From
+		}
+		err = m.delete(ctx, dbTx, begin, end)
+		if err != nil {
+			return err
+		}
+		end = begin - 1
+	}
+
+	return nil
 }
 
 // insertBlock inserts block, and accounts inside a DB transaction
@@ -293,6 +355,14 @@ func (m *manager) delete(ctx context.Context, dbTx DbOrTx, from, to int64) (err 
 		}
 
 		if from <= token.BlockNumber && token.BlockNumber <= to {
+			// If `from` is equal to the init block number of the contract, we need to remove data at `token.BlockNumber - 1` block. It's because we add extra data at that block once we handled a new erc20 contract.
+			if from == token.BlockNumber {
+				number := token.BlockNumber - 1
+				err = accountStore.DeleteAccounts(ctx, addr, number, number)
+				if err != nil {
+					return
+				}
+			}
 			// Reset token
 			err = accountStore.BatchUpdateERC20BlockNumber(ctx, 0, [][]byte{
 				addr.Bytes(),
