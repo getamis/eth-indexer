@@ -69,6 +69,7 @@ var _ = Describe("Manager Test", func() {
 		ctx       = context.Background()
 	)
 	BeforeSuite(func() {
+		deleteBlocksChunk = 1
 		var err error
 		mysql, err = test.SetupMySQL()
 		Expect(mysql).ShouldNot(BeNil())
@@ -199,7 +200,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(BeNil())
 		Expect(resERC20).Should(Equal(erc20))
 
-		err = manager.UpdateBlocks(ctx, nil, blocks, receipts, events, nil)
+		err = manager.InsertBlocks(ctx, nil, blocks, receipts, events)
 		Expect(err).Should(BeNil())
 	})
 
@@ -241,7 +242,7 @@ var _ = Describe("Manager Test", func() {
 		Expect(err).Should(Succeed())
 	})
 
-	Context("UpdateBlocks()", func() {
+	Context("InsertBlocks()", func() {
 		It("sync mode, got duplicate key error due to the same txs", func() {
 			newBlocks := []*types.Block{
 				types.NewBlockWithHeader(&types.Header{
@@ -257,7 +258,7 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(ctx, nil, newBlocks, newReceipts, events, nil)
+			err := manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -291,12 +292,14 @@ var _ = Describe("Manager Test", func() {
 				receipts[1],
 				receipts[0],
 			}
-			err := manager.UpdateBlocks(ctx, nil, newBlocks, newReceipts, events, &model.Reorg{
+			err := manager.ReorgBlocks(ctx, &model.Reorg{
 				From:     blocks[0].Number().Int64(),
 				To:       blocks[len(blocks)-1].Number().Int64(),
 				FromHash: blocks[0].Hash().Bytes(),
 				ToHash:   blocks[len(blocks)-1].Hash().Bytes(),
 			})
+			Expect(err).Should(BeNil())
+			err = manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
 			Expect(err).Should(BeNil())
 
 			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
@@ -321,8 +324,46 @@ var _ = Describe("Manager Test", func() {
 					types.NewReceipt([]byte{}, false, 0),
 				})
 
-			err := manager.UpdateBlocks(ctx, nil, blocks, receipts, events, nil)
+			err := manager.InsertBlocks(ctx, nil, blocks, receipts, events)
 			Expect(err).Should(Equal(common.ErrWrongSigner))
+		})
+
+		It("inconsistent parent block", func() {
+			newBlocks := []*types.Block{
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(102),
+					ReceiptHash: gethCommon.HexToHash("0x02"),
+				}),
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(103),
+					ReceiptHash: gethCommon.HexToHash("0x03"),
+				}),
+			}
+			newReceipts := [][]*types.Receipt{
+				{},
+				{},
+			}
+			err := manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
+			Expect(err).Should(Equal(ErrModifiedData))
+		})
+
+		It("parent block doesn't exist", func() {
+			newBlocks := []*types.Block{
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(105),
+					ReceiptHash: gethCommon.HexToHash("0x02"),
+				}),
+				types.NewBlockWithHeader(&types.Header{
+					Number:      big.NewInt(106),
+					ReceiptHash: gethCommon.HexToHash("0x03"),
+				}),
+			}
+			newReceipts := [][]*types.Receipt{
+				{},
+				{},
+			}
+			err := manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
+			Expect(err).Should(Equal(ErrModifiedData))
 		})
 	})
 

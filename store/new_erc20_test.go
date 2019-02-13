@@ -210,7 +210,7 @@ var _ = Describe("New ERC20 Test", func() {
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(312)
 		}).Return(nil).Once()
 
-		err = manager.UpdateBlocks(ctx, mockBalancer, blocks, receipts, events, nil)
+		err = manager.InsertBlocks(ctx, mockBalancer, blocks, receipts, events)
 		Expect(err).Should(BeNil())
 
 		// block 100
@@ -298,12 +298,14 @@ var _ = Describe("New ERC20 Test", func() {
 			result[gethCommon.BytesToAddress(erc20s[1].Address)][gethCommon.BytesToAddress(subs[2].Address)] = big.NewInt(1312)
 		}).Return(nil).Once()
 
-		err = manager.UpdateBlocks(ctx, mockBalancer, blocks, receipts, events, &model.Reorg{
+		err = manager.ReorgBlocks(ctx, &model.Reorg{
 			From:     blocks[0].Number().Int64(),
 			To:       blocks[len(blocks)-1].Number().Int64(),
 			FromHash: blocks[0].Hash().Bytes(),
 			ToHash:   blocks[len(blocks)-1].Hash().Bytes(),
 		})
+		Expect(err).Should(BeNil())
+		err = manager.InsertBlocks(ctx, mockBalancer, blocks, receipts, events)
 		Expect(err).Should(BeNil())
 
 		// block 100

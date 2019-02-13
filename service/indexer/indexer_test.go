@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/getamis/eth-indexer/store"
+
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -61,7 +63,6 @@ var _ = Describe("Indexer Test", func() {
 		mockStoreManager *storeMocks.Manager
 		idx              *indexer
 		nilTransferLogs  []*types.TransferLog
-		nilReorg         *model.Reorg
 		ctx              = context.Background()
 		duplicateErr     = &mysql.MySQLError{
 			Number: idxCommon.ErrCodeDuplicateKey,
@@ -257,9 +258,9 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[11:19], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, blocks[11:19], rs, ts).Return(nil).Once()
 
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, blocks[19:20], [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}).Return(nil).Once()
 
 				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -324,7 +325,7 @@ var _ = Describe("Indexer Test", func() {
 				// Check if from block exists
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(15)).Return(blocks[15], nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[15]}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -333,7 +334,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[16:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, blocks[16:20], rs, ts).Return(nil).Once()
 
 				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -394,7 +395,7 @@ var _ = Describe("Indexer Test", func() {
 				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(nil, sql.ErrNoRows).Once()
 				mockEthClient.On("BlockByNumber", mock.Anything, big.NewInt(0)).Return(blocks[0], nil).Once()
 				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(blocks[0], big.NewInt(1))).Return(nil).Once()
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, []*types.Block{blocks[0]}, [][]*types.Receipt{{}}, [][]*types.TransferLog{{}}).Return(nil).Once()
 
 				mockEthClient.On("GetTotalDifficulty", mock.Anything, blocks[19].Hash()).Return(big.NewInt(19), nil).Once()
 				var rs [][]*types.Receipt
@@ -403,7 +404,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[1:20], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, blocks[1:20], rs, ts).Return(nil).Once()
 
 				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -518,7 +519,7 @@ var _ = Describe("Indexer Test", func() {
 					rs = append(rs, []*types.Receipt{receipt})
 					ts = append(ts, nilTransferLogs)
 				}
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, blocks[11:16], rs, ts, nilReorg).Return(nil).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, blocks[11:16], rs, ts).Return(nil).Once()
 
 				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -733,7 +734,7 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(duplicateErr).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}).Return(duplicateErr).Once()
 
 				// load states again
 				newHeader := &model.Header{
@@ -766,7 +767,7 @@ var _ = Describe("Indexer Test", func() {
 				Expect(idx.currentHeader).Should(Equal(newHeader))
 			})
 
-			It("failed to insert block to database via UpdateBlocks()", func() {
+			It("failed to insert block to database because data are modified by others", func() {
 				// Given init state has the block 10.
 				// Received new header 11 but failed to update the block 11.
 
@@ -807,7 +808,81 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
 
 				// cause error here
-				mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}, nilReorg).Return(unknownErr).Once()
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}).Return(store.ErrModifiedData).Once()
+
+				// load states again
+				newHeader := &model.Header{
+					Number: 999,
+					Hash:   block.Hash().Bytes(),
+				}
+				newTD := int64(1000)
+				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(newHeader, nil).Once()
+				mockStoreManager.On("FindTd", mock.Anything, block.Hash().Bytes()).Return(&model.TotalDifficulty{
+					newTD, block.Hash().Bytes(), strconv.Itoa(int(newTD))}, nil).Once()
+
+				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
+
+				go func() {
+					time.Sleep(time.Second)
+					// New header: block 11
+					ch <- &multiclient.Header{
+						Header: block.Header(),
+					}
+
+					time.Sleep(time.Second)
+					cancel()
+				}()
+
+				err := idx.Listen(ctx, 0)
+				Expect(err).Should(Equal(context.Canceled))
+
+				// current states should be updated
+				Expect(idx.currentTD).Should(Equal(big.NewInt(newTD)))
+				Expect(idx.currentHeader).Should(Equal(newHeader))
+			})
+
+			It("failed to insert block to database via InsertBlocks()", func() {
+				// Given init state has the block 10.
+				// Received new header 11 but failed to update the block 11.
+
+				ctx, cancel := context.WithCancel(ctx)
+				tx := types.NewTransaction(0, common.Address{}, common.Big0, 0, common.Big0, []byte{})
+				receipt := types.NewReceipt([]byte{}, false, 0)
+
+				// the existed block 10 in database
+				block := types.NewBlock(
+					&types.Header{
+						Number: big.NewInt(10),
+						Root:   common.HexToHash("1234567890" + strconv.Itoa(int(10))),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+
+				// func getLocalState()
+				mockStoreManager.On("FindLatestBlock", mock.Anything).Return(&model.Header{
+					Number: 10,
+					Hash:   block.Hash().Bytes(),
+				}, nil).Once()
+				mockStoreManager.On("FindTd", mock.Anything, block.Hash().Bytes()).Return(&model.TotalDifficulty{
+					10, block.Hash().Bytes(), strconv.Itoa(10)}, nil).Once()
+
+				block = types.NewBlock(
+					&types.Header{
+						Number:     big.NewInt(11),
+						ParentHash: block.Hash(),
+						Difficulty: big.NewInt(1),
+					}, []*types.Transaction{tx}, nil, []*types.Receipt{receipt})
+
+				// insert the new block 11
+				// func addBlockMaybeReorg()
+				mockEthClient.On("BlockByHash", mock.Anything, block.Hash()).Return(block, nil).Once()
+				mockEthClient.On("GetBlockReceipts", mock.Anything, block.Hash()).Return(types.Receipts{receipt}, nil).Once()
+				parent := block.ParentHash().Bytes()
+				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
+					10, parent, strconv.Itoa(10)}, nil).Once()
+				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(block, big.NewInt(11))).Return(nil).Once()
+				mockEthClient.On("GetTransferLogs", mock.Anything, block.Hash()).Return(nil, nil).Once()
+
+				// cause error here
+				mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, []*types.Block{block}, [][]*types.Receipt{{receipt}}, [][]*types.TransferLog{nilTransferLogs}).Return(unknownErr).Once()
 
 				mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -993,15 +1068,6 @@ var _ = Describe("Indexer Test", func() {
 
 			prevTd := int64(14)
 
-			// insert new Tds for blocks 15 ~ 18; each block has new Td of 5
-			for i := int64(15); i <= 18; i++ {
-				td := prevTd + 5*(i-14)
-				parent := newBlocks[i].ParentHash().Bytes()
-				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
-					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
-				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
-			}
-
 			mockStoreManager.On("FindBlockByNumber", mock.Anything, int64(14)).Return(&model.Header{
 				Number: 14,
 				Hash:   blocks[14].Hash().Bytes(),
@@ -1012,12 +1078,33 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+
+			// insert reorg event
+			parentBranchHash := newBlocks[15].ParentHash()
+			mockEthClient.On("BlockByHash", mock.Anything, parentBranchHash).Return(blocks[14], nil).Once()
+			mockStoreManager.On("FindTd", mock.Anything, parentBranchHash.Bytes()).Return(&model.TotalDifficulty{
+				14, parentBranchHash.Bytes(), strconv.Itoa(14)}, nil).Once()
+			mockStoreManager.On("ReorgBlocks", mock.Anything, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       15,
 				ToHash:   blocks[15].Hash().Bytes(),
 			}).Return(nil).Once()
+
+			// during the reorg, we query block by hash to trace the canonical chain on ethereum from 17 to 15
+			mockEthClient.On("GetTotalDifficulty", mock.Anything, newBlocks[18].Hash()).Return(big.NewInt(34), nil).Once()
+			for i := int64(18); i >= 15; i-- {
+				mockEthClient.On("BlockByHash", mock.Anything, newBlocks[i].Hash()).Return(newBlocks[i], nil).Once()
+			}
+			// insert new Tds for blocks 15 ~ 18; each block has new Td of 5
+			for i := int64(15); i <= 18; i++ {
+				td := prevTd + 5*(i-14)
+				parent := newBlocks[i].ParentHash().Bytes()
+				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
+					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
+				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
+			}
+			mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}).Return(nil).Once()
 
 			mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 
@@ -1087,16 +1174,9 @@ var _ = Describe("Indexer Test", func() {
 			// calculating Td for the new blocks 15 ~ 16
 			mockEthClient.On("GetTotalDifficulty", mock.Anything, newBlocks[18].Hash()).Return(big.NewInt(34), nil).Once()
 
-			// insert new TDs for 15 and 16, each block has TD of 5
-
-			// insert new Tds for blocks 15 and 16, each block has Td of 5
+			// find Tds for blocks 15 and 16, each block has Td of 5
 			for i := int64(15); i <= 18; i++ {
 				mockEthClient.On("BlockByHash", mock.Anything, newBlocks[i].Hash()).Return(newBlocks[i], nil).Once()
-				td := 14 + 5*(i-14)
-				parent := newBlocks[i].ParentHash().Bytes()
-				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
-					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
-				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
 			}
 
 			// during reorg tracing, we query local db headers for headers to find the common ancestor of the new and old chain
@@ -1112,12 +1192,30 @@ var _ = Describe("Indexer Test", func() {
 				mockEthClient.On("GetBlockReceipts", mock.Anything, newBlocks[i].Hash()).Return(types.Receipts{receipt}, nil).Once()
 				mockEthClient.On("GetTransferLogs", mock.Anything, newBlocks[i].Hash()).Return(nil, nil).Once()
 			}
-			mockStoreManager.On("UpdateBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}, &model.Reorg{
+
+			// insert reorg event
+			parentBranchHash := newBlocks[15].ParentHash()
+			mockEthClient.On("BlockByHash", mock.Anything, parentBranchHash).Return(blocks[14], nil).Once()
+			mockStoreManager.On("FindTd", mock.Anything, parentBranchHash.Bytes()).Return(&model.TotalDifficulty{
+				14, parentBranchHash.Bytes(), strconv.Itoa(14)}, nil).Once()
+			mockStoreManager.On("ReorgBlocks", mock.Anything, &model.Reorg{
 				From:     15,
 				FromHash: blocks[15].Hash().Bytes(),
 				To:       17,
 				ToHash:   blocks[17].Hash().Bytes(),
 			}).Return(nil).Once()
+
+			// insert blocks again
+			mockEthClient.On("GetTotalDifficulty", mock.Anything, newBlocks[18].Hash()).Return(big.NewInt(34), nil).Once()
+			for i := int64(15); i <= 18; i++ {
+				mockEthClient.On("BlockByHash", mock.Anything, newBlocks[i].Hash()).Return(newBlocks[i], nil).Once()
+				td := 14 + 5*(i-14)
+				parent := newBlocks[i].ParentHash().Bytes()
+				mockStoreManager.On("FindTd", mock.Anything, parent).Return(&model.TotalDifficulty{
+					i - 1, parent, strconv.Itoa(int(td - 5))}, nil).Once()
+				mockStoreManager.On("InsertTd", mock.Anything, idxCommon.TotalDifficulty(newBlocks[i], big.NewInt(td))).Return(nil).Once()
+			}
+			mockStoreManager.On("InsertBlocks", mock.Anything, mockEthClient, newBlocks[15:19], [][]*types.Receipt{{receipt}, {receipt}, {receipt}, {receipt}}, [][]*types.TransferLog{nilTransferLogs, nilTransferLogs, nilTransferLogs, nilTransferLogs}).Return(nil).Once()
 
 			mockSubscriber.On("SubscribeNewHead", mock.Anything, mock.Anything).Return(subFunc, nil).Once()
 

@@ -35,6 +35,7 @@ type Store interface {
 	FindBlockByNumber(ctx context.Context, blockNumber int64) (result *model.Header, err error)
 	FindBlockByHash(ctx context.Context, hash []byte) (result *model.Header, err error)
 	FindLatestBlock(ctx context.Context) (result *model.Header, err error)
+	CountBlocks(ctx context.Context) (uint64, error)
 }
 
 const (
@@ -45,6 +46,7 @@ const (
 	findBlockByNumberSQL = "SELECT * FROM `block_headers` WHERE `number` = %d"
 	findBlockByHashSQL   = "SELECT * FROM `block_headers` WHERE `hash` = X'%s'"
 	findLatestBlockSQL   = "SELECT * FROM `block_headers` ORDER BY `number` DESC LIMIT 1"
+	countBlocksSQL       = "SELECT COUNT(*) FROM `block_headers`"
 )
 
 type store struct {
@@ -118,4 +120,13 @@ func (t *store) FindLatestBlock(ctx context.Context) (*model.Header, error) {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (t *store) CountBlocks(ctx context.Context) (uint64, error) {
+	var count uint64
+	err := t.db.GetContext(ctx, &count, countBlocksSQL)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

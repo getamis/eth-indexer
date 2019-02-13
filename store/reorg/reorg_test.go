@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/getamis/eth-indexer/common"
+
 	"github.com/getamis/eth-indexer/model"
 	"github.com/getamis/eth-indexer/store/sqldb"
 	"github.com/getamis/sirius/test"
@@ -75,12 +77,12 @@ var _ = Describe("Reorg Database Test", func() {
 
 		By("insert the reorg again")
 		err = store.Insert(ctx, data1)
-		Expect(err).Should(Succeed())
+		Expect(common.DuplicateError(err)).Should(BeTrue())
 
 		By("check reorgs size")
 		rs, err := store.List(ctx)
 		Expect(err).Should(Succeed())
-		Expect(len(rs)).Should(BeNumerically("==", 2))
+		Expect(len(rs)).Should(BeNumerically("==", 1))
 	})
 })
 
