@@ -407,7 +407,7 @@ func (idx *indexer) addBlockMaybeReorg(ctx context.Context, header *types.Header
 	blocksToInsert = append(blocksToInsert, blocks...)
 	logger = logger.New("branchNumber", branchBlock.Number(), "branchHash", branchBlock.Hash().Hex())
 
-	// Now atomically update the reorg'ed blocks
+	// Now delete the reorg'ed blocks and rely on top-level sync to insert new blocks
 	if reorgEvent == nil {
 		logger.Info("Reorg tracing: Not a reorg event", "number", idx.currentHeader.Number)
 		block, targetTD, err = idx.insertBlocks(ctx, blocksToInsert)

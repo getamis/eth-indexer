@@ -121,6 +121,20 @@ func (_m *Manager) Init(ctx context.Context) error {
 	return r0
 }
 
+// InsertBlocks provides a mock function with given fields: ctx, balancer, blocks, receipts, events
+func (_m *Manager) InsertBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog) error {
+	ret := _m.Called(ctx, balancer, blocks, receipts, events)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.Balancer, []*types.Block, [][]*types.Receipt, [][]*types.TransferLog) error); ok {
+		r0 = rf(ctx, balancer, blocks, receipts, events)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // InsertERC20 provides a mock function with given fields: ctx, code
 func (_m *Manager) InsertERC20(ctx context.Context, code *model.ERC20) error {
 	ret := _m.Called(ctx, code)
@@ -149,13 +163,13 @@ func (_m *Manager) InsertTd(ctx context.Context, data *model.TotalDifficulty) er
 	return r0
 }
 
-// UpdateBlocks provides a mock function with given fields: ctx, balancer, blocks, receipts, events, reorgEvent
-func (_m *Manager) UpdateBlocks(ctx context.Context, balancer client.Balancer, blocks []*types.Block, receipts [][]*types.Receipt, events [][]*types.TransferLog, reorgEvent *model.Reorg) error {
-	ret := _m.Called(ctx, balancer, blocks, receipts, events, reorgEvent)
+// ReorgBlocks provides a mock function with given fields: ctx, reorgEvent
+func (_m *Manager) ReorgBlocks(ctx context.Context, reorgEvent *model.Reorg) error {
+	ret := _m.Called(ctx, reorgEvent)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, client.Balancer, []*types.Block, [][]*types.Receipt, [][]*types.TransferLog, *model.Reorg) error); ok {
-		r0 = rf(ctx, balancer, blocks, receipts, events, reorgEvent)
+	if rf, ok := ret.Get(0).(func(context.Context, *model.Reorg) error); ok {
+		r0 = rf(ctx, reorgEvent)
 	} else {
 		r0 = ret.Error(0)
 	}

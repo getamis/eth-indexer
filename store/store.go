@@ -195,7 +195,7 @@ func (m *manager) ReorgBlocks(ctx context.Context, reorgEvent *model.Reorg) (err
 		return err
 	}
 
-	// Delete reorged blocks partially
+	// Delete blocks from latest to oldest blocks
 	end := reorgEvent.To
 	for begin := reorgEvent.To - deleteBlocksChunk + 1; end >= reorgEvent.From; begin -= deleteBlocksChunk {
 		if begin < reorgEvent.From {
