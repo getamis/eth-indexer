@@ -261,7 +261,7 @@ var _ = Describe("Manager Test", func() {
 			err := manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
 			Expect(common.DuplicateError(err)).Should(BeTrue())
 
-			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(params.MainnetChainConfig, blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.FindBlockByNumber(ctx, 100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(blocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
@@ -302,7 +302,7 @@ var _ = Describe("Manager Test", func() {
 			err = manager.InsertBlocks(ctx, nil, newBlocks, newReceipts, events)
 			Expect(err).Should(BeNil())
 
-			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[0].Header(), blocks[0].Uncles())
+			minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(params.MainnetChainConfig, blocks[0].Header(), blocks[0].Uncles())
 			header, err := manager.FindBlockByNumber(ctx, 100)
 			Expect(err).Should(BeNil())
 			h, err := common.Header(newBlocks[0]).AddReward(big.NewInt(20), minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
@@ -370,7 +370,7 @@ var _ = Describe("Manager Test", func() {
 	Context("FindBlockByNumber()", func() {
 		It("gets the right header", func() {
 			for i, block := range blocks {
-				minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(blocks[i].Header(), uncles[i])
+				minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(params.MainnetChainConfig, blocks[i].Header(), uncles[i])
 				header, err := manager.FindBlockByNumber(ctx, block.Number().Int64())
 				Expect(err).Should(Succeed())
 

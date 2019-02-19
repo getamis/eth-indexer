@@ -265,7 +265,7 @@ func (m *manager) insertBlock(ctx context.Context, dbTx DbOrTx, balancer client.
 	}
 
 	// Insert blocks
-	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(block.Header(), block.Uncles())
+	minerBaseReward, uncleInclusionReward, uncleCBs, unclesReward, unclesHash := common.AccumulateRewards(m.chainConfig, block.Header(), block.Uncles())
 	h, err := common.Header(block).AddReward(totalTxsFee, minerBaseReward, uncleInclusionReward, unclesReward, uncleCBs, unclesHash)
 	if err != nil {
 		return err
