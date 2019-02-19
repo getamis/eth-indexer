@@ -27,7 +27,7 @@
 [[override]]
   name = "github.com/ethereum/go-ethereum"
   source = "github.com/getamis/go-ethereum"
-  branch = "indexer-1.8.21"
+  branch = "indexer-1.8.22"
 
 [[constraint]]
   name = "github.com/getamis/sirius"
@@ -95,8 +95,3 @@
 [[constraint]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
-
-# required for geth v1.8.21
-[[override]]
-  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
-  name = "golang.org/x/crypto"
