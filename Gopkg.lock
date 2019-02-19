@@ -255,8 +255,8 @@
   revision = "0bce6a6887123b67a60366d2c9fe2dfb74289d2e"
 
 [[projects]]
-  branch = "indexer-1.8.21"
-  digest = "1:ea23de99d373c0998c535bdaaa630f372d73dc88987a92002aa2530500b6bdbc"
+  branch = "indexer-1.8.22"
+  digest = "1:9bda024fc790dafcdf248ff6fe7bf2d78ffcd810e2fc7cca8b3231d6349d238e"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -289,7 +289,7 @@
     "trie",
   ]
   pruneopts = "T"
-  revision = "3d23e927159e44061eea4be2d3f211e6c8ef1b29"
+  revision = "8341caf6c2e1934f71872461d2f8b6e61b80f8d8"
   source = "github.com/getamis/go-ethereum"
 
 [[projects]]

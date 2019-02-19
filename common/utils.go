@@ -218,13 +218,13 @@ var (
 // included uncles. The coinbase of each uncle block is also rewarded.
 //
 // **COPIED FROM**: github.com/ethereum/go-ethereum/consensus/ethash/consensus.go#accumulateRewards()
-func AccumulateRewards(header *types.Header, uncles []*types.Header) (minerBaseReward, uncleInclusionReward *big.Int, uncleCoinbase []common.Address, uncleReward []*big.Int, uncleHash []common.Hash) {
+func AccumulateRewards(chainConfig *params.ChainConfig, header *types.Header, uncles []*types.Header) (minerBaseReward, uncleInclusionReward *big.Int, uncleCoinbase []common.Address, uncleReward []*big.Int, uncleHash []common.Hash) {
 	// Select the correct block reward based on chain progression
 	minerBaseReward = ethash.FrontierBlockReward
-	if params.MainnetChainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
+	if chainConfig.ByzantiumBlock.Cmp(header.Number) <= 0 {
 		minerBaseReward = ethash.ByzantiumBlockReward
 	}
-	if params.MainnetChainConfig.ConstantinopleBlock != nil && params.MainnetChainConfig.ConstantinopleBlock.Cmp(header.Number) <= 0 {
+	if chainConfig.ConstantinopleBlock != nil && chainConfig.ConstantinopleBlock.Cmp(header.Number) <= 0 {
 		minerBaseReward = ethash.ConstantinopleBlockReward
 	}
 
