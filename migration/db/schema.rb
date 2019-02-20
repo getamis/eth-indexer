@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_02_13_032740) do
+ActiveRecord::Schema.define(version: 2019_02_20_031810) do
 
   create_table "accounts", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
     t.binary "address", limit: 20, null: false
@@ -97,7 +97,16 @@ ActiveRecord::Schema.define(version: 2019_02_13_032740) do
     t.binary "to_hash", limit: 32, null: false
     t.datetime "created_at", null: false
     t.index ["from", "to"], name: "index_reorgs_on_from_and_to"
-    t.index ["from_hash", "to_hash"], name: "index_reorgs_on_from_hash_and_to_hash", unique: true
+  end
+
+  create_table "reorgs2", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|
+    t.bigint "from", null: false
+    t.binary "from_hash", limit: 32, null: false
+    t.bigint "to", null: false
+    t.binary "to_hash", limit: 32, null: false
+    t.datetime "created_at", null: false
+    t.index ["from", "to"], name: "index_reorgs2_on_from_and_to"
+    t.index ["from_hash", "to_hash"], name: "index_reorgs2_on_from_hash_and_to_hash", unique: true
   end
 
   create_table "subscriptions", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci", force: :cascade do |t|

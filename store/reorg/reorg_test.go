@@ -57,7 +57,7 @@ var _ = Describe("Reorg Database Test", func() {
 	})
 
 	BeforeEach(func() {
-		_, err := db.Exec("DELETE FROM reorgs")
+		_, err := db.Exec("DELETE FROM reorgs2")
 		Expect(err).Should(Succeed())
 	})
 
