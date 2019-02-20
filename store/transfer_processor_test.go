@@ -81,7 +81,7 @@ var _ = Describe("Subscription Test", func() {
 		_, err = db.Exec("DELETE FROM total_balances")
 		Expect(err).Should(Succeed())
 
-		_, err = db.Exec("DELETE FROM reorgs")
+		_, err = db.Exec("DELETE FROM reorgs2")
 		Expect(err).Should(Succeed())
 
 		_, err = db.Exec(fmt.Sprintf("DROP TABLE %s", model.Transfer{

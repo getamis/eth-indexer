@@ -86,7 +86,7 @@ var _ = Describe("New ERC20 Test", func() {
 		_, err = db.Exec("DELETE FROM total_balances")
 		Expect(err).Should(Succeed())
 
-		_, err = db.Exec("DELETE FROM reorgs")
+		_, err = db.Exec("DELETE FROM reorgs2")
 		Expect(err).Should(Succeed())
 
 		for _, e := range erc20s {
