@@ -14,7 +14,10 @@
 
 package test
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 type Option func(*Container)
 
@@ -27,6 +30,17 @@ func Name(name string) Option {
 func ImageRepository(name string) Option {
 	return func(c *Container) {
 		c.imageRespository = name
+	}
+}
+
+// ImageTagFromEnv loads the image tag from the given environment variable
+func ImageTagFromEnv(envName, defaultTag string) Option {
+	return func(c *Container) {
+		if tag, ok := os.LookupEnv(envName); ok {
+			c.imageTag = tag
+		} else {
+			c.imageTag = defaultTag
+		}
 	}
 }
 
