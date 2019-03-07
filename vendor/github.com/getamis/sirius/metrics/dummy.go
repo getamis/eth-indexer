@@ -54,6 +54,14 @@ func (d *DummyRegistry) NewHistogram(key string, opts ...Option) Histogram {
 	return &dummyHistogram{}
 }
 
+func (d *DummyRegistry) NewHistogramVec(key string, labels []string, opts ...Option) HistogramVec {
+	return &dummyHistogramVec{}
+}
+
+func (d *DummyRegistry) NewCounterVec(key string, labels []string, opts ...Option) CounterVec {
+	return &dummyCounterVec{}
+}
+
 func (d *DummyRegistry) NewTimer(key string, opts ...Option) Timer {
 	return &dummyTimer{}
 }
@@ -88,6 +96,24 @@ func (d *dummyGauge) Set(float64) {}
 type dummyHistogram struct{}
 
 func (d *dummyHistogram) Observe(float64) {}
+
+type dummyHistogramVec struct{}
+
+func (d *dummyHistogramVec) GetMetricWith(MetricsLabels) (Histogram, error) {
+	return &dummyHistogram{}, nil
+}
+func (d *dummyHistogramVec) GetMetricWithLabelValues(lvs ...string) (Histogram, error) {
+	return &dummyHistogram{}, nil
+}
+
+type dummyCounterVec struct{}
+
+func (d *dummyCounterVec) GetMetricWith(MetricsLabels) (Counter, error) {
+	return &dummyCounter{}, nil
+}
+func (d *dummyCounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {
+	return &dummyCounter{}, nil
+}
 
 type dummyTimer struct{}
 

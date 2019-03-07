@@ -31,7 +31,7 @@
 
 [[constraint]]
   name = "github.com/getamis/sirius"
-  branch = "master"
+  version = "=1.0.10"
 
 [[constraint]]
   name = "github.com/spf13/cobra"

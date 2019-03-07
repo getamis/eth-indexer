@@ -317,19 +317,20 @@
   version = "v1.1.11"
 
 [[projects]]
-  branch = "master"
-  digest = "1:48ce0d705a1c91c85ccdaf41c0c4320f63c6fa38a2b657d35eb0b1388148394a"
+  digest = "1:4872e906ced264ebf18a76d22b7f878997334067ec68a386b937f461935481e8"
   name = "github.com/getamis/sirius"
   packages = [
     "crypto/rand",
     "database",
     "database/mysql",
+    "database/postgresql",
     "log",
     "metrics",
     "test",
   ]
   pruneopts = "NUT"
-  revision = "70fc6b7c67ce9a9f1c61364d587e7af913813c42"
+  revision = "7741ea7ccc0663b2526a929389ee8e95bdd69399"
+  version = "v1.0.10"
 
 [[projects]]
   digest = "1:1c9db302f5e172d283a37560842163450a1ebfd478581afa4f7bf00882c93a39"
@@ -595,6 +596,17 @@
   pruneopts = "NUT"
   revision = "1624edc4454b8682399def8740d46db5e4362ba4"
   version = "v1.1.5"
+
+[[projects]]
+  digest = "1:4d5fa9f49e5bf3d55c16ff562af9e3231f9ac5ccf495927fd0555f4607c15475"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid",
+  ]
+  pruneopts = "NUT"
+  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:d244f8666a838fe6ad70ec8fe77f50ebc29fdc3331a2729ba5886bef8435d10d"
