@@ -42,7 +42,7 @@ var _ = Describe("Reorg Database Test", func() {
 		Expect(mysql).ShouldNot(BeNil())
 		Expect(err).Should(Succeed())
 
-		err = test.RunMigrationContainer(mysql, test.MigrationOptions{
+		err = test.RunMigrationContainer(mysql.SQLContainer, test.MigrationOptions{
 			ImageRepository: "quay.io/amis/eth-indexer-db-migration",
 		})
 		Expect(err).Should(Succeed())
