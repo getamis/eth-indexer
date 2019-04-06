@@ -6,6 +6,14 @@ ENV USERNAME root
 ENV PASSWORD my-secret-pw
 ENV DATABASE ethdb
 
+# Ref: https://unix.stackexchange.com/questions/508724/failed-to-fetch-jessie-backports-repository
+
+RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    echo "deb http://cdn-fastly.deb.debian.org/debian/ jessie main" >/etc/apt/sources.list && \
+    echo "deb-src http://cdn-fastly.deb.debian.org/debian/ jessie main" >>/etc/apt/sources.list && \
+    echo "deb http://security.debian.org/ jessie/updates main" >>/etc/apt/sources.list && \
+    echo "deb-src http://security.debian.org/ jessie/updates main" >>/etc/apt/sources.list
+
 RUN apt-get update && \
     apt-get install -y unixodbc-dev \
                        mysql-client \
