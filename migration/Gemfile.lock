@@ -42,7 +42,7 @@ GEM
     mysql2 (0.5.1)
     nokogiri (1.8.5)
       mini_portile2 (~> 2.3.0)
-    rack (2.0.6)
+    rack (2.0.8)
     rack-test (1.0.0)
       rack (>= 1.0, < 3)
     rails-dom-testing (2.0.3)
